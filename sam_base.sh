@@ -241,6 +241,8 @@ say ()
     SAY_PREFIX_INDENT=false
     SAY_SUFFIX="$LF"
 
+    set -- ${SAY_OPTIONS:-} "$@"
+
     while case $# in 0) false ;; esac
     do
         case "${1:-}" in
