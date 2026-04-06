@@ -478,3 +478,59 @@ include ()
 
     . "$1"
 }
+
+full_path ()
+{
+    # resolve path
+
+    # arguments
+    # "$1": path to file/directory
+
+    # variables
+    # HOME: path to the user's home directory
+    # PWD: full path to the current working directory
+    # TMP: path for parsing
+    # DIR: path directory
+    # TARGET: the result of getting the full path to the file/directory
+
+    # commands
+    # test: The test utility shall evaluate the expression and indicate
+    # the result of the evaluation by its exit status
+    # : This utility shall only expand command arguments
+
+    # return code:
+    # 0: success
+
+    # launch examples:
+    # fpath '~/../alisa/.//.ssh/'
+########################################################################
+    # resolve path ~/../alisa/.//.ssh/ to /home/bob/../alisa/.//.ssh/
+    TARGET=${1:-}
+    case "$TARGET" in
+        \~)     TARGET=${HOME%/} ;;
+        \~/*)   TARGET=${HOME%/}/${TARGET#?} ;;
+         ./*)   case "$PWD" in
+                    / ) TARGET=${TARGET#?} ;;
+                    * ) TARGET=$PWD${TARGET#?} ;;
+                esac ;;
+        [!/]*)  case "$PWD" in
+                    / ) TARGET=/$TARGET ;;
+                    * ) TARGET=$PWD/$TARGET ;;
+                esac ;;
+    esac
+    # resolve path /home/bob/../alisa/.//.ssh/ to /home/alisa/.ssh
+    ARG=${TARGET:-}
+    TARGET=
+    while case "${ARG:-}" in "") false ;; esac
+    do
+        DIR=${ARG%%/*}
+        case "${DIR:-}" in
+             .) : ;;
+            '') DIR=${ARG%%[!/]*} ;;
+            ..) TARGET=${TARGET%/*} ;;
+             *) TARGET=${TARGET%/}/$DIR ;;
+        esac
+        ARG=${ARG#$DIR}
+        TARGET=${TARGET:=/}
+    done
+}
