@@ -572,3 +572,17 @@ makedir ()
         say "$STATUS"
     return $SAY_RESULT
 }
+
+symlink ()
+{
+    STATUS=$(2>&1 ln --force --symbolic --verbose -- "$@") ||
+        say "$STATUS"
+    return $SAY_RESULT
+}
+
+hardlink ()
+{
+    STATUS=$(2>&1 ln --force --physical --verbose -- "$@") ||
+        say "$STATUS"
+    return $SAY_RESULT
+}
