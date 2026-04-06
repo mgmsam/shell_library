@@ -542,5 +542,5 @@ cd_print ()
 
 resolve_path ()
 {
-    (cd_print)
+    (cd_print "$1")
 }
