@@ -544,3 +544,31 @@ resolve_path ()
 {
     (cd_print "$1")
 }
+
+copy ()
+{
+    STATUS=$(2>&1 cp --force --recursive --verbose -- "$@") ||
+        say "$STATUS"
+    return $SAY_RESULT
+}
+
+move ()
+{
+    STATUS=$(2>&1 mv --force --verbose -- "$@") ||
+        say "$STATUS"
+    return $SAY_RESULT
+}
+
+remove ()
+{
+    STATUS=$(2>&1 rm --force --recursive --verbose -- "$@") ||
+        say "$STATUS"
+    return $SAY_RESULT
+}
+
+makedir ()
+{
+    STATUS=$(2>&1 mkdir --parents --verbose -- "$@") ||
+        say "$STATUS"
+    return $SAY_RESULT
+}
