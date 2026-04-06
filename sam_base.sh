@@ -534,3 +534,13 @@ full_path ()
         TARGET=${TARGET:=/}
     done
 }
+
+cd_print ()
+{
+    2>&1 cd -- "$1" && 2>&1 pwd -P
+}
+
+resolve_path ()
+{
+    (cd_print)
+}
