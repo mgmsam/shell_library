@@ -457,3 +457,23 @@ set_env ()
     POSIX_IFS=$SPACE$TAB$LF
     IFS=$POSIX_IFS
 }
+
+include ()
+{
+    test -f "$1" || {
+        say "lib not found: $1"
+        return ${SAY_RESULT:-1}
+    } >&2
+
+    test -r "$1" || {
+        say "no read permissions: $1"
+        return ${SAY_RESULT:-1}
+    } >&2
+
+    ERROR="$(2>&1 . "$1")" || {
+        say "$ERROR"
+        return ${SAY_RESULT:-1}
+    } >&2
+
+    . "$1"
+}
