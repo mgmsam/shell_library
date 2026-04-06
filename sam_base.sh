@@ -424,6 +424,11 @@ is_file ()
     test -f "${1:-}"
 }
 
+is_read ()
+{
+    test -r "${1:-}"
+}
+
 is_term ()
 {
     test -t "${1:-1}" && IS_TERM=true || IS_TERM=false
