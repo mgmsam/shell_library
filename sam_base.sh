@@ -450,6 +450,7 @@ loop ()
 
 set_env ()
 {
+    PWD=$(pwd)
     CR=$(puts '\r')
     TAB=$(puts '\t')
     SPACE=' '
