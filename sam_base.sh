@@ -547,42 +547,36 @@ resolve_path ()
 
 copy ()
 {
-    STATUS=$(2>&1 cp --force --recursive --verbose -- "$@") ||
-        say "$STATUS"
+    STATUS=$(2>&1 cp -frv -- "$@") || say "$STATUS"
     return ${SAY_RESULT:-0}
 }
 
 move ()
 {
-    STATUS=$(2>&1 mv --force --verbose -- "$@") ||
-        say "$STATUS"
+    STATUS=$(2>&1 mv -fv -- "$@") || say "$STATUS"
     return ${SAY_RESULT:-0}
 }
 
 remove ()
 {
-    STATUS=$(2>&1 rm --force --recursive --verbose -- "$@") ||
-        say "$STATUS"
+    STATUS=$(2>&1 rm -frv -- "$@") || say "$STATUS"
     return ${SAY_RESULT:-0}
 }
 
 makedir ()
 {
-    STATUS=$(2>&1 mkdir --parents --verbose -- "$@") ||
-        say "$STATUS"
+    STATUS=$(2>&1 mkdir -pv -- "$@") || say "$STATUS"
     return ${SAY_RESULT:-0}
 }
 
 symlink ()
 {
-    STATUS=$(2>&1 ln --force --symbolic --verbose -- "$@") ||
-        say "$STATUS"
+    STATUS=$(2>&1 ln -fsv -- "$@") || say "$STATUS"
     return ${SAY_RESULT:-0}
 }
 
 hardlink ()
 {
-    STATUS=$(2>&1 ln --force --physical --verbose -- "$@") ||
-        say "$STATUS"
+    STATUS=$(2>&1 ln -fpv -- "$@") || say "$STATUS"
     return ${SAY_RESULT:-0}
 }
