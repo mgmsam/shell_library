@@ -201,10 +201,14 @@ arg_check_unterminated_literals ()
 
 arg_unquate ()
 {
-    case "$ARG" in
+    case "$1" in
         [\"\']*)
-            ARG=${ARG#?}
-            ARG=${ARG%?}
+            ARG_STRING=${1#?}
+            ARG_STRING=${ARG_STRING%?}
+        ;;
+        *)
+            ARG_STRING=$1
+            false
         ;;
     esac
 }
@@ -219,7 +223,8 @@ arg_validate_argument_sequence ()
     for ARG
     do
         arg_check_unterminated_literals "$ARG"
-        arg_unquate
+        arg_unquate "$ARG"
+        ARG=$ARG_STRING
         case "$ARG" in
             "")
                 echo "ValueError: invalid option string '$ARG': must start with a character '$ARG_PREFIX_CHARS'"
@@ -242,6 +247,12 @@ arg_validate_argument_sequence ()
                 case "$ARG" in
                     [_$ARG_ALPHA]*)
                         arg_check_unterminated_literals "${ARG#*=}"
+                        case "${ARG#*=}" in
+                            "")
+                                echo "SyntaxError: expected argument value expression"
+                                exit 2
+                            ;;
+                        esac
                         ARG_KEYWORD_IS_SET=true
                     ;;
                     *)
@@ -292,6 +303,149 @@ set_bool_function ()
     esac
 }
 
+arg_get_positional_kwargs ()
+{
+    ARG_PARSER_KWARGS=$1
+    shift
+    for ARG
+    do
+        case "$ARG" in
+            *=*)
+                ARG_KEYWORD=${ARG%%=*}
+                ARG_VALUE=${ARG#*=}
+                "$ARG_PARSER_KWARGS"
+            ;;
+            *)
+                ...
+            ;;
+        esac
+    done
+}
+
+arg_validate_parser_kwargs ()
+{
+    case "$ARG_KEYWORD" in
+        prog | usage | description | epilog | parents | \
+        formatter_class | prefix_chars | fromfile_prefix_chars | \
+        argument_default | conflict_handler | \
+        add_help | allow_abbrev | exit_on_error | case_style)
+            ARG_POSITION_ARG=false
+            arg_unquate "$ARG_VALUE" && {
+                ARG_VALUE=$ARG_STRING
+                ARG_VALUE_IS_STRING=true
+            } || :
+            case "$ARG_VALUE" in
+                *\`*)
+                    echo "SyntaxError: invalid syntax"
+                    exit 2
+                ;;
+            esac
+            case "$ARG_KEYWORD" in
+                prog)
+                    value_is_string &&
+                    ARG_PROG=$ARG_VALUE || ARG_PROG=
+                ;;
+                usage)
+                    value_is_string &&
+                    ARG_USAGE=$ARG_VALUE || ARG_USAGE=
+                ;;
+                description)
+                    value_is_string &&
+                    ARG_DESCRIPTION=$ARG_VALUE || ARG_DESCRIPTION=
+                ;;
+                epilog)
+                    value_is_string &&
+                    ARG_EPILOG=$ARG_VALUE || ARG_EPILOG=
+                ;;
+                parents | formatter_class)
+                    # TODO: implement
+                ;;
+                prefix_chars)
+                    arg_unique_chars
+                    case "$ARG_VALUE" in
+                        "$ARG_PREFIX_CHARS")
+                        ;;
+                        "")
+                            echo "ValueError: prefix_chars must be a non-empty string"
+                            exit 2
+                        ;;
+                        *)
+                            ARG_PREFIX_CHARS=$ARG_VALUE
+                            ARG_POSIX_PREFIX_CHARS=false
+                        ;;
+                    esac
+                ;;
+                fromfile_prefix_chars)
+                    # TODO: implement
+                ;;
+                argument_default)
+                    value_is_string &&
+                    ARG_ARGUMENT_DEFAULT=$ARG_VALUE || ARG_ARGUMENT_DEFAULT=
+                ;;
+                conflict_handler)
+                    case "$ARG_VALUE" in
+                        error | [Ff]alse | 0)
+                        ;;
+                        resolve | [Tt]rue | 1)
+                            ARG_CONFLICT_HANDLER=true
+                        ;;
+                        *)
+                            echo "ValueError: invalid conflict_resolution value: '$ARG_VALUE'"
+                            exit 2
+                        ;;
+                    esac
+                ;;
+                add_help | allow_abbrev | exit_on_error)
+                    $ARG_VALUE_IS_STRING && {
+                        case "$ARG_VALUE" in
+                            ?*)
+                                set_bool_function true
+                            ;;
+                            "")
+                                set_bool_function false
+                            ;;
+                        esac
+                    } || {
+                        case "$ARG_VALUE" in
+                            1 | True)
+                                set_bool_function true
+                            ;;
+                            0 | False)
+                                set_bool_function false
+                            ;;
+                            *[!$ARG_DIGIT]*)
+                                echo "NameError: name '$ARG_VALUE' is not defined."
+                                exit 2
+                            ;;
+                            0*[!0]*)
+                                echo "SyntaxError: leading zeros in decimal integer literals are not permitted; use an 0o prefix for octal integers"
+                                exit 2
+                            ;;
+                            *)
+                                set_bool_function true
+                            ;;
+                        esac
+                    }
+                ;;
+                case_style)
+                    case "$ARG_VALUE" in
+                        upper | lower)
+                            ARG_CASE_STYLE=arg_$ARG_VALUE
+                        ;;
+                        *)
+                            echo "NameError: name '$ARG_VALUE' is not defined."
+                            exit
+                        ;;
+                    esac
+                ;;
+            esac
+        ;;
+        *)
+            false
+        ;;
+    esac
+}
+
 ArgumentParser ()
 {
     ARG_PROG=${LOG_PREFIX:-}
@@ -314,6 +468,7 @@ ArgumentParser ()
     ARG_CASE_STYLE='arg_lower'
 
     arg_validate_argument_sequence "$@"
+    arg_get_positional_kwargs arg_validate_parser_kwargs "$@"
     return 0
 
     for ARG
@@ -323,126 +478,6 @@ ArgumentParser ()
                 ARG_KEYWORD=${ARG%%=*}
                 ARG_VALUE=${ARG#*=}
                 case "$ARG_KEYWORD" in
-                    prog | usage | description | epilog | parents | \
-                    formatter_class | prefix_chars | fromfile_prefix_chars | \
-                    argument_default | conflict_handler | \
-                    add_help | allow_abbrev | exit_on_error)
-                        ARG_POSITION_ARG=false
-                        case "$ARG_VALUE" in
-                            \"*[!\"] | \'*[!\'] | [!\']*\' | [!\"]*\")
-                                echo "SyntaxError: unterminated string literal (detected at line 1)"
-                                exit 2
-                            ;;
-                            *\`*)
-                                echo "SyntaxError: invalid syntax"
-                                exit 2
-                            ;;
-                            "")
-                                echo "SyntaxError: expected argument value expression"
-                                exit
-                            ;;
-                            \"*\" | \'*\')
-                                ARG_VALUE_IS_STRING=true
-                                ARG_VALUE=${ARG_VALUE#?}
-                                ARG_VALUE=${ARG_VALUE%?}
-                            ;;
-                        esac
-                        case "$ARG_KEYWORD" in
-                            prog)
-                                value_is_string &&
-                                ARG_PROG=$ARG_VALUE || ARG_PROG=
-                            ;;
-                            usage)
-                                value_is_string &&
-                                ARG_USAGE=$ARG_VALUE || ARG_USAGE=
-                            ;;
-                            description)
-                                value_is_string &&
-                                ARG_DESCRIPTION=$ARG_VALUE || ARG_DESCRIPTION=
-                            ;;
-                            epilog)
-                                value_is_string &&
-                                ARG_EPILOG=$ARG_VALUE || ARG_EPILOG=
-                            ;;
-                            parents | formatter_class)
-                                # TODO: implement
-                            ;;
-                            prefix_chars)
-                                arg_unique_chars
-                                case "$ARG_VALUE" in
-                                    "$ARG_PREFIX_CHARS")
-                                    ;;
-                                    *)
-                                        ARG_PREFIX_CHARS=$ARG_VALUE
-                                        ARG_POSIX_PREFIX_CHARS=false
-                                    ;;
-                                esac
-                            ;;
-                            fromfile_prefix_chars)
-                                # TODO: implement
-                            ;;
-                            argument_default)
-                                value_is_string &&
-                                ARG_ARGUMENT_DEFAULT=$ARG_VALUE || ARG_ARGUMENT_DEFAULT=
-                            ;;
-                            conflict_handler)
-                                case "$ARG_VALUE" in
-                                    error | [Ff]alse | 0)
-                                    ;;
-                                    resolve | [Tt]rue | 1)
-                                        ARG_CONFLICT_HANDLER=true
-                                    ;;
-                                    *)
-                                        echo "ValueError: invalid conflict_resolution value: '$ARG_VALUE'"
-                                        exit 2
-                                    ;;
-                                esac
-                            ;;
-                            add_help | allow_abbrev | exit_on_error)
-                                $ARG_VALUE_IS_STRING && {
-                                    case "$ARG_VALUE" in
-                                        ?*)
-                                            set_bool_function true
-                                        ;;
-                                        "")
-                                            set_bool_function false
-                                        ;;
-                                    esac
-                                } || {
-                                    case "$ARG_VALUE" in
-                                        1 | True)
-                                            set_bool_function true
-                                        ;;
-                                        0 | False)
-                                            set_bool_function false
-                                        ;;
-                                        *[!$ARG_DIGIT]*)
-                                            echo "NameError: name '$ARG_VALUE' is not defined. Did you mean: 'False'?"
-                                            exit 2
-                                        ;;
-                                        0*[!0]*)
-                                            echo "SyntaxError: leading zeros in decimal integer literals are not permitted; use an 0o prefix for octal integers"
-                                            exit 2
-                                        ;;
-                                        *)
-                                            set_bool_function true
-                                        ;;
-                                    esac
-                                }
-                            ;;
-                            case_style)
-                                case "$ARG_VALUE" in
-                                    upper | lower)
-                                        ARG_CASE_STYLE=arg_$ARG_VALUE
-                                    ;;
-                                    *)
-                                        echo "NameError: name '$ARG_VALUE' is not defined."
-                                        exit
-                                    ;;
-                                esac
-                            ;;
-                        esac
-                    ;;
                     *)
                         false
                     ;;
@@ -499,11 +534,6 @@ ArgumentParser ()
     ARG_EXIT_ON_ERROR=${ARG_EXIT_ON_ERROR:-}
 }
 
-arg_get_positional_kwargs ()
-{
-    :
-}
-
 arg_get_optional_kwargs ()
 {
     ARG_SHORT_OPTIONS=
@@ -532,6 +562,59 @@ arg_get_optional_kwargs ()
         "")
             ARG_DEST=${ARG_LONG_OPTIONS%%,*}
             ARG_DEST=${ARG_DEST:-${ARG_SHORT_OPTIONS%%,*}}
+        ;;
+    esac
+}
+
+arg_validate_action_kwargs ()
+{
+    case "$ARG_KEYWORD" in
+        action | nargs   | const | default | type | choices | required | \
+        help   | metavar | dest)
+            ARG_POSITION_ARG=false
+            arg_unquate "$ARG_VALUE" && {
+                ARG_VALUE=$ARG_STRING
+                ARG_VALUE_IS_STRING=true
+            } || :
+            case "$ARG_KEYWORD" in
+                action)
+                    value_is_string &&
+                    ARG_PROG=$ARG_VALUE || ARG_PROG=
+                ;;
+                nargs)
+                    value_is_string &&
+                    ARG_USAGE=$ARG_VALUE || ARG_USAGE=
+                ;;
+                const)
+                    value_is_string &&
+                    ARG_DESCRIPTION=$ARG_VALUE || ARG_DESCRIPTION=
+                ;;
+                default)
+                    value_is_string &&
+                    ARG_EPILOG=$ARG_VALUE || ARG_EPILOG=
+                ;;
+                type)
+                    # TODO: implement
+                ;;
+                choices)
+                    # TODO: implement
+                ;;
+                required)
+                    # TODO: implement
+                ;;
+                help)
+                    # TODO: implement
+                ;;
+                metavar)
+                    # TODO: implement
+                ;;
+                dest)
+                    # TODO: implement
+                ;;
+            esac
+        ;;
+        *)
+            false
         ;;
     esac
 }
