@@ -184,17 +184,17 @@ arg_check_unterminated_literals ()
     case "$1" in
         \"*[!\"] | \'*[!\'] | [!\']*\' | [!\"]*\")
             echo "SyntaxError: unterminated string literal (detected at line 1)"
-            exit 2
+            return 2
         ;;
         [!\{]*\} | [!\(]*\) | [!\[]*\])
             arg_get_parenthes "${1#${1%?}}"
             echo "SyntaxError: closing parenthesis '$ARG_CLOSING_PARENTS' does not match opening parenthesis '$ARG_OPENING_PARENTS'"
-            exit 2
+            return 2
         ;;
         \{*[!\}]* | \(*[!\)]* | \[*[!\]]*)
             arg_get_parenthes "${1#${1%?}}"
             echo "SyntaxError: opening parenthesis '$ARG_OPENING_PARENTS' does not match closing parenthesis '$ARG_CLOSING_PARENTS'"
-            exit 2
+            return 2
         ;;
     esac
 }
@@ -222,23 +222,23 @@ arg_validate_argument_sequence ()
 
     for ARG
     do
-        arg_check_unterminated_literals "$ARG"
-        arg_unquate "$ARG"
+        arg_check_unterminated_literals "$ARG" || return
+        arg_unquate "$ARG" || :
         ARG=$ARG_STRING
         case "$ARG" in
             "")
                 echo "ValueError: invalid option string '$ARG': must start with a character '$ARG_PREFIX_CHARS'"
-                exit 2
+                return 2
             ;;
             [$ARG_PREFIX_CHARS]*)
                 if $ARG_KEYWORD_IS_SET
                 then
                     echo "SyntaxError: positional argument follows keyword argument"
-                    exit 2
+                    return 2
                 elif $ARG_POSITION_ARG_IS_SET
                 then
                     echo "ValueError: invalid option string '$ARG_POSITION_ARG': must start with a character '$ARG_PREFIX_CHARS'"
-                    exit 2
+                    return 2
                 else
                     ARG_OPTION_IS_SET=true
                 fi
@@ -250,14 +250,14 @@ arg_validate_argument_sequence ()
                         case "${ARG#*=}" in
                             "")
                                 echo "SyntaxError: expected argument value expression"
-                                exit 2
+                                return 2
                             ;;
                         esac
                         ARG_KEYWORD_IS_SET=true
                     ;;
                     *)
                         echo "SyntaxError: invalid keyword argument name '${ARG%%=*}'"
-                        exit 2
+                        return 2
                     ;;
                 esac
             ;;
@@ -265,11 +265,11 @@ arg_validate_argument_sequence ()
                 if $ARG_KEYWORD_IS_SET
                 then
                     echo "SyntaxError: positional argument follows keyword argument"
-                    exit 2
+                    return 2
                 elif $ARG_POSITION_ARG_IS_SET
                 then
                     echo "ValueError: invalid option string '$ARG_POSITION_ARG': must start with a character '$ARG_PREFIX_CHARS'"
-                    exit 2
+                    return 2
                 else
                     ARG_POSITION_ARG_IS_SET=true
                     ARG_POSITION_ARG=$ARG
@@ -342,7 +342,7 @@ arg_validate_parser_kwargs ()
             case "$ARG_VALUE" in
                 *\`*)
                     echo "SyntaxError: invalid syntax"
-                    exit 2
+                    return 2
                 ;;
             esac
             case "$ARG_KEYWORD" in
@@ -372,7 +372,7 @@ arg_validate_parser_kwargs ()
                         ;;
                         "")
                             echo "ValueError: prefix_chars must be a non-empty string"
-                            exit 2
+                            return 2
                         ;;
                         *)
                             ARG_PREFIX_CHARS=$ARG_VALUE
@@ -396,7 +396,7 @@ arg_validate_parser_kwargs ()
                         ;;
                         *)
                             echo "ValueError: invalid conflict_resolution value: '$ARG_VALUE'"
-                            exit 2
+                            return 2
                         ;;
                     esac
                 ;;
@@ -420,11 +420,11 @@ arg_validate_parser_kwargs ()
                             ;;
                             *[!$ARG_DIGIT]*)
                                 echo "NameError: name '$ARG_VALUE' is not defined."
-                                exit 2
+                                return 2
                             ;;
                             0*[!0]*)
                                 echo "SyntaxError: leading zeros in decimal integer literals are not permitted; use an 0o prefix for octal integers"
-                                exit 2
+                                return 2
                             ;;
                             *)
                                 set_bool_function true
@@ -439,7 +439,7 @@ arg_validate_parser_kwargs ()
                         ;;
                         *)
                             echo "NameError: name '$ARG_VALUE' is not defined."
-                            exit
+                            return 2
                         ;;
                     esac
                 ;;
@@ -472,11 +472,11 @@ arg_set_parser_positional_args ()
             ARG_PARENTS=
         else
             echo "ValueError: length of metavar tuple does not match nargs"
-            exit 2
+            return 2
         fi
     } || {
         echo "SyntaxError: positional argument follows keyword argument"
-        exit 2
+        return 2
     }
 }
 
@@ -501,8 +501,8 @@ ArgumentParser ()
     ARG_VALUE_IS_STRING=false
     ARG_CASE_STYLE='arg_lower'
 
-    arg_validate_argument_sequence "$@"
-    arg_get_positional_kwargs parser "$@"
+    arg_validate_argument_sequence "$@" &&
+    arg_get_positional_kwargs parser "$@" || return
 
     ARG_PARENTS=${ARG_PARENTS:-}
     ARG_FORMATTER_CLASS=${ARG_FORMATTER_CLASS:-argparse.HelpFormatter}
