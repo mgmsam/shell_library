@@ -305,7 +305,7 @@ set_bool_function ()
 
 arg_get_positional_kwargs ()
 {
-    ARG_PARSER_KWARGS=$1
+    ARG_PARSER=$1
     shift
     for ARG
     do
@@ -313,12 +313,17 @@ arg_get_positional_kwargs ()
             *=*)
                 ARG_KEYWORD=${ARG%%=*}
                 ARG_VALUE=${ARG#*=}
-                "$ARG_PARSER_KWARGS"
+                arg_validate_${ARG_PARSER}_kwargs
             ;;
             *)
-                ...
+                arg_unquate "$ARG" && {
+                    ARG_VALUE_IS_STRING=true
+                    ARG_VALUE=$ARG_STRING
+                } || :
+                value_is_string || ARG_VALUE=
+                false
             ;;
-        esac
+        esac || arg_set_${ARG_PARSER}_positional_args
     done
 }
 
@@ -443,7 +448,36 @@ arg_validate_parser_kwargs ()
         *)
             false
         ;;
-    esac
+    esac || arg_set_parser_positional_args
+}
+
+arg_set_parser_positional_args ()
+{
+    $ARG_POSITION_ARG && {
+        if case "$ARG_PROG" in ?*) false ;; esac
+        then
+            ARG_PROG=$ARG_VALUE
+        elif case "$ARG_USAGE" in ?*) false ;; esac
+        then
+            ARG_USAGE=$ARG_VALUE
+        elif case "$ARG_DESCRIPTION" in ?*) false ;; esac
+        then
+            ARG_DESCRIPTION=$ARG_VALUE
+        elif case "$ARG_EPILOG" in ?*) false ;; esac
+        then
+            ARG_EPILOG=$ARG_VALUE
+        elif case "$ARG_PARENTS" in ?*) false ;; esac
+        then
+            # TODO: implement
+            ARG_PARENTS=
+        else
+            echo "ValueError: length of metavar tuple does not match nargs"
+            exit 2
+        fi
+    } || {
+        echo "SyntaxError: positional argument follows keyword argument"
+        exit 2
+    }
 }
 
 ArgumentParser ()
@@ -468,65 +502,8 @@ ArgumentParser ()
     ARG_CASE_STYLE='arg_lower'
 
     arg_validate_argument_sequence "$@"
-    arg_get_positional_kwargs arg_validate_parser_kwargs "$@"
-    return 0
+    arg_get_positional_kwargs parser "$@"
 
-    for ARG
-    do
-        case "$ARG" in
-            *=*)
-                ARG_KEYWORD=${ARG%%=*}
-                ARG_VALUE=${ARG#*=}
-                case "$ARG_KEYWORD" in
-                    *)
-                        false
-                    ;;
-                esac
-            ;;
-            *)
-                ARG_VALUE=$ARG
-                case "$ARG_VALUE" in
-                    \"*[!\"] | \'*[!\'] | [!\']*\' | [!\"]*\")
-                        echo "SyntaxError: unterminated string literal (detected at line 1)"
-                        exit 2
-                    ;;
-                    \"*\" | \'*\')
-                        ARG_VALUE_IS_STRING=true
-                        ARG_VALUE=${ARG_VALUE#?}
-                        ARG_VALUE=${ARG_VALUE%?}
-                    ;;
-                esac
-                value_is_string || ARG_VALUE=
-                false
-            ;;
-        esac || {
-            $ARG_POSITION_ARG && {
-                if case "$ARG_PROG" in ?*) false ;; esac
-                then
-                    ARG_PROG=$ARG_VALUE
-                elif case "$ARG_USAGE" in ?*) false ;; esac
-                then
-                    ARG_USAGE=$ARG_VALUE
-                elif case "$ARG_DESCRIPTION" in ?*) false ;; esac
-                then
-                    ARG_DESCRIPTION=$ARG_VALUE
-                elif case "$ARG_EPILOG" in ?*) false ;; esac
-                then
-                    ARG_EPILOG=$ARG_VALUE
-                elif case "$ARG_PARENTS" in ?*) false ;; esac
-                then
-                    # TODO: implement
-                    ARG_PARENTS=
-                else
-                    echo "ValueError: length of metavar tuple does not match nargs"
-                    exit 2
-                fi
-            } || {
-                echo "SyntaxError: positional argument follows keyword argument"
-                exit 2
-            }
-        }
-    done
     ARG_PARENTS=${ARG_PARENTS:-}
     ARG_FORMATTER_CLASS=${ARG_FORMATTER_CLASS:-argparse.HelpFormatter}
     ARG_ADD_HELP=${ARG_ADD_HELP:-}
