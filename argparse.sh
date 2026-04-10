@@ -202,7 +202,7 @@ ArgumentParser ()
     ARG_EXIT_ON_ERROR=true
 
     ARG_POSIX_PREFIX_CHARS=true
-    ARG_POSITION_PARAMETER=true
+    ARG_POSITION_ARG=true
     ARG_VALUE_IS_STRING=false
     ARG_CASE_STYLE='arg_lower'
 
@@ -217,7 +217,7 @@ ArgumentParser ()
                     formatter_class | prefix_chars | fromfile_prefix_chars | \
                     argument_default | conflict_handler | \
                     add_help | allow_abbrev | exit_on_error)
-                        ARG_POSITION_PARAMETER=false
+                        ARG_POSITION_ARG=false
                         case "$ARG_VALUE" in
                             \"*[!\"] | \'*[!\'] | [!\']*\' | [!\"]*\")
                                 echo "SyntaxError: unterminated string literal (detected at line 1)"
@@ -355,7 +355,7 @@ ArgumentParser ()
                 false
             ;;
         esac || {
-            $ARG_POSITION_PARAMETER && {
+            $ARG_POSITION_ARG && {
                 if case "$ARG_PROG" in ?*) false ;; esac
                 then
                     ARG_PROG=$ARG_VALUE
@@ -389,9 +389,152 @@ ArgumentParser ()
     ARG_EXIT_ON_ERROR=${ARG_EXIT_ON_ERROR:-}
 }
 
+arg_get_positional_kwargs ()
+{
+    :
+}
+
+arg_get_optional_kwargs ()
+{
+    ARG_SHORT_OPTIONS=
+    ARG_LONG_OPTIONS=
+    ARG_COUT=0
+    for ARG
+    do
+        ARG_COUT=$((ARG_COUT + 1))
+        case "$ARG" in
+            [$ARG_PREFIX_CHARS][!$ARG_PREFIX_CHARS]*)
+                ARG_SHORT_OPTIONS=$ARG_SHORT_OPTIONS,$ARG_COUT
+            ;;
+            [$ARG_PREFIX_CHARS][$ARG_PREFIX_CHARS]?*)
+                ARG_LONG_OPTIONS=$ARG_LONG_OPTIONS,$ARG_COUT
+            ;;
+            "")
+                echo "ValueError: invalid option string '$ARG': must start with a character '$ARG_PREFIX_CHARS'"
+                exit 2
+            ;;
+        esac
+    done
+    ARG_SHORT_OPTIONS=${ARG_SHORT_OPTIONS#,}
+    ARG_LONG_OPTIONS=${ARG_LONG_OPTIONS#,}
+
+    case $ARG_DEST in
+        "")
+            ARG_DEST=${ARG_LONG_OPTIONS%%,*}
+            ARG_DEST=${ARG_DEST:-${ARG_SHORT_OPTIONS%%,*}}
+        ;;
+    esac
+}
+arg_get_parenthes ()
+{
+    case "$1" in
+        [()])
+            ARG_OPENING_PARENTS='('
+            ARG_CLOSING_PARENTS=')'
+        ;;
+        [{}])
+            ARG_OPENING_PARENTS='{'
+            ARG_CLOSING_PARENTS='}'
+        ;;
+        [][])
+            ARG_OPENING_PARENTS='['
+            ARG_CLOSING_PARENTS=']'
+        ;;
+    esac
+}
+
+arg_check_unterminated_literals ()
+{
+    case "$1" in
+        \"*[!\"] | \'*[!\'] | [!\']*\' | [!\"]*\")
+            echo "SyntaxError: unterminated string literal (detected at line 1)"
+            exit 2
+        ;;
+        [!\{]*\} | [!\(]*\) | [!\[]*\])
+            arg_get_parenthes "${1#${1%?}}"
+            echo "SyntaxError: closing parenthesis '$ARG_CLOSING_PARENTS' does not match opening parenthesis '$ARG_OPENING_PARENTS'"
+            exit 2
+        ;;
+        \{*[!\}]* | \(*[!\)]* | \[*[!\]]*)
+            arg_get_parenthes "${1#${1%?}}"
+            echo "SyntaxError: opening parenthesis '$ARG_OPENING_PARENTS' does not match closing parenthesis '$ARG_CLOSING_PARENTS'"
+            exit 2
+        ;;
+    esac
+}
+
+arg_unquate ()
+{
+    case "$ARG" in
+        [\"\']*)
+            ARG=${ARG#?}
+            ARG=${ARG%?}
+        ;;
+    esac
+}
+
+arg_validate_argument_sequence ()
+{
+    ARG_OPTION_IS_SET=false
+    ARG_KEYWORD_IS_SET=false
+    ARG_POSITION_ARG_IS_SET=false
+    ARG_POSITION_ARG=
+
+    for ARG
+    do
+        arg_check_unterminated_literals "$ARG"
+        arg_unquate
+        case "$ARG" in
+            "")
+                echo "ValueError: invalid option string '$ARG': must start with a character '$ARG_PREFIX_CHARS'"
+                exit 2
+            ;;
+            [$ARG_PREFIX_CHARS]*)
+                if $ARG_KEYWORD_IS_SET
+                then
+                    echo "SyntaxError: positional argument follows keyword argument"
+                    exit 2
+                elif $ARG_POSITION_ARG_IS_SET
+                then
+                    echo "ValueError: invalid option string '$ARG_POSITION_ARG': must start with a character '$ARG_PREFIX_CHARS'"
+                    exit 2
+                else
+                    ARG_OPTION_IS_SET=true
+                fi
+            ;;
+            *[!=]*=*)
+                case "$ARG" in
+                    [_$ARG_ALPHA]*)
+                        arg_check_unterminated_literals "${ARG#*=}"
+                        ARG_KEYWORD_IS_SET=true
+                    ;;
+                    *)
+                        echo "SyntaxError: invalid keyword argument name '${ARG%%=*}'"
+                        exit 2
+                    ;;
+                esac
+            ;;
+            *)
+                if $ARG_KEYWORD_IS_SET
+                then
+                    echo "SyntaxError: positional argument follows keyword argument"
+                    exit 2
+                elif $ARG_POSITION_ARG_IS_SET
+                then
+                    echo "ValueError: invalid option string '$ARG': must start with a character '$ARG_PREFIX_CHARS'"
+                    exit 2
+                else
+                    ARG_POSITION_ARG_IS_SET=true
+                    ARG_POSITION_ARG=$ARG
+                fi
+            ;;
+        esac
+    done
+}
+
 add_argument ()
 {
-    ARG_POSITION_PARAMETER=true
+    ARG_POSITION_ARG=true
 
     ARG_ACTION=store
     ARG_NARGS=
@@ -405,6 +548,19 @@ add_argument ()
     ARG_DEST=
 
     ARG_VALUE=
+
+    # add_argument "-c" "--config" "dest=var"
+    # add_argument "-c" "--config" "dest='var'"
+    # add_argument "-c" "--config" "dest=''"
+    # add_argument "-c" "--config" "dest="
+
+    # add_argument "file" "default="
+    # add_argument "file" "default=''"
+    # add_argument "file" "'default="config.cfg"'"
+
+    # add_argument "" "'default="config.cfg"'"
+
+    arg_get_optional_kwargs "$@"
 
 ########################################################################
 
