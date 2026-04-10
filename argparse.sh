@@ -257,7 +257,7 @@ arg_validate_argument_sequence ()
                     exit 2
                 elif $ARG_POSITION_ARG_IS_SET
                 then
-                    echo "ValueError: invalid option string '$ARG': must start with a character '$ARG_PREFIX_CHARS'"
+                    echo "ValueError: invalid option string '$ARG_POSITION_ARG': must start with a character '$ARG_PREFIX_CHARS'"
                     exit 2
                 else
                     ARG_POSITION_ARG_IS_SET=true
