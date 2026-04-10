@@ -321,9 +321,9 @@ arg_get_positional_kwargs ()
                     ARG_VALUE=$ARG_STRING
                 } || :
                 value_is_string || ARG_VALUE=
-                false
+                arg_set_${ARG_PARSER}_positional_args
             ;;
-        esac || arg_set_${ARG_PARSER}_positional_args
+        esac 
     done
 }
 
