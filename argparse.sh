@@ -28,72 +28,74 @@ ARG_SPECS_COUNT=0
 
 arg_lower ()
 {
+    ARG_TEMP=$1
     ARG_STRING=
     while
-        case $((${#ARG} > 0)) in
+        case $((${#ARG_TEMP} > 0)) in
             0)
                 false
             ;;
         esac
     do
-        CHAR=${ARG%${ARG#?}}
-        ARG=${ARG#?}
-        case $CHAR in
+        ARG_CHAR=${ARG_TEMP%${ARG_TEMP#?}}
+        ARG_TEMP=${ARG_TEMP#?}
+        case $ARG_CHAR in
             [$ARG_UPPERS])
-                NUM=${ARG_UPPERS%%$CHAR*}
-                NUM=$((${#NUM} + 1))
-                COUNT=
+                ARG_NUM=${ARG_UPPERS%%$ARG_CHAR*}
+                ARG_NUM=$((${#ARG_NUM} + 1))
+                ARG_COUNT=
                 while
-                    case $((${#COUNT} < $NUM)) in
+                    case $((${#ARG_COUNT} < $ARG_NUM)) in
                         0)
                             false
                         ;;
                     esac
                 do
-                    COUNT=$COUNT?
+                    ARG_COUNT=$ARG_COUNT?
                 done
-                CHAR=${ARG_LOWERS%${ARG_LOWERS#$COUNT}}
-                CHAR=${CHAR#${CHAR%?}}
+                ARG_CHAR=${ARG_LOWERS%${ARG_LOWERS#$ARG_COUNT}}
+                ARG_CHAR=${ARG_CHAR#${ARG_CHAR%?}}
             ;;
         esac
-        ARG_STRING=${ARG_STRING:-}$CHAR
+        ARG_STRING=${ARG_STRING:-}$ARG_CHAR
     done
-    ARG=arg_$ARG_STRING
+    ARG_STRING=arg_$ARG_STRING
 }
 
 arg_upper ()
 {
+    ARG_TEMP=$1
     ARG_STRING=
     while
-        case $((${#ARG} > 0)) in
+        case $((${#ARG_TEMP} > 0)) in
             0)
                 false
             ;;
         esac
     do
-        CHAR=${ARG%${ARG#?}}
-        ARG=${ARG#?}
-        case $CHAR in
+        ARG_CHAR=${ARG_TEMP%${ARG_TEMP#?}}
+        ARG_TEMP=${ARG_TEMP#?}
+        case $ARG_CHAR in
             [$ARG_LOWERS])
-                NUM=${ARG_LOWERS%%$CHAR*}
-                NUM=$((${#NUM} + 1))
-                COUNT=
+                ARG_NUM=${ARG_LOWERS%%$ARG_CHAR*}
+                ARG_NUM=$((${#ARG_NUM} + 1))
+                ARG_COUNT=
                 while
-                    case $((${#COUNT} < $NUM)) in
+                    case $((${#ARG_COUNT} < $ARG_NUM)) in
                         0)
                             false
                         ;;
                     esac
                 do
-                    COUNT=$COUNT?
+                    ARG_COUNT=$ARG_COUNT?
                 done
-                CHAR=${ARG_UPPERS%${ARG_UPPERS#$COUNT}}
-                CHAR=${CHAR#${CHAR%?}}
+                ARG_CHAR=${ARG_UPPERS%${ARG_UPPERS#$ARG_COUNT}}
+                ARG_CHAR=${ARG_CHAR#${ARG_CHAR%?}}
             ;;
         esac
-        ARG_STRING=${ARG_STRING:-}$CHAR
+        ARG_STRING=${ARG_STRING:-}$ARG_CHAR
     done
-    ARG=ARG_$ARG_STRING
+    ARG_STRING=ARG_$ARG_STRING
 }
 
 arg_replace ()
@@ -103,33 +105,34 @@ arg_replace ()
     # $1 - pattern
     # $2 - replace
 ########################################################################
+    ARG_STRING="$1"
     while
-        case "$ARG" in
-            *$1*)
+        case "$ARG_STRING" in
+            *$2*)
             ;;
             *)
                 return
             ;;
         esac
     do
-        ARG_STRING=
+        ARG_TEMP=
         while
-            case "${ARG:+${1:-}}" in
+            case "${ARG_STRING:+${2:-}}" in
                 "")
                     false
                 ;;
             esac
         do
-            LEFT=${ARG%%$1*}
-            case "$LEFT" in
-                "$ARG")
+            ARG_LEFT=${ARG_STRING%%$2*}
+            case "$ARG_LEFT" in
+                "$ARG_STRING")
                     break
                 ;;
             esac
-            ARG_STRING=$ARG_STRING$LEFT${2:-}
-            ARG=${ARG#*$1}
+            ARG_TEMP=$ARG_TEMP$ARG_LEFT${3:-}
+            ARG_STRING=${ARG_STRING#*$2}
         done
-        ARG=$ARG_STRING$ARG
+        ARG_STRING=$ARG_TEMP$ARG_STRING
     done
 }
 
@@ -279,6 +282,17 @@ arg_validate_argument_sequence ()
     done
 }
 
+arg_validate_unique_kwargs ()
+{
+    case "$ARG_SEEN_KEYWORDS" in
+        *"$ARG_KEYWORD"*)
+            echo "SyntaxError: keyword argument repeated: $ARG_KEYWORD"
+            return 2
+        ;;
+    esac
+    ARG_SEEN_KEYWORDS="$ARG_SEEN_KEYWORDS $ARG_KEYWORD"
+}
+
 value_is_string ()
 {
     case "$ARG_VALUE" in
@@ -309,6 +323,7 @@ arg_get_positional_kwargs ()
     shift
     for ARG
     do
+        ARG_INDEX=$((ARG_INDEX + 1))
         case "$ARG" in
             *=*)
                 ARG_KEYWORD=${ARG%%=*}
@@ -435,7 +450,7 @@ arg_validate_parser_kwargs ()
                 case_style)
                     case "$ARG_VALUE" in
                         upper | lower)
-                            ARG_CASE_STYLE=arg_$ARG_VALUE
+                            ARG_CASE_STYLE=$ARG_VALUE
                         ;;
                         *)
                             echo "NameError: name '$ARG_VALUE' is not defined."
@@ -499,7 +514,7 @@ ArgumentParser ()
     ARG_POSIX_PREFIX_CHARS=true
     ARG_POSITION_ARG=true
     ARG_VALUE_IS_STRING=false
-    ARG_CASE_STYLE='arg_lower'
+    ARG_CASE_STYLE='lower'
 
     arg_validate_argument_sequence "$@" &&
     arg_get_positional_kwargs parser "$@" || return
@@ -509,6 +524,8 @@ ArgumentParser ()
     ARG_ADD_HELP=${ARG_ADD_HELP:-}
     ARG_ALLOW_ABBREV=${ARG_ALLOW_ABBREV:-}
     ARG_EXIT_ON_ERROR=${ARG_EXIT_ON_ERROR:-}
+
+    ARG_INDEX=0
 }
 
 arg_get_optional_kwargs ()
@@ -548,7 +565,7 @@ arg_validate_action_kwargs ()
     case "$ARG_KEYWORD" in
         action | nargs   | const | default | type | choices | required | \
         help   | metavar | dest)
-            ARG_POSITION_ARG=false
+            arg_validate_unique_kwargs || return
             arg_unquate "$ARG_VALUE" && {
                 ARG_VALUE=$ARG_STRING
                 ARG_VALUE_IS_STRING=true
@@ -586,12 +603,46 @@ arg_validate_action_kwargs ()
                     # TODO: implement
                 ;;
                 dest)
-                    # TODO: implement
+                    value_is_string &&
+                    ARG_DEST=$ARG_VALUE || ARG_EPILOG=
                 ;;
             esac
         ;;
         *)
             false
+        ;;
+    esac || arg_set_action_positional_args
+}
+
+arg_set_action_positional_args ()
+{
+    case "$ARG" in
+        [$ARG_PREFIX_CHARS][$ARG_PREFIX_CHARS]?*)
+            case "$ARG_LONG_OPTION" in
+                "")
+                    arg_replace "${ARG#${ARG%%[!$ARG_PREFIX_CHARS]*}}" '-' '_'
+                    arg_$ARG_CASE_STYLE "$ARG_STRING"
+                    ARG_LONG_OPTION=$ARG_STRING
+                ;;
+            esac
+        ;;
+        [$ARG_PREFIX_CHARS]?*)
+            case "$ARG_SHORT_OPTION" in
+                "")
+                    arg_replace "${ARG#?}" '-' '_'
+                    arg_$ARG_CASE_STYLE "$ARG_STRING"
+                    ARG_SHORT_OPTION=$ARG_STRING
+                ;;
+            esac
+        ;;
+        *)
+            case "$ARG_POSITION" in
+                "")
+                    arg_replace "$ARG" '-' '_'
+                    arg_$ARG_CASE_STYLE "$ARG_STRING"
+                    ARG_POSITION=$ARG_STRING
+                ;;
+            esac
         ;;
     esac
 }
@@ -611,6 +662,8 @@ add_argument ()
     ARG_METAVAR=
     ARG_DEST=
 
+    ARG_SEEN_KEYWORDS=
+    ARG_KEYWORD=
     ARG_VALUE=
 
     # add_argument "-c" "--config" "dest=var"
@@ -624,91 +677,22 @@ add_argument ()
 
     # add_argument "" "'default="config.cfg"'"
 
-    arg_get_optional_kwargs "$@"
+    arg_validate_argument_sequence "$@" &&
+    arg_get_positional_kwargs action "$@" || return
+    ARG_DEST=${ARG_DEST:-${ARG_LONG_OPTION:-${ARG_SHORT_OPTION:-${ARG_POSITION:-}}}}
 
+    case "$ARG_DEST" in
+        [$ARG_DIGIT]*)
+            echo "SyntaxError: invalid decimal literal"
+            return 2
+        ;;
+        *[!_$ARG_ALNUM]*)
+            echo "AttributeError: 'Namespace' object has no attribute '$ARG_DEST'"
+            return 2
+        ;;
+    esac
+exit
 ########################################################################
-
-    for ARG
-    do
-        case "$ARG" in
-            "")
-                echo "дай сообщение"
-                exit 2
-            ;;
-            [$ARG_PREFIX_CHARS]?*)
-                case "$ARG_PREFIX_CHARS" in
-                    "$ARG_POSIX_PREFIX_CHARS")
-                        case "$ARG" in
-                        esac
-                    ;;
-                    *)
-                    ;;
-                esac
-                $ARG_KEYWORD && {
-                    echo "дай сообщение"
-                    exit 2
-                } || {
-                    ARG=${ARG#${ARG%%[!$ARG_PREFIX_CHARS]*}}
-                    arg_replace "[!_$ARG_ALNUM]" '_'
-                    arg_replace '__' '_'
-                    $ARG_CASE_STYLE
-                    eval $ARG=
-                    ARG_LONG_DEST=${ARG_LONG_DEST:-$ARG}
-                }
-            ;;
-            *[!=]*=\"*\" | *[!=]*=\'*\')
-                ARG_VALUE=${ARG#*=?}
-                ARG_VALUE=${ARG_VALUE%?}
-                ARG=${ARG%${ARG#*=}}=${ARG_VALUE:-None}
-            ;;
-            *[!=]*=)
-                ARG_VALUE=None
-            ;;
-            *[!=]*=*)
-                ARG_VALUE=${ARG#*=}
-            ;;
-        esac
-        case "$ARG" in
-            [$ARG_PREFIX_CHARS][$ARG_PREFIX_CHARS][_$ARG_ALNUM]*)
-                ARG=${ARG#??}
-                arg_replace '-' '_'
-                $ARG_CASE_STYLE
-                eval $ARG=
-                ARG_LONG_DEST=${ARG_LONG_DEST:-$ARG}
-            ;;
-            [$ARG_PREFIX_CHARS][$ARG_ALNUM])
-                ARG=${ARG#?}
-                $ARG_CASE_STYLE
-                eval $ARG=
-                ARG_SHORT_DEST=${ARG_SHORT_DEST:-$ARG}
-            ;;
-            *)
-                case "${ARG_LONG_DEST:-$ARG_SHORT_DEST}" in
-                    "")
-                        echo "дай сообщение"
-                        exit 2
-                    ;;
-                esac
-                case "${ARG%%=*}" in
-                    dest)
-                        case "$ARG_VALUE" in
-                            *[!_$ARG_ALNUM]* | [!_$ARG_ALPHA]*)
-                                false
-                            ;;
-                            None)
-                                ARG_DEST=${ARG_LONG_DEST:-$ARG_SHORT_DEST}
-                            ;;
-                            *)
-                                ARG_DEST=$ARG_VALUE
-                            ;;
-                        esac
-                    ;;
-                esac
-            ;;
-        esac
-    done
-    ARG_DEST=${ARG_DEST:-${ARG_LONG_DEST:-$ARG_SHORT_DEST}}
-
 
     ARG_LONG=$1
     ARG_SHORT=${2:-}
