@@ -24,7 +24,10 @@ ARG_LOWERS='abcdefghijklmnopqrstuvwxyz'
 ARG_DIGIT='0123456789'
 ARG_ALNUM=$ARG_LOWERS$ARG_UPPERS$ARG_DIGIT
 ARG_ALPHA=$ARG_LOWERS$ARG_UPPERS
-ARG_SPECS_COUNT=0
+
+ARG_EXPECTED_OPTIONS=
+ARG_INDEX=0
+ARG_NAMES=
 
 arg_lower ()
 {
@@ -323,7 +326,6 @@ arg_get_positional_kwargs ()
     shift
     for ARG
     do
-        ARG_INDEX=$((ARG_INDEX + 1))
         case "$ARG" in
             *=*)
                 ARG_KEYWORD=${ARG%%=*}
@@ -349,7 +351,7 @@ arg_validate_parser_kwargs ()
         formatter_class | prefix_chars | fromfile_prefix_chars | \
         argument_default | conflict_handler | \
         add_help | allow_abbrev | exit_on_error | case_style)
-            ARG_POSITION_ARG=false
+            arg_validate_unique_kwargs || return
             arg_unquate "$ARG_VALUE" && {
                 ARG_VALUE=$ARG_STRING
                 ARG_VALUE_IS_STRING=true
@@ -461,38 +463,34 @@ arg_validate_parser_kwargs ()
             esac
         ;;
         *)
-            false
+            echo "TypeError: ArgumentParser got an unexpected keyword argument '$ARG_KEYWORD'"
+            return 2
         ;;
-    esac || arg_set_parser_positional_args
+    esac
 }
 
 arg_set_parser_positional_args ()
 {
-    $ARG_POSITION_ARG && {
-        if case "$ARG_PROG" in ?*) false ;; esac
-        then
-            ARG_PROG=$ARG_VALUE
-        elif case "$ARG_USAGE" in ?*) false ;; esac
-        then
-            ARG_USAGE=$ARG_VALUE
-        elif case "$ARG_DESCRIPTION" in ?*) false ;; esac
-        then
-            ARG_DESCRIPTION=$ARG_VALUE
-        elif case "$ARG_EPILOG" in ?*) false ;; esac
-        then
-            ARG_EPILOG=$ARG_VALUE
-        elif case "$ARG_PARENTS" in ?*) false ;; esac
-        then
-            # TODO: implement
-            ARG_PARENTS=
-        else
-            echo "ValueError: length of metavar tuple does not match nargs"
-            return 2
-        fi
-    } || {
-        echo "SyntaxError: positional argument follows keyword argument"
+    if case "$ARG_PROG" in ?*) false ;; esac
+    then
+        ARG_PROG=$ARG_VALUE
+    elif case "$ARG_USAGE" in ?*) false ;; esac
+    then
+        ARG_USAGE=$ARG_VALUE
+    elif case "$ARG_DESCRIPTION" in ?*) false ;; esac
+    then
+        ARG_DESCRIPTION=$ARG_VALUE
+    elif case "$ARG_EPILOG" in ?*) false ;; esac
+    then
+        ARG_EPILOG=$ARG_VALUE
+    elif case "$ARG_PARENTS" in ?*) false ;; esac
+    then
+        # TODO: implement
+        ARG_PARENTS=
+    else
+        echo "ValueError: length of metavar tuple does not match nargs"
         return 2
-    }
+    fi
 }
 
 ArgumentParser ()
@@ -512,7 +510,6 @@ ArgumentParser ()
     ARG_EXIT_ON_ERROR=true
 
     ARG_POSIX_PREFIX_CHARS=true
-    ARG_POSITION_ARG=true
     ARG_VALUE_IS_STRING=false
     ARG_CASE_STYLE='lower'
 
@@ -524,40 +521,6 @@ ArgumentParser ()
     ARG_ADD_HELP=${ARG_ADD_HELP:-}
     ARG_ALLOW_ABBREV=${ARG_ALLOW_ABBREV:-}
     ARG_EXIT_ON_ERROR=${ARG_EXIT_ON_ERROR:-}
-
-    ARG_INDEX=0
-}
-
-arg_get_optional_kwargs ()
-{
-    ARG_SHORT_OPTIONS=
-    ARG_LONG_OPTIONS=
-    ARG_COUT=0
-    for ARG
-    do
-        ARG_COUT=$((ARG_COUT + 1))
-        case "$ARG" in
-            [$ARG_PREFIX_CHARS][!$ARG_PREFIX_CHARS]*)
-                ARG_SHORT_OPTIONS=$ARG_SHORT_OPTIONS,$ARG_COUT
-            ;;
-            [$ARG_PREFIX_CHARS][$ARG_PREFIX_CHARS]?*)
-                ARG_LONG_OPTIONS=$ARG_LONG_OPTIONS,$ARG_COUT
-            ;;
-            "")
-                echo "ValueError: invalid option string '$ARG': must start with a character '$ARG_PREFIX_CHARS'"
-                exit 2
-            ;;
-        esac
-    done
-    ARG_SHORT_OPTIONS=${ARG_SHORT_OPTIONS#,}
-    ARG_LONG_OPTIONS=${ARG_LONG_OPTIONS#,}
-
-    case $ARG_DEST in
-        "")
-            ARG_DEST=${ARG_LONG_OPTIONS%%,*}
-            ARG_DEST=${ARG_DEST:-${ARG_SHORT_OPTIONS%%,*}}
-        ;;
-    esac
 }
 
 arg_validate_action_kwargs ()
@@ -603,15 +566,22 @@ arg_validate_action_kwargs ()
                     # TODO: implement
                 ;;
                 dest)
+                    case "$ARG_POSITION" in
+                        ?*)
+                            echo "ValueError: dest supplied twice for positional argument"
+                            return 2
+                        ;;
+                    esac
                     value_is_string &&
                     ARG_DEST=$ARG_VALUE || ARG_EPILOG=
                 ;;
             esac
         ;;
         *)
-            false
+            echo "TypeError: ArgumentParser got an unexpected keyword argument '$ARG_KEYWORD'"
+            return 2
         ;;
-    esac || arg_set_action_positional_args
+    esac
 }
 
 arg_set_action_positional_args ()
@@ -620,37 +590,28 @@ arg_set_action_positional_args ()
         [$ARG_PREFIX_CHARS][$ARG_PREFIX_CHARS]?*)
             case "$ARG_LONG_OPTION" in
                 "")
-                    arg_replace "${ARG#${ARG%%[!$ARG_PREFIX_CHARS]*}}" '-' '_'
-                    arg_$ARG_CASE_STYLE "$ARG_STRING"
-                    ARG_LONG_OPTION=$ARG_STRING
+                    ARG_LONG_OPTION=${ARG#${ARG%%[!$ARG_PREFIX_CHARS]*}}
                 ;;
             esac
+            ARG_EXPECTED_OPTIONS="$ARG_EXPECTED_OPTIONS $ARG"
         ;;
         [$ARG_PREFIX_CHARS]?*)
             case "$ARG_SHORT_OPTION" in
                 "")
-                    arg_replace "${ARG#?}" '-' '_'
-                    arg_$ARG_CASE_STYLE "$ARG_STRING"
-                    ARG_SHORT_OPTION=$ARG_STRING
+                    ARG_SHORT_OPTION=${ARG#?}
                 ;;
             esac
+            ARG_EXPECTED_OPTIONS="$ARG_EXPECTED_OPTIONS $ARG"
         ;;
         *)
-            case "$ARG_POSITION" in
-                "")
-                    arg_replace "$ARG" '-' '_'
-                    arg_$ARG_CASE_STYLE "$ARG_STRING"
-                    ARG_POSITION=$ARG_STRING
-                ;;
-            esac
+            ARG_POSITION_INDEX=$((ARG_POSITION_INDEX + 1))
         ;;
     esac
+    ARG_NAME="$ARG_NAME $ARG"
 }
 
 add_argument ()
 {
-    ARG_POSITION_ARG=true
-
     ARG_ACTION=store
     ARG_NARGS=
     ARG_CONST=
@@ -666,10 +627,12 @@ add_argument ()
     ARG_KEYWORD=
     ARG_VALUE=
 
-    # add_argument "-c" "--config" "dest=var"
-    # add_argument "-c" "--config" "dest='var'"
-    # add_argument "-c" "--config" "dest=''"
-    # add_argument "-c" "--config" "dest="
+    ARG_INDEX=$((ARG_INDEX + 1))
+
+    # ARG_INDEX=1 add_argument "-a" "--config" "dest=var"
+    # ARG_INDEX=2 add_argument "-b" "--config" "dest='var'" "help='output file'"
+    # ARG_INDEX=3 add_argument "-c" "--config" "dest=''"
+    # ARG_INDEX=4 add_argument "-d" "--config" "dest="
 
     # add_argument "file" "default="
     # add_argument "file" "default=''"
@@ -690,119 +653,81 @@ add_argument ()
             echo "AttributeError: 'Namespace' object has no attribute '$ARG_DEST'"
             return 2
         ;;
-    esac
-exit
-########################################################################
-
-    ARG_LONG=$1
-    ARG_SHORT=${2:-}
-    ARG_TYPE=${3:-}
-    ARG_REQUIRED=${4:-}
-    ARG_HELP=${5:-}
-
-    ARG_SPECS_COUNT=$((ARG_SPECS_COUNT + 1))
-
-    eval "ARG_SPEC_${ARG_SPECS_COUNT}_LONG='$ARG_LONG'"
-    eval "ARG_SPEC_${ARG_SPECS_COUNT}_SHORT='$ARG_SHORT'"
-    eval "ARG_SPEC_${ARG_SPECS_COUNT}_TYPE='$ARG_TYPE'"
-    eval "ARG_SPEC_${ARG_SPECS_COUNT}_REQUIRED='$ARG_REQUIRED'"
-    eval "ARG_SPEC_${ARG_SPECS_COUNT}_HELP='$ARG_HELP'"
-    eval "ARG_SPEC_${ARG_SPECS_COUNT}_VALUE="
-    eval "ARG_SPEC_${ARG_SPECS_COUNT}_SET=false"
-}
-
-arg_cmp_count ()
-{
-    case $((i <= ARG_SPECS_COUNT)) in
-        0)
-            false
+        *)
+            arg_replace "$ARG_DEST" '-' '_'
+            arg_$ARG_CASE_STYLE "$ARG_STRING"
+            ARG_DEST=$ARG_STRING
         ;;
     esac
+
+    ARG_NAMES="$ARG_NAMES ARG_${ARG_INDEX}_NAME"
+    eval ARG_${ARG_INDEX}_NAME=\$ARG_NAME
+    eval ARG_${ARG_INDEX}_ACTION=\$ARG_DEST
+    eval ARG_${ARG_INDEX}_NARGS=\$ARG_NARGS
+    eval ARG_${ARG_INDEX}_CONST=\$ARG_CONST
+    eval ARG_${ARG_INDEX}_DEFAULT=\$ARG_DEFAULT
+    eval ARG_${ARG_INDEX}_TYPE=\$ARG_TYPE
+    eval ARG_${ARG_INDEX}_CHOICES=\$ARG_CHOICES
+    eval ARG_${ARG_INDEX}_REQUIRED=\$ARG_REQUIRED
+    eval ARG_${ARG_INDEX}_HELP=\$ARG_HELP
+    eval ARG_${ARG_INDEX}_METAVAR=\$ARG_METAVAR
+    eval ARG_${ARG_INDEX}_DEST=\$ARG_DEST
+}
+
+arg_find ()
+{
+    ARG_INDEX=0
+    for ARG_NAME in $ARG_NAMES
+    do
+        ARG_INDEX=$((ARG_INDEX + 1))
+        eval ARG_VALUE=$ARG_NAME
+        case "$ARG_VALUE" in
+            *" $ARG "*)
+                return
+            ;;
+        esac
+    done
+    case $ARG in
+        [$ARG_PREFIX_CHARS]*)
+            case ${#ARG} in
+                2)
+                    echo "invalid option -- '${ARG#?}'"
+                ;;
+                *)
+                    echo "unrecognized option '$ARG'"
+                ;;
+            esac
+        ;;
+        *)
+            echo "unrecognized arguments: '$ARG'"
+        ;;
+    esac
+    return 2
+}
+
+arg_get_settings ()
+{
+    eval ARG_DEST=\$ARG_${ARG_INDEX}_ACTION
+    eval ARG_NARGS=\$ARG_${ARG_INDEX}_NARGS
+    eval ARG_CONST=\$ARG_${ARG_INDEX}_CONST
+    eval ARG_DEFAULT=\$ARG_${ARG_INDEX}_DEFAULT
+    eval ARG_TYPE=\$ARG_${ARG_INDEX}_TYPE
+    eval ARG_CHOICES=\$ARG_${ARG_INDEX}_CHOICES
+    eval ARG_REQUIRED=\$ARG_${ARG_INDEX}_REQUIRED
+    eval ARG_HELP=\$ARG_${ARG_INDEX}_HELP
+    eval ARG_METAVAR=\$ARG_${ARG_INDEX}_METAVAR
+    eval ARG_DEST=\$ARG_${ARG_INDEX}_DEST
 }
 
 parse_args ()
 {
-    ARG_VALUES=""
     while case $# in 0) false ;; esac
     do
         ARG=$1
-        ARG_MATCHED=false
-        i=1
-        while arg_cmp_count
-        do
-            eval     "ARG_LONG=\$ARG_SPEC_${i}_LONG"
-            eval    "ARG_SHORT=\$ARG_SPEC_${i}_SHORT"
-            eval     "ARG_TYPE=\$ARG_SPEC_${i}_TYPE"
-            eval "ARG_REQUIRED=\$ARG_SPEC_${i}_REQUIRED"
-
-            case "$ARG_SHORT" in
-                ?*)
-                    case "-$ARG_SHORT" in
-                        "$ARG")
-                            ARG_MATCHED=true
-                            shift
-                            ARG_VALUE=${1:-}
-                            eval "ARG_SPEC_${i}_VALUE=\${ARG_VALUE:-}"
-                            eval "ARG_SPEC_${i}_SET=true"
-                            shift
-                            break
-                        ;;
-                    esac
-                ;;
-            esac
-
-            case "$ARG" in
-                "--$ARG_LONG" | "--$ARG_LONG="*)
-                    ARG_MATCHED=true
-                    case "$ARG" in
-                        *=*)
-                            ARG_VALUE=${ARG#*=}
-                        ;;
-                        *)
-                            shift
-                            ARG_VALUE=${1:-}
-                        ;;
-                    esac
-                    eval "ARG_SPEC_${i}_VALUE=\${ARG_VALUE:-}"
-                    eval "ARG_SPEC_${i}_SET=true"
-                    shift
-                    break
-                ;;
-            esac
-
-            i=$((i + 1))
-        done
-
-        $ARG_MATCHED || {
-            echo "Unknown option: $ARG" >&2
-            return 1
-        }
+        arg_find || return
+        arg_get_settings
+        shift
     done
-
-    i=1
-    while arg_cmp_count
-    do
-        eval     "ARG_LONG=\$ARG_SPEC_${i}_LONG"
-        eval    "ARG_SHORT=\$ARG_SPEC_${i}_SHORT"
-        eval "ARG_REQUIRED=\$ARG_SPEC_${i}_REQUIRED"
-        eval      "ARG_SET=\$ARG_SPEC_${i}_SET"
-
-        if $ARG_REQUIRED
-        then
-            $ARG_SET || {
-                case "$ARG_LONG" in
-                    ?*)
-                        echo "Error: --$ARG_LONG is required" >&2
-                    ;;
-                    *)
-                        echo "Error: -$ARG_SHORT is required" >&2
-                esac
-                return 1
-            }
-        fi
-        i=$((i + 1))
-    done
-    return 0
 }
 
 arg_get ()
