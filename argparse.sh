@@ -340,7 +340,7 @@ arg_set_positional_kwargs ()
                 value_is_string || ARG_VALUE=
                 arg_set_${ARG_PARSER}_positional_args
             ;;
-        esac 
+        esac
     done
 }
 
@@ -429,11 +429,11 @@ arg_set_parser_kwargs ()
                         esac
                     } || {
                         case "$ARG_VALUE" in
-                            1 | True)
-                                set_bool_function true
-                            ;;
                             0 | False)
                                 set_bool_function false
+                            ;;
+                            1 | True)
+                                set_bool_function true
                             ;;
                             *[!$ARG_DIGIT]*)
                                 echo "NameError: name '$ARG_VALUE' is not defined."
@@ -536,34 +536,16 @@ arg_set_action_kwargs ()
             case "$ARG_KEYWORD" in
                 action)
                     value_is_string &&
-                    ARG_PROG=$ARG_VALUE || ARG_PROG=
-                ;;
-                nargs)
-                    value_is_string &&
-                    ARG_USAGE=$ARG_VALUE || ARG_USAGE=
-                ;;
-                const)
-                    value_is_string &&
-                    ARG_DESCRIPTION=$ARG_VALUE || ARG_DESCRIPTION=
-                ;;
-                default)
-                    value_is_string &&
-                    ARG_EPILOG=$ARG_VALUE || ARG_EPILOG=
-                ;;
-                type)
-                    # TODO: implement
-                ;;
-                choices)
-                    # TODO: implement
-                ;;
-                required)
-                    # TODO: implement
-                ;;
-                help)
-                    # TODO: implement
-                ;;
-                metavar)
-                    # TODO: implement
+                    ARG_ACTION=$ARG_VALUE || ARG_PROG=
+                    case "$ARG_ACTION" in
+                        "" | store | store_const | store_true | store_false | \
+                        append | append_const | count | help | version | extend)
+                        ;;
+                        *)
+                            echo "ValueError: unknown action \"$ARG_PROG\""
+                            return 2
+                        ;;
+                    esac
                 ;;
                 dest)
                     case "$ARG_POSITION" in
@@ -573,7 +555,76 @@ arg_set_action_kwargs ()
                         ;;
                     esac
                     value_is_string &&
-                    ARG_DEST=$ARG_VALUE || ARG_EPILOG=
+                    ARG_DEST=$ARG_VALUE || ARG_DEST=
+                ;;
+                nargs)
+                    value_is_string &&
+                    ARG_NARGS=$ARG_VALUE || ARG_NARGS=
+                    case "$ARG_NARGS" in
+                        "" | [?*+])
+                        ;;
+                        *[!$ARG_DIGIT]*)
+                            echo "NameError: name '$ARG_NARGS' is not defined"
+                            return 2
+                        ;;
+                    esac
+                ;;
+                const)
+                    value_is_string &&
+                    ARG_CONST=$ARG_VALUE || ARG_CONST=
+                ;;
+                default)
+                    value_is_string &&
+                    ARG_DEFAULT=$ARG_VALUE || ARG_DEFAULT=
+                ;;
+                type)
+                    value_is_string &&
+                    ARG_TYPE=$ARG_VALUE || ARG_TYPE=
+                    case "$ARG_TYPE" in
+                        "" | int | float | str | bool)
+                            # TODO: implement
+                        ;;
+                        complex | Path | json.loads | \
+                        "argparse.FileType('r')" | \
+                        "argparse.FileType('w')" | \
+                        "argparse.FileType('a')" | \
+                        "lambda s: s.upper()" | "lambda s: s.lower()")
+                            # TODO: implement
+                        ;;
+                        "lambda s: s.split('"*"')")
+                            # TODO: implement
+                        ;;
+                        *)
+                            echo "NameError: name '$ARG_TYPE' is not defined"
+                            return 2
+                        ;;
+                    esac
+                ;;
+                choices)
+                    # TODO: implement
+                ;;
+                required)
+                    value_is_string &&
+                    ARG_REQUIRED=$ARG_VALUE || ARG_REQUIRED=
+                    case "$ARG_REQUIRED" in
+                        "" | 0 | False)
+                            ARG_REQUIRED=false
+                        ;;
+                        1 | True)
+                            ARG_REQUIRED=true
+                        ;;
+                        *)
+                            echo "NameError: name '$ARG_REQUIRED' is not defined"
+                            return 2
+                        ;;
+                    esac
+                ;;
+                help)
+                    # TODO: implement
+                ;;
+                metavar)
+                    value_is_string &&
+                    ARG_METAVAR=$ARG_VALUE || ARG_METAVAR=
                 ;;
             esac
         ;;
