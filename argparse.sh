@@ -760,7 +760,6 @@ arg_get_settings ()
     eval ARG_REQUIRED=\$ARG_REQUIRED_${ARG_INDEX}
     eval ARG_HELP=\$ARG_HELP_${ARG_INDEX}
     eval ARG_METAVAR=\$ARG_METAVAR_${ARG_INDEX}
-    eval ARG_DEST=\$ARG_DEST_${ARG_INDEX}
 }
 
 arg_check_required_args ()
