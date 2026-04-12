@@ -513,6 +513,9 @@ ArgumentParser ()
     ARG_VALUE_IS_STRING=false
     ARG_CASE_STYLE='lower'
 
+    ARG_NAMES=
+    ARG_REQUIREDS=
+
     arg_validate_argument_sequence "$@" &&
     arg_set_positional_kwargs parser "$@" || return
 
@@ -612,6 +615,7 @@ arg_set_action_kwargs ()
                         ;;
                         1 | True)
                             ARG_REQUIRED=true
+                            ARG_REQUIREDS="$ARG_REQUIREDS $ARG_REQUIRED "
                         ;;
                         *)
                             echo "NameError: name '$ARG_REQUIRED' is not defined"
@@ -658,7 +662,7 @@ arg_set_action_positional_args ()
             ARG_POSITION_INDEX=$((ARG_POSITION_INDEX + 1))
         ;;
     esac
-    ARG_NAME="$ARG_NAME $ARG"
+    ARG_NAME="$ARG_NAME $ARG "
 }
 
 add_argument ()
@@ -700,29 +704,29 @@ add_argument ()
         ;;
     esac
 
-    ARG_NAMES="$ARG_NAMES ARG_${ARG_INDEX}_NAME"
-    eval ARG_${ARG_INDEX}_NAME=\$ARG_NAME
-    eval ARG_${ARG_INDEX}_ACTION=\$ARG_DEST
-    eval ARG_${ARG_INDEX}_NARGS=\$ARG_NARGS
-    eval ARG_${ARG_INDEX}_CONST=\$ARG_CONST
-    eval ARG_${ARG_INDEX}_DEFAULT=\$ARG_DEFAULT
-    eval ARG_${ARG_INDEX}_TYPE=\$ARG_TYPE
-    eval ARG_${ARG_INDEX}_CHOICES=\$ARG_CHOICES
-    eval ARG_${ARG_INDEX}_REQUIRED=\$ARG_REQUIRED
-    eval ARG_${ARG_INDEX}_HELP=\$ARG_HELP
-    eval ARG_${ARG_INDEX}_METAVAR=\$ARG_METAVAR
-    eval ARG_${ARG_INDEX}_DEST=\$ARG_DEST
+    ARG_NAMES="$ARG_NAMES ARG_NAME_${ARG_INDEX}"
+    eval ARG_NAME_${ARG_INDEX}=\$ARG_NAME
+    eval ARG_ACTION_${ARG_INDEX}=\$ARG_DEST
+    eval ARG_NARGS_${ARG_INDEX}=\$ARG_NARGS
+    eval ARG_CONST_${ARG_INDEX}=\$ARG_CONST
+    eval ARG_DEFAULT_${ARG_INDEX}=\$ARG_DEFAULT
+    eval ARG_TYPE_${ARG_INDEX}=\$ARG_TYPE
+    eval ARG_CHOICES_${ARG_INDEX}=\$ARG_CHOICES
+    eval ARG_REQUIRED_${ARG_INDEX}=\$ARG_REQUIRED
+    eval ARG_HELP_${ARG_INDEX}=\$ARG_HELP
+    eval ARG_METAVAR_${ARG_INDEX}=\$ARG_METAVAR
+    eval ARG_DEST_${ARG_INDEX}=\$ARG_DEST
 }
 
 arg_find ()
 {
-    ARG_INDEX=0
     for ARG_NAME in $ARG_NAMES
     do
-        ARG_INDEX=$((ARG_INDEX + 1))
         eval ARG_VALUE=$ARG_NAME
         case "$ARG_VALUE" in
             *" $ARG "*)
+                ARG_INDEX=${ARG_NAME##*_}
+                eval ARG_RECEIVED_$ARG_INDEX=true
                 return
             ;;
         esac
@@ -747,16 +751,38 @@ arg_find ()
 
 arg_get_settings ()
 {
-    eval ARG_DEST=\$ARG_${ARG_INDEX}_ACTION
-    eval ARG_NARGS=\$ARG_${ARG_INDEX}_NARGS
-    eval ARG_CONST=\$ARG_${ARG_INDEX}_CONST
-    eval ARG_DEFAULT=\$ARG_${ARG_INDEX}_DEFAULT
-    eval ARG_TYPE=\$ARG_${ARG_INDEX}_TYPE
-    eval ARG_CHOICES=\$ARG_${ARG_INDEX}_CHOICES
-    eval ARG_REQUIRED=\$ARG_${ARG_INDEX}_REQUIRED
-    eval ARG_HELP=\$ARG_${ARG_INDEX}_HELP
-    eval ARG_METAVAR=\$ARG_${ARG_INDEX}_METAVAR
-    eval ARG_DEST=\$ARG_${ARG_INDEX}_DEST
+    eval ARG_DEST=\$ARG_ACTION_${ARG_INDEX}
+    eval ARG_NARGS=\$ARG_NARGS_${ARG_INDEX}
+    eval ARG_CONST=\$ARG_CONST_${ARG_INDEX}
+    eval ARG_DEFAULT=\$ARG_DEFAULT_${ARG_INDEX}
+    eval ARG_TYPE=\$ARG_TYPE_${ARG_INDEX}
+    eval ARG_CHOICES=\$ARG_CHOICES_${ARG_INDEX}
+    eval ARG_REQUIRED=\$ARG_REQUIRED_${ARG_INDEX}
+    eval ARG_HELP=\$ARG_HELP_${ARG_INDEX}
+    eval ARG_METAVAR=\$ARG_METAVAR_${ARG_INDEX}
+    eval ARG_DEST=\$ARG_DEST_${ARG_INDEX}
+}
+
+arg_check_required_args ()
+{
+    ARG_NOT_FOUND=
+    for ARG_REQUIRED in $ARG_REQUIREDS
+    do
+        eval \$$ARG_REQUIRED || continue
+        ARG_INDEX=${ARG_REQUIRED##*_}
+        eval \$ARG_RECEIVED_$ARG_INDEX || {
+            eval ARG_NAME=\$ARG_NAME_$ARG_INDEX
+            set -- $ARG_NAME
+            arg_replace "$*" ' ' '/'
+            ARG_NOT_FOUND="${ARG_NOT_FOUND:+$ARG_NOT_FOUND, }$ARG_STRING"
+        }
+    done
+    case $ARG_NOT_FOUND in
+        \?*)
+            echo "error: the following arguments are required: $ARG_NOT_FOUND"
+            return 2
+        ;;
+    esac
 }
 
 parse_args ()
@@ -768,4 +794,5 @@ parse_args ()
         arg_get_settings
         shift
     done
+    arg_check_required_args || return
 }
