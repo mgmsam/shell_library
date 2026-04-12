@@ -320,7 +320,7 @@ set_bool_function ()
     esac
 }
 
-arg_get_positional_kwargs ()
+arg_set_positional_kwargs ()
 {
     ARG_PARSER=$1
     shift
@@ -514,7 +514,7 @@ ArgumentParser ()
     ARG_CASE_STYLE='lower'
 
     arg_validate_argument_sequence "$@" &&
-    arg_get_positional_kwargs parser "$@" || return
+    arg_set_positional_kwargs parser "$@" || return
 
     ARG_PARENTS=${ARG_PARENTS:-}
     ARG_FORMATTER_CLASS=${ARG_FORMATTER_CLASS:-argparse.HelpFormatter}
@@ -641,7 +641,7 @@ add_argument ()
     # add_argument "" "'default="config.cfg"'"
 
     arg_validate_argument_sequence "$@" &&
-    arg_get_positional_kwargs action "$@" || return
+    arg_set_positional_kwargs action "$@" || return
     ARG_DEST=${ARG_DEST:-${ARG_LONG_OPTION:-${ARG_SHORT_OPTION:-${ARG_POSITION:-}}}}
 
     case "$ARG_DEST" in
@@ -728,28 +728,4 @@ parse_args ()
         arg_get_settings
         shift
     done
-}
-
-arg_get ()
-{
-    ARG_NAME=$1
-    ARG_DEFAULT_VALUE=${2:-}
-    i=1
-    while arg_cmp_count
-    do
-        eval     "ARG_LONG=\$ARG_SPEC_${i}_LONG"
-        eval    "ARG_SHORT=\$ARG_SPEC_${i}_SHORT"
-        eval    "ARG_VALUE=\$ARG_SPEC_${i}_VALUE"
-        eval      "ARG_SET=\$ARG_SPEC_${i}_SET"
-
-        case "$ARG_NAME" in
-            "$ARG_LONG" | "$ARG_SHORT")
-                $ARG_SET || break
-                echo "$ARG_VALUE"
-                return 0
-            ;;
-        esac
-        i=$((i + 1))
-    done
-    echo "$ARG_DEFAULT_VALUE"
 }
