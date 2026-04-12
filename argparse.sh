@@ -25,10 +25,6 @@ ARG_DIGIT='0123456789'
 ARG_ALNUM=$ARG_LOWERS$ARG_UPPERS$ARG_DIGIT
 ARG_ALPHA=$ARG_LOWERS$ARG_UPPERS
 
-ARG_EXPECTED_OPTIONS=
-ARG_INDEX=0
-ARG_NAMES=
-
 arg_lower ()
 {
     ARG_TEMP=$1
@@ -516,6 +512,10 @@ ArgumentParser ()
     ARG_NAMES=
     ARG_REQUIREDS=
 
+    ARG_OPTION_STRINGS=
+    ARG_INDEXS=
+    ARG_INDEX=0
+
     arg_validate_argument_sequence "$@" &&
     arg_set_positional_kwargs parser "$@" || return
 
@@ -648,7 +648,7 @@ arg_set_action_positional_args ()
                     ARG_LONG_OPTION=${ARG#${ARG%%[!$ARG_PREFIX_CHARS]*}}
                 ;;
             esac
-            ARG_EXPECTED_OPTIONS="$ARG_EXPECTED_OPTIONS $ARG"
+            ARG_OPTION_STRINGS="$ARG_OPTION_STRINGS $ARG "
         ;;
         [$ARG_PREFIX_CHARS]?*)
             case "$ARG_SHORT_OPTION" in
@@ -656,18 +656,18 @@ arg_set_action_positional_args ()
                     ARG_SHORT_OPTION=${ARG#?}
                 ;;
             esac
-            ARG_EXPECTED_OPTIONS="$ARG_EXPECTED_OPTIONS $ARG"
+            ARG_OPTION_STRINGS="$ARG_OPTION_STRINGS $ARG "
         ;;
         *)
-            ARG_POSITION_INDEX=$((ARG_POSITION_INDEX + 1))
+            ARG_POSITION=$ARG
         ;;
     esac
-    ARG_NAME="$ARG_NAME $ARG "
 }
 
 add_argument ()
 {
-    ARG_ACTION=store
+    ARG_OPTION_STRINGS=
+    ARG_DEST=
     ARG_NARGS=
     ARG_CONST=
     ARG_DEFAULT=
@@ -676,7 +676,8 @@ add_argument ()
     ARG_REQUIRED=false
     ARG_HELP=
     ARG_METAVAR=
-    ARG_DEST=
+
+    ARG_ACTION=store
 
     ARG_SEEN_KEYWORDS=
     ARG_KEYWORD=
@@ -689,6 +690,10 @@ add_argument ()
     ARG_DEST=${ARG_DEST:-${ARG_LONG_OPTION:-${ARG_SHORT_OPTION:-${ARG_POSITION:-}}}}
 
     case "$ARG_DEST" in
+        "")
+            echo "TypeError: missing 1 required positional argument: 'dest'"
+            return 2
+        ;;
         [$ARG_DIGIT]*)
             echo "SyntaxError: invalid decimal literal"
             return 2
@@ -704,26 +709,29 @@ add_argument ()
         ;;
     esac
 
-    ARG_NAMES="$ARG_NAMES ARG_NAME_${ARG_INDEX}"
-    eval ARG_NAME_${ARG_INDEX}=\$ARG_NAME
-    eval ARG_ACTION_${ARG_INDEX}=\$ARG_DEST
-    eval ARG_NARGS_${ARG_INDEX}=\$ARG_NARGS
-    eval ARG_CONST_${ARG_INDEX}=\$ARG_CONST
-    eval ARG_DEFAULT_${ARG_INDEX}=\$ARG_DEFAULT
-    eval ARG_TYPE_${ARG_INDEX}=\$ARG_TYPE
-    eval ARG_CHOICES_${ARG_INDEX}=\$ARG_CHOICES
-    eval ARG_REQUIRED_${ARG_INDEX}=\$ARG_REQUIRED
-    eval ARG_HELP_${ARG_INDEX}=\$ARG_HELP
-    eval ARG_METAVAR_${ARG_INDEX}=\$ARG_METAVAR
-    eval ARG_DEST_${ARG_INDEX}=\$ARG_DEST
+    ARG_INDEXS="$ARG_INDEXS $ARG_INDEX"
+
+    ecal ARG_OPTION_STRINGS_${ARG_INDEX}=\$ARG_OPTION_STRINGS \
+         ARG_DEST_${ARG_INDEX}=\$ARG_DEST \
+         ARG_NARGS_${ARG_INDEX}=\$ARG_NARGS \
+         ARG_CONST_${ARG_INDEX}=\$ARG_CONST \
+         ARG_DEFAULT_${ARG_INDEX}=\$ARG_DEFAULT \
+         ARG_TYPE_${ARG_INDEX}=\$ARG_TYPE \
+         ARG_CHOICES_${ARG_INDEX}=\$ARG_CHOICES \
+         ARG_REQUIRED_${ARG_INDEX}=\$ARG_REQUIRED \
+         ARG_HELP_${ARG_INDEX}=\$ARG_HELP \
+         ARG_METAVAR_${ARG_INDEX}=\$ARG_METAVAR \
+         ARG_ACTION_${ARG_INDEX}=\$ARG_DEST
 }
 
-arg_find ()
+arg_is_option_string ()
 {
-    for ARG_NAME in $ARG_NAMES
+    for ARG_INDEX in $ARG_INDEXS
     do
-        eval ARG_VALUE=$ARG_NAME
-        case "$ARG_VALUE" in
+        eval ARG_OPTION_STRINGS=\$ARG_OPTION_STRINGS_$ARG_INDEX
+        case "$ARG_OPTION_STRINGS" in
+            "")
+            ;;
             *" $ARG "*)
                 ARG_INDEX=${ARG_NAME##*_}
                 eval ARG_RECEIVED_$ARG_INDEX=true
@@ -751,15 +759,17 @@ arg_find ()
 
 arg_get_settings ()
 {
-    eval ARG_DEST=\$ARG_ACTION_${ARG_INDEX}
-    eval ARG_NARGS=\$ARG_NARGS_${ARG_INDEX}
-    eval ARG_CONST=\$ARG_CONST_${ARG_INDEX}
-    eval ARG_DEFAULT=\$ARG_DEFAULT_${ARG_INDEX}
-    eval ARG_TYPE=\$ARG_TYPE_${ARG_INDEX}
-    eval ARG_CHOICES=\$ARG_CHOICES_${ARG_INDEX}
-    eval ARG_REQUIRED=\$ARG_REQUIRED_${ARG_INDEX}
-    eval ARG_HELP=\$ARG_HELP_${ARG_INDEX}
-    eval ARG_METAVAR=\$ARG_METAVAR_${ARG_INDEX}
+    #eval ARG_OPTION_STRINGS=\$ARG_OPTION_STRINGS_${ARG_INDEX}
+    eval ARG_DEST=\$ARG_DEST_${ARG_INDEX} \
+         ARG_NARGS=\$ARG_NARGS_${ARG_INDEX} \
+         ARG_CONST=\$ARG_CONST_${ARG_INDEX} \
+         ARG_DEFAULT=\$ARG_DEFAULT_${ARG_INDEX} \
+         ARG_TYPE=\$ARG_TYPE_${ARG_INDEX} \
+         ARG_CHOICES=\$ARG_CHOICES_${ARG_INDEX} \
+         ARG_REQUIRED=\$ARG_REQUIRED_${ARG_INDEX} \
+         ARG_HELP=\$ARG_HELP_${ARG_INDEX} \
+         ARG_METAVAR=\$ARG_METAVAR_${ARG_INDEX} \
+         ARG_ACTION=\$ARG_ACTION_${ARG_INDEX}
 }
 
 arg_check_required_args ()
@@ -789,7 +799,8 @@ parse_args ()
     while case $# in 0) false ;; esac
     do
         ARG=$1
-        arg_find || return
+        arg_is_option_string || return
+        arg_is_position || return
         arg_get_settings
         shift
     done
