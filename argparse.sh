@@ -330,7 +330,7 @@ arg_set_positional_kwargs ()
             *=*)
                 ARG_KEYWORD=${ARG%%=*}
                 ARG_VALUE=${ARG#*=}
-                arg_validate_${ARG_PARSER}_kwargs
+                arg_set_${ARG_PARSER}_kwargs
             ;;
             *)
                 arg_unquate "$ARG" && {
@@ -344,7 +344,7 @@ arg_set_positional_kwargs ()
     done
 }
 
-arg_validate_parser_kwargs ()
+arg_set_parser_kwargs ()
 {
     case "$ARG_KEYWORD" in
         prog | usage | description | epilog | parents | \
@@ -523,7 +523,7 @@ ArgumentParser ()
     ARG_EXIT_ON_ERROR=${ARG_EXIT_ON_ERROR:-}
 }
 
-arg_validate_action_kwargs ()
+arg_set_action_kwargs ()
 {
     case "$ARG_KEYWORD" in
         action | nargs   | const | default | type | choices | required | \
@@ -628,17 +628,6 @@ add_argument ()
     ARG_VALUE=
 
     ARG_INDEX=$((ARG_INDEX + 1))
-
-    # ARG_INDEX=1 add_argument "-a" "--config" "dest=var"
-    # ARG_INDEX=2 add_argument "-b" "--config" "dest='var'" "help='output file'"
-    # ARG_INDEX=3 add_argument "-c" "--config" "dest=''"
-    # ARG_INDEX=4 add_argument "-d" "--config" "dest="
-
-    # add_argument "file" "default="
-    # add_argument "file" "default=''"
-    # add_argument "file" "'default="config.cfg"'"
-
-    # add_argument "" "'default="config.cfg"'"
 
     arg_validate_argument_sequence "$@" &&
     arg_set_positional_kwargs action "$@" || return
