@@ -732,34 +732,56 @@ arg_is_option_string ()
         case "$ARG_OPTION_STRINGS" in
             "")
             ;;
-            *" $ARG "*)
-                ARG_INDEX=${ARG_NAME##*_}
+            *" $ARG_STRING "*)
                 eval ARG_RECEIVED_$ARG_INDEX=true
                 return
             ;;
         esac
     done
-    case $ARG in
-        [$ARG_PREFIX_CHARS]*)
-            case ${#ARG} in
-                2)
-                    echo "invalid option -- '${ARG#?}'"
-                ;;
-                *)
-                    echo "unrecognized option '$ARG'"
-                ;;
-            esac
+    case ${#ARG_STRING} in
+        2)
+            echo "invalid option -- '${ARG_STRING#?}'"
         ;;
         *)
-            echo "unrecognized arguments: '$ARG'"
+            echo "unrecognized option '$ARG_STRING'"
         ;;
     esac
     return 2
 }
 
+arg_is_position ()
+{
+    case "$ARG_NARGS" in
+        0)
+            for ARG_INDEX in $ARG_INDEXS
+            do
+                eval ARG_DEST=\$ARG_DEST_$ARG_INDEX
+                case "$ARG_DEST" in
+                    "")
+                        break false 2>/dev/null
+                    ;;
+                    *" $ARG_STRING "*)
+                        eval ARG_RECEIVED_$ARG_INDEX=true
+                        return
+                    ;;
+                esac
+            done
+        ;;
+        *)
+            false
+        ;;
+    esac || {
+        eval $ARG_DEST=\"\$$ARG_DEST \$ARG_STRING\"
+        ARG_NARGS=$((ARG_NARGS - 1))
+        return
+    }
+
+    echo "unrecognized argument '$ARG_STRING'"
+    return 2
+}
+
 arg_get_settings ()
 {
-    #eval ARG_OPTION_STRINGS=\$ARG_OPTION_STRINGS_${ARG_INDEX}
     eval ARG_DEST=\$ARG_DEST_${ARG_INDEX} \
          ARG_NARGS=\$ARG_NARGS_${ARG_INDEX} \
          ARG_CONST=\$ARG_CONST_${ARG_INDEX} \
@@ -796,11 +818,25 @@ arg_check_required_args ()
 
 parse_args ()
 {
+    ARG_PARSING_OPTIONS=true
     while case $# in 0) false ;; esac
     do
-        ARG=$1
-        arg_is_option_string || return
-        arg_is_position || return
+        ARG_STRING=$1
+        $ARG_PARSING_OPTIONS && {
+            case "$ARG_STRING" in
+                '--')
+                    ARG_PARSING_OPTIONS=false
+                    shift
+                    continue
+                ;;
+                [$ARG_PREFIX_CHARS]*)
+                    arg_is_option_string || return
+                ;;
+                *)
+                    false
+                ;;
+            esac
+        } || arg_is_position || return
         arg_get_settings
         shift
     done
