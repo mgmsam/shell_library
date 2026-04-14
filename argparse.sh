@@ -24,6 +24,8 @@ ARG_LOWERS='abcdefghijklmnopqrstuvwxyz'
 ARG_DIGIT='0123456789'
 ARG_ALNUM=$ARG_LOWERS$ARG_UPPERS$ARG_DIGIT
 ARG_ALPHA=$ARG_LOWERS$ARG_UPPERS
+ARG_SPACE=" "
+ARG_MASK=""
 
 arg_lower ()
 {
@@ -104,6 +106,23 @@ arg_replace ()
     # $1 - pattern
     # $2 - replace
 ########################################################################
+    ARG_LOOP_REPLACE=false
+    while true
+    do
+        case "$1" in
+            --)
+                shift
+                break
+            ;;
+            -l)
+                ARG_LOOP_REPLACE=true
+                shift
+            ;;
+            *)
+                break
+            ;;
+        esac
+    done
     ARG_STRING="$1"
     while
         case "$ARG_STRING" in
@@ -132,6 +151,7 @@ arg_replace ()
             ARG_STRING=${ARG_STRING#*$2}
         done
         ARG_STRING=$ARG_TEMP$ARG_STRING
+        $ARG_LOOP_REPLACE || break
     done
 }
 
@@ -755,8 +775,14 @@ arg_is_position ()
         0)
             for ARG_INDEX in $ARG_INDEXS
             do
-                eval ARG_DEST=\$ARG_DEST_$ARG_INDEX
-                case "$ARG_DEST" in
+                # ARG_INDEX=5
+                # ARG_DEST_5=source_file
+                # source_file="/path/to/file"
+                eval ARG_VARIABLE=\$ARG_DEST_$ARG_INDEX
+                # ARG_VARIABLE=source_file
+                eval ARG_VALUE=\$$ARG_VARIABLE
+                # ARG_VALUE="/path/to/file"
+                case "$ARG_VALUE" in
                     "")
                         break false 2>/dev/null
                     ;;
@@ -771,11 +797,12 @@ arg_is_position ()
             false
         ;;
     esac || {
-        eval $ARG_DEST=\"\$$ARG_DEST \$ARG_STRING\"
+        arg_replace "$ARG_STRING" "'" "'\''"
+        eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST }'\$ARG_STRING'\""
         ARG_NARGS=$((ARG_NARGS - 1))
         return
     }
-
+    
     echo "unrecognized argument '$ARG_STRING'"
     return 2
 }
@@ -831,13 +858,13 @@ parse_args ()
                 ;;
                 [$ARG_PREFIX_CHARS]*)
                     arg_is_option_string || return
+                    arg_get_settings
                 ;;
                 *)
-                    false
+                    arg_is_position || return
                 ;;
             esac
         } || arg_is_position || return
-        arg_get_settings
         shift
     done
     arg_check_required_args || return
