@@ -684,6 +684,24 @@ arg_set_action_positional_args ()
     esac
 }
 
+arg_print_parser_state ()
+{
+    echo "prog: $ARG_PROG
+usage: $ARG_USAGE
+description: $ARG_DESCRIPTION
+epilog: $ARG_EPILOG
+parents: $ARG_PARENTS
+formatter_class: $ARG_FORMATTER_CLASS
+prefix_chars: $ARG_PREFIX_CHARS
+fromfile_prefix_chars: $ARG_FROMFILE_PREFIX_CHARS
+argument_default: $ARG_ARGUMENT_DEFAULT
+conflict_handler: $ARG_CONFLICT_HANDLER
+add_help: $ARG_ADD_HELP
+allow_abbrev: $ARG_ALLOW_ABBREV
+exit_on_error: $ARG_EXIT_ON_ERROR
+case_style: $ARG_CASE_STYLE"
+}
+
 add_argument ()
 {
     ARG_OPTION_STRINGS=
