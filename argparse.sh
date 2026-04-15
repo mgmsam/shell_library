@@ -183,42 +183,84 @@ arg_unique_chars ()
     ARG_VALUE=$ARG_STRING
 }
 
-arg_get_parenthes ()
+# aaps;[]"sad'df'dqda"lppo'vr<gvr}
+
+arg_set_parens ()
 {
     case "$1" in
         [\(\)])
-            ARG_OPENING_PARENTS='('
-            ARG_CLOSING_PARENTS=')'
-        ;;
-        [\{\}])
-            ARG_OPENING_PARENTS='{'
-            ARG_CLOSING_PARENTS='}'
+            ARG_OPEN_PAREN='('
+            ARG_CLOSE_PAREN=')'
         ;;
         [\]\[])
-            ARG_OPENING_PARENTS='['
-            ARG_CLOSING_PARENTS=']'
+            ARG_OPEN_PAREN='['
+            ARG_CLOSE_PAREN=']'
+        ;;
+        [\{\}])
+            ARG_OPEN_PAREN='{'
+            ARG_CLOSE_PAREN='}'
+        ;;
+        [\<\>])
+            ARG_OPEN_PAREN='<'
+            ARG_CLOSE_PAREN='>'
         ;;
     esac
 }
 
-arg_check_unterminated_literals ()
+arg_is_terminated ()
 {
-    case "$1" in
-        \"*[!\"] | \'*[!\'] | [!\']*\' | [!\"]*\")
-            echo "SyntaxError: unterminated string literal (detected at line 1)"
-            return 2
-        ;;
-        [!\{]*\} | [!\(]*\) | [!\[]*\])
-            arg_get_parenthes "${1#${1%?}}"
-            echo "SyntaxError: closing parenthesis '$ARG_CLOSING_PARENTS' does not match opening parenthesis '$ARG_OPENING_PARENTS'"
-            return 2
-        ;;
-        \{*[!\}]* | \(*[!\)]* | \[*[!\]]*)
-            arg_get_parenthes "${1#${1%?}}"
-            echo "SyntaxError: opening parenthesis '$ARG_OPENING_PARENTS' does not match closing parenthesis '$ARG_CLOSING_PARENTS'"
-            return 2
-        ;;
-    esac
+    ARG_STRING=$1
+    while
+        case "$ARG_STRING" in
+            *[\'\"]*) true  ;;
+                   *) false ;;
+        esac
+    do
+        ARG_STRING_LEFT=${ARG_STRING%%[\'\"]*}
+        ARG_QUOTE=${ARG_STRING#$ARG_STRING_LEFT}
+        ARG_QUOTE=${ARG_QUOTE%${ARG_QUOTE#?}}
+        ARG_TEMP=${ARG_STRING#*$ARG_QUOTE}
+        case "$ARG_TEMP" in
+            *$ARG_QUOTE*)
+                ARG_STRING=$ARG_STRING_LEFT${ARG_TEMP#*$ARG_QUOTE}
+            ;;
+            *)
+                echo "SyntaxError: unterminated string literal (detected at line 1)"
+                return 2
+        esac
+    done
+    while
+        case "$ARG_STRING" in
+            *[][\(\){}\<\>]*)
+                true
+            ;;
+            *)
+                false
+            ;;
+        esac
+    do
+        ARG_STRING_LEFT=${ARG_STRING%%[][(){\}\<\>]*}
+        ARG_PAREN=${ARG_STRING#$ARG_STRING_LEFT}
+        ARG_PAREN=${ARG_PAREN%${ARG_PAREN#?}}
+        arg_set_parens "$ARG_PAREN"
+        case "$ARG_PAREN" in
+            *[]\)}\>]*)
+                echo "SyntaxError: closing parenthesis '$ARG_CLOSE_PAREN' does not match opening parenthesis '$ARG_OPEN_PAREN'"
+                return 2
+            ;;
+            *)
+                ARG_TEMP=${ARG_STRING#*$ARG_PARENT}
+                case "$ARG_TEMP" in
+                    *$ARG_CLOSE_PAREN*)
+                        ARG_STRING=${ARG_TEMP#*$ARG_CLOSE_PAREN}
+                    ;;
+                    *)
+                        echo "SyntaxError: opening parenthesis '$ARG_OPEN_PAREN' does not match closing parenthesis '$ARG_CLOSE_PAREN'"
+                        return 2
+                esac
+            ;;
+        esac
+    done
 }
 
 arg_unquate ()
@@ -244,7 +286,7 @@ arg_validate_argument_sequence ()
 
     for ARG
     do
-        arg_check_unterminated_literals "$ARG" || return
+        arg_is_terminated "$ARG" || return
         arg_unquate "$ARG" || :
         ARG=$ARG_STRING
         case "$ARG" in
@@ -268,7 +310,7 @@ arg_validate_argument_sequence ()
             *[!=]*=*)
                 case "$ARG" in
                     [_$ARG_ALPHA]*)
-                        arg_check_unterminated_literals "${ARG#*=}"
+                        arg_is_terminated "${ARG#*=}"
                         case "${ARG#*=}" in
                             "")
                                 echo "SyntaxError: expected argument value expression"
