@@ -744,57 +744,6 @@ exit_on_error: $ARG_EXIT_ON_ERROR
 case_style: $ARG_CASE_STYLE"
 }
 
-arg_print_state ()
-{
-    echo "Action state (index $ARG_INDEX):
-option_strings: $ARG_OPTION_STRINGS
-dest: $ARG_DEST
-nargs: $ARG_NARGS
-const: $ARG_CONST
-default: $ARG_DEFAULT
-type: $ARG_TYPE
-choices: $ARG_CHOICES
-required: $ARG_REQUIRED
-help: $ARG_HELP
-metavar: $ARG_METAVAR"
-}
-
-arg_print_action_state ()
-{
-    case "$1" in
-        "")
-            for ARG_INDEX in $ARG_INDEXS
-            do
-                arg_set_action_state
-                arg_print_state
-            done
-        ;;
-        *[!$ARG_DIGIT]*)
-            for ARG_INDEX in $ARG_INDEXS
-            do
-                eval ARG_DEST=\$ARG_DEST_$ARG_INDEX
-                case "$ARG_DEST" in
-                    "$1")
-                        arg_set_action_state
-                        arg_print_state
-                    ;;
-                esac
-            done
-        ;;
-        *)
-            for ARG_INDEX in $ARG_INDEXS
-            do
-                case "$ARG_INDEX" in
-                    "$1")
-                        arg_set_action_state
-                        arg_print_state
-                    ;;
-                esac
-            done
-        ;;
-    esac
-}
-
 add_argument ()
 {
     ARG_OPTION_STRINGS=
@@ -933,6 +882,57 @@ arg_set_action_state ()
          ARG_HELP=\$ARG_HELP_$ARG_INDEX \
          ARG_METAVAR=\$ARG_METAVAR_$ARG_INDEX \
          ARG_ACTION=\$ARG_ACTION_$ARG_INDEX
+}
+
+arg_print_state ()
+{
+    echo "Action state (index $ARG_INDEX):
+option_strings: $ARG_OPTION_STRINGS
+dest: $ARG_DEST
+nargs: $ARG_NARGS
+const: $ARG_CONST
+default: $ARG_DEFAULT
+type: $ARG_TYPE
+choices: $ARG_CHOICES
+required: $ARG_REQUIRED
+help: $ARG_HELP
+metavar: $ARG_METAVAR"
+}
+
+arg_print_action_state ()
+{
+    case "$1" in
+        "")
+            for ARG_INDEX in $ARG_INDEXS
+            do
+                arg_set_action_state
+                arg_print_state
+            done
+        ;;
+        *[!$ARG_DIGIT]*)
+            for ARG_INDEX in $ARG_INDEXS
+            do
+                eval ARG_DEST=\$ARG_DEST_$ARG_INDEX
+                case "$ARG_DEST" in
+                    "$1")
+                        arg_set_action_state
+                        arg_print_state
+                    ;;
+                esac
+            done
+        ;;
+        *)
+            for ARG_INDEX in $ARG_INDEXS
+            do
+                case "$ARG_INDEX" in
+                    "$1")
+                        arg_set_action_state
+                        arg_print_state
+                    ;;
+                esac
+            done
+        ;;
+    esac
 }
 
 arg_check_required_args ()
