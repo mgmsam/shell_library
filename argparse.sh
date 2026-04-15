@@ -571,12 +571,11 @@ ArgumentParser ()
     ARG_VALUE_IS_STRING=false
     ARG_CASE_STYLE='lower'
 
-    ARG_NAMES=
-    ARG_REQUIREDS=
-
     ARG_OPTION_STRINGS=
-    ARG_INDEXS=
+
     ARG_INDEX=0
+    ARG_INDEXS=
+    ARG_REQUIRED_INDEXES=
 
     arg_validate_argument_sequence "$@" &&
     arg_set_positional_kwargs parser "$@" || return
@@ -677,7 +676,7 @@ arg_set_action_kwargs ()
                         ;;
                         1 | True)
                             ARG_REQUIRED=true
-                            ARG_REQUIREDS="$ARG_REQUIREDS $ARG_REQUIRED "
+                            ARG_REQUIRED_INDEXES="$ARG_REQUIRED_INDEXES $ARG_INDEX"
                         ;;
                         *)
                             echo "NameError: name '$ARG_REQUIRED' is not defined"
@@ -766,11 +765,15 @@ add_argument ()
     ARG_KEYWORD=
     ARG_VALUE=
 
+    ARG_INDEX=$((ARG_INDEX + 1))
     arg_validate_argument_sequence "$@" &&
-    arg_set_positional_kwargs action "$@" || return
+    arg_set_positional_kwargs action "$@" || {
+        ARG_RETURN_CODE=$?
+        ARG_INDEX=$((ARG_INDEX - 1))
+        return $ARG_RETURN_CODE
+    }
 
     ARG_DEST=${ARG_DEST:-${ARG_LONG_OPTION:-${ARG_SHORT_OPTION:-${ARG_POSITION:-}}}}
-
     case "$ARG_DEST" in
         "")
             echo "TypeError: missing 1 required positional argument: 'dest'"
@@ -791,7 +794,6 @@ add_argument ()
         ;;
     esac
 
-    ARG_INDEX=$((ARG_INDEX + 1))
     ARG_INDEXS="$ARG_INDEXS $ARG_INDEX"
 
     eval ARG_OPTION_STRINGS_$ARG_INDEX=\$ARG_OPTION_STRINGS \
@@ -938,21 +940,32 @@ arg_print_action_state ()
 
 arg_check_required_args ()
 {
-    ARG_NOT_FOUND=
-    for ARG_REQUIRED in $ARG_REQUIREDS
+    ARG_MISSING_INDEXES=
+    for ARG_INDEX in $ARG_REQUIRED_INDEXES
     do
-        eval \$$ARG_REQUIRED || continue
-        ARG_INDEX=${ARG_REQUIRED##*_}
-        eval \$ARG_RECEIVED_$ARG_INDEX || {
-            eval ARG_NAME=\$ARG_NAME_$ARG_INDEX
-            set -- $ARG_NAME
-            arg_replace "$*" ' ' '/'
-            ARG_NOT_FOUND="${ARG_NOT_FOUND:+$ARG_NOT_FOUND, }$ARG_STRING"
-        }
+        case "$ARG_RECEIVED_INDEXES" in
+            *" $ARG_INDEX "*)
+            ;;
+            *)
+                eval ARG_OPTION_STRINGS=\$ARG_OPTION_STRINGS_$ARG_INDEX
+                case "$ARG_OPTION_STRINGS" in
+                    "")
+                        eval ARG_DEST=\$ARG_DEST_$ARG_INDEX
+                        ARG_MISSING_INDEXES="${ARG_MISSING_INDEXES:+$ARG_MISSING_INDEXES, }$ARG_DEST"
+                    ;;
+                    *)
+                        set -- $ARG_OPTION_STRINGS
+                        arg_replace "$*" ' ' '/'
+                        ARG_MISSING_INDEXES="${ARG_MISSING_INDEXES:+$ARG_MISSING_INDEXES, }$ARG_STRING"
+                    ;;
+                esac
+                
+            ;;
+        esac
     done
-    case $ARG_NOT_FOUND in
-        \?*)
-            echo "error: the following arguments are required: $ARG_NOT_FOUND"
+    case "$ARG_MISSING_INDEXES" in
+        ?*)
+            echo "error: the following arguments are required: $ARG_MISSING_INDEXES"
             return 2
         ;;
     esac
@@ -961,7 +974,13 @@ arg_check_required_args ()
 parse_args ()
 {
     ARG_PARSING_OPTIONS=true
-    while case $# in 0) false ;; esac
+    ARG_RECEIVED_INDEXES=
+    while
+        case $# in
+            0)
+                false
+            ;;
+        esac
     do
         ARG_STRING=$1
         $ARG_PARSING_OPTIONS && {
@@ -974,9 +993,11 @@ parse_args ()
                 [$ARG_PREFIX_CHARS]*)
                     arg_is_option_string || return
                     arg_set_action_state
+                    ARG_RECEIVED_INDEXES="$ARG_RECEIVED_INDEXES $ARG_INDEX "
                 ;;
                 *)
                     arg_is_position || return
+                    ARG_RECEIVED_INDEXES="$ARG_RECEIVED_INDEXES $ARG_INDEX "
                 ;;
             esac
         } || arg_is_position || return
