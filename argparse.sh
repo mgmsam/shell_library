@@ -810,11 +810,12 @@ add_argument ()
 
     ARG_ACTION=store
 
+    ARG_LONG_OPTION=
+    ARG_SHORT_OPTION=
+    ARG_POSITION=
     ARG_SEEN_KEYWORDS=
     ARG_KEYWORD=
     ARG_VALUE=
-
-    ARG_INDEX=$((ARG_INDEX + 1))
 
     arg_validate_argument_sequence "$@" &&
     arg_set_positional_kwargs action "$@" || return
@@ -840,6 +841,7 @@ add_argument ()
         ;;
     esac
 
+    ARG_INDEX=$((ARG_INDEX + 1))
     ARG_INDEXS="$ARG_INDEXS $ARG_INDEX"
 
     eval ARG_OPTION_STRINGS_${ARG_INDEX}=\$ARG_OPTION_STRINGS \
@@ -920,7 +922,8 @@ arg_is_position ()
 
 arg_set_action_state ()
 {
-    eval ARG_DEST=\$ARG_DEST_$ARG_INDEX \
+    eval ARG_OPTION_STRINGS=\$ARG_OPTION_STRINGS_$ARG_INDEX \
+         ARG_DEST=\$ARG_DEST_$ARG_INDEX \
          ARG_NARGS=\$ARG_NARGS_$ARG_INDEX \
          ARG_CONST=\$ARG_CONST_$ARG_INDEX \
          ARG_DEFAULT=\$ARG_DEFAULT_$ARG_INDEX \
