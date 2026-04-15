@@ -600,13 +600,13 @@ arg_set_action_kwargs ()
             case "$ARG_KEYWORD" in
                 action)
                     value_is_string &&
-                    ARG_ACTION=$ARG_VALUE || ARG_PROG=
+                    ARG_ACTION=${ARG_VALUE:-store} || ARG_ACTION=store
                     case "$ARG_ACTION" in
-                        "" | store | store_const | store_true | store_false | \
+                        store | store_const | store_true | store_false | \
                         append | append_const | count | help | version | extend)
                         ;;
                         *)
-                            echo "ValueError: unknown action \"$ARG_PROG\""
+                            echo "ValueError: unknown action \"$ARG_ACTION\""
                             return 2
                         ;;
                     esac
@@ -747,7 +747,7 @@ add_argument ()
 {
     ARG_OPTION_STRINGS=
     ARG_DEST=
-    ARG_NARGS=
+    ARG_NARGS=1
     ARG_CONST=
     ARG_DEFAULT=
     ARG_TYPE=
@@ -791,6 +791,27 @@ add_argument ()
             arg_replace "$ARG_DEST" '-' '_'
             arg_$ARG_CASE_STYLE "$ARG_STRING"
             ARG_DEST=$ARG_STRING
+        ;;
+    esac
+
+    case "$ARG_ACTION" in
+        store | append | extend)
+            case $ARG_NARGS in
+                "")
+                    ARG_NARGS=1
+                ;;
+            esac
+        ;;
+        *)
+            case $ARG_NARGS in
+                "")
+                    ARG_NARGS=0
+                ;;
+                *)
+                    echo "TypeError: action=$ARG_ACTION got an unexpected keyword argument 'nargs'"
+                    return 2
+                ;;
+            esac
         ;;
     esac
 
