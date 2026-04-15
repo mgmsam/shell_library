@@ -388,7 +388,7 @@ arg_set_positional_kwargs ()
             *=*)
                 ARG_KEYWORD=${ARG%%=*}
                 ARG_VALUE=${ARG#*=}
-                arg_set_${ARG_PARSER}_kwargs
+                arg_set_${ARG_PARSER}_kwargs || return
             ;;
             *)
                 arg_unquate "$ARG" && {
@@ -396,7 +396,7 @@ arg_set_positional_kwargs ()
                     ARG_VALUE=$ARG_STRING
                 } || :
                 value_is_string || ARG_VALUE=
-                arg_set_${ARG_PARSER}_positional_args
+                arg_set_${ARG_PARSER}_positional_args || return
             ;;
         esac
     done
@@ -768,6 +768,7 @@ add_argument ()
 
     arg_validate_argument_sequence "$@" &&
     arg_set_positional_kwargs action "$@" || return
+
     ARG_DEST=${ARG_DEST:-${ARG_LONG_OPTION:-${ARG_SHORT_OPTION:-${ARG_POSITION:-}}}}
 
     case "$ARG_DEST" in
