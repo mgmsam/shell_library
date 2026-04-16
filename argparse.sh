@@ -791,6 +791,15 @@ add_argument ()
         ;;
     esac
 
+    case "$ARG_OPTION_STRINGS" in
+        "")
+            "$ARG_REQUIRED" || {
+                echo "TypeError: 'required' is an invalid argument for positionals"
+                return 2
+            }
+        ;;
+    esac
+
     case "$ARG_ACTION" in
         store | append | extend)
             case $ARG_NARGS in
@@ -812,6 +821,30 @@ add_argument ()
                 *)
                     echo "TypeError: action=$ARG_ACTION got an unexpected keyword argument 'nargs'"
                     return 2
+                ;;
+            esac
+            case "$ARG_ACTION" in
+                append_const)
+                    eval $ARG_DEST=
+                ;;
+                count)
+                    eval $ARG_DEST=
+                    eval $ARG_DEST=${ARG_DEFAULT:-0}
+                ;;
+                help)
+                    # TODO: implement
+                ;;
+                store_const)
+                    eval $ARG_DEST=
+                ;;
+                store_false)
+                    eval $ARG_DEST=true
+                ;;
+                store_true)
+                    eval $ARG_DEST=false
+                ;;
+                version)
+                    # TODO: implement
                 ;;
             esac
         ;;
@@ -1003,6 +1036,31 @@ parse_args ()
                     arg_prev_has_value &&
                     arg_set_action_state &&
                     arg_is_option_string || return
+                    case "$ARG_ACTION" in
+                        append_const)
+                            eval $ARG_DEST=\"\${$ARG_DEST:+\$$ARG_DEST, }\'$ARG_CONST\'\"
+                        ;;
+                        count)
+                            eval $ARG_DEST=$(($ARG_DEST + 1))
+                        ;;
+                        help)
+                            # TODO: implement
+                        ;;
+                        store | append | extend)
+                        ;;
+                        store_const)
+                            eval $ARG_DEST=\"\'$ARG_CONST\'\"
+                        ;;
+                        store_false)
+                            eval $ARG_DEST=false
+                        ;;
+                        store_true)
+                            eval $ARG_DEST=true
+                        ;;
+                        version)
+                            # TODO: implement
+                        ;;
+                    esac
                 ;;
                 *)
                     arg_is_position || return
@@ -1030,7 +1088,8 @@ choices: $ARG_CHOICES
 required: $ARG_REQUIRED
 help: $ARG_HELP
 metavar: $ARG_METAVAR
-action: $ARG_ACTION"
+action: $ARG_ACTION
+version: $ARG_VERSION"
     eval echo "dest: $ARG_DEST: [\$$ARG_DEST]"
 }
 
