@@ -1031,6 +1031,7 @@ required: $ARG_REQUIRED
 help: $ARG_HELP
 metavar: $ARG_METAVAR
 action: $ARG_ACTION"
+    eval echo "dest: $ARG_DEST: [\$$ARG_DEST]"
 }
 
 arg_print_action_state ()
