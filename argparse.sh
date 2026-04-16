@@ -1081,19 +1081,19 @@ parse_args ()
 arg_print_state ()
 {
     echo "Action state (index $ARG_INDEX):
-option_strings: $ARG_OPTION_STRINGS
+option_strings: ${ARG_OPTION_STRINGS:-None}
 dest: $ARG_DEST
 nargs: $ARG_NARGS
 nargs_count: $ARG_NARGS_COUNT
-const: $ARG_CONST
-default: $ARG_DEFAULT
-type: $ARG_TYPE
-choices: $ARG_CHOICES
+const: ${ARG_CONST:-None}
+default: ${ARG_DEFAULT:-None}
+type: ${ARG_TYPE:-None}
+choices: ${ARG_CHOICES:-None}
 required: $ARG_REQUIRED
-help: $ARG_HELP
-metavar: $ARG_METAVAR
+help: ${ARG_HELP:-None}
+metavar: ${ARG_METAVAR:-None}
 action: $ARG_ACTION
-version: $ARG_VERSION"
+version: ${ARG_VERSION:-None}"
     eval echo "dest: $ARG_DEST: [\$$ARG_DEST]"
 }
 
