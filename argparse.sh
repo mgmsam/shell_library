@@ -699,7 +699,8 @@ arg_set_action_kwargs ()
                     esac
                 ;;
                 help)
-                    # TODO: implement
+                    arg_none_is_string &&
+                    ARG_HELP=$ARG_VALUE || ARG_HELP=
                 ;;
                 metavar)
                     arg_none_is_string &&
