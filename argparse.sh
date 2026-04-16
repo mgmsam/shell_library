@@ -25,7 +25,6 @@ ARG_DIGIT='0123456789'
 ARG_ALNUM=$ARG_LOWERS$ARG_UPPERS$ARG_DIGIT
 ARG_ALPHA=$ARG_LOWERS$ARG_UPPERS
 ARG_SPACE=" "
-ARG_MASK=""
 
 arg_lower ()
 {
@@ -182,8 +181,6 @@ arg_unique_chars ()
     done
     ARG_VALUE=$ARG_STRING
 }
-
-# aaps;[]"sad'df'dqda"lppo'vr<gvr}
 
 arg_set_parens ()
 {
@@ -354,7 +351,7 @@ arg_validate_unique_kwargs ()
     ARG_SEEN_KEYWORDS="$ARG_SEEN_KEYWORDS $ARG_KEYWORD"
 }
 
-value_is_string ()
+arg_none_is_string ()
 {
     case "$ARG_VALUE" in
         None)
@@ -392,10 +389,10 @@ arg_set_positional_kwargs ()
             ;;
             *)
                 arg_unquate "$ARG" && {
-                    ARG_VALUE_IS_STRING=true
                     ARG_VALUE=$ARG_STRING
+                    ARG_VALUE_IS_STRING=true
                 } || :
-                value_is_string || ARG_VALUE=
+                arg_none_is_string || ARG_VALUE=
                 arg_set_${ARG_PARSER}_positional_args || return
             ;;
         esac
@@ -422,19 +419,19 @@ arg_set_parser_kwargs ()
             esac
             case "$ARG_KEYWORD" in
                 prog)
-                    value_is_string &&
+                    arg_none_is_string &&
                     ARG_PROG=$ARG_VALUE || ARG_PROG=
                 ;;
                 usage)
-                    value_is_string &&
+                    arg_none_is_string &&
                     ARG_USAGE=$ARG_VALUE || ARG_USAGE=
                 ;;
                 description)
-                    value_is_string &&
+                    arg_none_is_string &&
                     ARG_DESCRIPTION=$ARG_VALUE || ARG_DESCRIPTION=
                 ;;
                 epilog)
-                    value_is_string &&
+                    arg_none_is_string &&
                     ARG_EPILOG=$ARG_VALUE || ARG_EPILOG=
                 ;;
                 parents | formatter_class)
@@ -459,7 +456,7 @@ arg_set_parser_kwargs ()
                     # TODO: implement
                 ;;
                 argument_default)
-                    value_is_string &&
+                    arg_none_is_string &&
                     ARG_ARGUMENT_DEFAULT=$ARG_VALUE || ARG_ARGUMENT_DEFAULT=
                 ;;
                 conflict_handler)
@@ -587,6 +584,24 @@ ArgumentParser ()
     ARG_EXIT_ON_ERROR=${ARG_EXIT_ON_ERROR:-}
 }
 
+arg_print_parser_state ()
+{
+    echo "prog: $ARG_PROG
+usage: $ARG_USAGE
+description: $ARG_DESCRIPTION
+epilog: $ARG_EPILOG
+parents: $ARG_PARENTS
+formatter_class: $ARG_FORMATTER_CLASS
+prefix_chars: $ARG_PREFIX_CHARS
+fromfile_prefix_chars: $ARG_FROMFILE_PREFIX_CHARS
+argument_default: $ARG_ARGUMENT_DEFAULT
+conflict_handler: $ARG_CONFLICT_HANDLER
+add_help: $ARG_ADD_HELP
+allow_abbrev: $ARG_ALLOW_ABBREV
+exit_on_error: $ARG_EXIT_ON_ERROR
+case_style: $ARG_CASE_STYLE"
+}
+
 arg_set_action_kwargs ()
 {
     case "$ARG_KEYWORD" in
@@ -599,7 +614,7 @@ arg_set_action_kwargs ()
             } || :
             case "$ARG_KEYWORD" in
                 action)
-                    value_is_string &&
+                    arg_none_is_string &&
                     ARG_ACTION=${ARG_VALUE:-store} || ARG_ACTION=store
                     case "$ARG_ACTION" in
                         store | store_const | store_true | store_false | \
@@ -618,12 +633,12 @@ arg_set_action_kwargs ()
                             return 2
                         ;;
                     esac
-                    value_is_string &&
+                    arg_none_is_string &&
                     ARG_DEST=$ARG_VALUE || ARG_DEST=
                 ;;
                 nargs)
-                    value_is_string &&
-                    ARG_NARGS=$ARG_VALUE || ARG_NARGS=
+                    arg_none_is_string &&
+                    ARG_NARGS="$ARG_VALUE" || ARG_NARGS=
                     case "$ARG_NARGS" in
                         "" | [?*+])
                         ;;
@@ -634,15 +649,15 @@ arg_set_action_kwargs ()
                     esac
                 ;;
                 const)
-                    value_is_string &&
+                    arg_none_is_string &&
                     ARG_CONST=$ARG_VALUE || ARG_CONST=
                 ;;
                 default)
-                    value_is_string &&
+                    arg_none_is_string &&
                     ARG_DEFAULT=$ARG_VALUE || ARG_DEFAULT=
                 ;;
                 type)
-                    value_is_string &&
+                    arg_none_is_string &&
                     ARG_TYPE=$ARG_VALUE || ARG_TYPE=
                     case "$ARG_TYPE" in
                         "" | int | float | str | bool)
@@ -668,7 +683,7 @@ arg_set_action_kwargs ()
                     # TODO: implement
                 ;;
                 required)
-                    value_is_string &&
+                    arg_none_is_string &&
                     ARG_REQUIRED=$ARG_VALUE || ARG_REQUIRED=
                     case "$ARG_REQUIRED" in
                         "" | 0 | False)
@@ -688,7 +703,7 @@ arg_set_action_kwargs ()
                     # TODO: implement
                 ;;
                 metavar)
-                    value_is_string &&
+                    arg_none_is_string &&
                     ARG_METAVAR=$ARG_VALUE || ARG_METAVAR=
                 ;;
             esac
@@ -723,24 +738,6 @@ arg_set_action_positional_args ()
             ARG_POSITION=$ARG
         ;;
     esac
-}
-
-arg_print_parser_state ()
-{
-    echo "prog: $ARG_PROG
-usage: $ARG_USAGE
-description: $ARG_DESCRIPTION
-epilog: $ARG_EPILOG
-parents: $ARG_PARENTS
-formatter_class: $ARG_FORMATTER_CLASS
-prefix_chars: $ARG_PREFIX_CHARS
-fromfile_prefix_chars: $ARG_FROMFILE_PREFIX_CHARS
-argument_default: $ARG_ARGUMENT_DEFAULT
-conflict_handler: $ARG_CONFLICT_HANDLER
-add_help: $ARG_ADD_HELP
-allow_abbrev: $ARG_ALLOW_ABBREV
-exit_on_error: $ARG_EXIT_ON_ERROR
-case_style: $ARG_CASE_STYLE"
 }
 
 add_argument ()
@@ -799,13 +796,18 @@ add_argument ()
             case $ARG_NARGS in
                 "")
                     ARG_NARGS=None
+                    ARG_NARGS_COUNT=1
+                ;;
+                *)
+                    ARG_NARGS_COUNT="$ARG_NARGS"
                 ;;
             esac
         ;;
         *)
             case $ARG_NARGS in
                 "")
-                    ARG_NARGS=0
+                    ARG_NARGS=None
+                    ARG_NARGS_COUNT=0
                 ;;
                 *)
                     echo "TypeError: action=$ARG_ACTION got an unexpected keyword argument 'nargs'"
@@ -820,6 +822,7 @@ add_argument ()
     eval ARG_OPTION_STRINGS_$ARG_INDEX=\$ARG_OPTION_STRINGS \
          ARG_DEST_$ARG_INDEX=\$ARG_DEST \
          ARG_NARGS_$ARG_INDEX=\$ARG_NARGS \
+         ARG_NARGS_COUNT_$ARG_INDEX=\$ARG_NARGS_COUNT \
          ARG_CONST_$ARG_INDEX=\$ARG_CONST \
          ARG_DEFAULT_$ARG_INDEX=\$ARG_DEFAULT \
          ARG_TYPE_$ARG_INDEX=\$ARG_TYPE \
@@ -830,11 +833,55 @@ add_argument ()
          ARG_ACTION_$ARG_INDEX=\$ARG_DEST
 }
 
+arg_prev_has_value ()
+{
+    case "$ARG_NARGS_COUNT" in
+        [0?*] | "")
+            true
+        ;;
+        *)
+            set -- $ARG_OPTION_STRINGS
+            arg_replace "$*" ' ' '/'
+            case $ARG_NARGS in
+                None)
+                    ARG_NARGS='one argument'
+                ;;
+                +)
+                    ARG_NARGS='at least one argument'
+                ;;
+                1)
+                    ARG_NARGS='1 argument'
+                ;;
+                *)
+                    ARG_NARGS="$ARG_NARGS arguments"
+                ;;
+            esac
+            echo "error: argument $ARG_STRING: expected $ARG_NARGS"
+            return 2
+        ;;
+    esac
+}
+
+arg_set_action_state ()
+{
+    eval ARG_OPTION_STRINGS=\$ARG_OPTION_STRINGS_$ARG_INDEX \
+         ARG_DEST=\$ARG_DEST_$ARG_INDEX \
+         ARG_NARGS=\$ARG_NARGS_$ARG_INDEX \
+         ARG_NARGS_COUNT=\$ARG_NARGS_COUNT_$ARG_INDEX \
+         ARG_CONST=\$ARG_CONST_$ARG_INDEX \
+         ARG_DEFAULT=\$ARG_DEFAULT_$ARG_INDEX \
+         ARG_TYPE=\$ARG_TYPE_$ARG_INDEX \
+         ARG_CHOICES=\$ARG_CHOICES_$ARG_INDEX \
+         ARG_REQUIRED=\$ARG_REQUIRED_$ARG_INDEX \
+         ARG_HELP=\$ARG_HELP_$ARG_INDEX \
+         ARG_METAVAR=\$ARG_METAVAR_$ARG_INDEX \
+         ARG_ACTION=\$ARG_ACTION_$ARG_INDEX
+}
+
 arg_is_option_string ()
 {
     for ARG_INDEX in $ARG_INDEXS
     do
-        eval ARG_OPTION_STRINGS=\$ARG_OPTION_STRINGS_$ARG_INDEX
         case "$ARG_OPTION_STRINGS" in
             "")
             ;;
@@ -860,13 +907,13 @@ arg_is_position ()
         0)
             for ARG_INDEX in $ARG_INDEXS
             do
-                # ARG_INDEX=5
-                # ARG_DEST_5=source_file
-                # source_file="/path/to/file"
-                eval ARG_VARIABLE=\$ARG_DEST_$ARG_INDEX
-                # ARG_VARIABLE=source_file
-                eval ARG_VALUE=\$$ARG_VARIABLE
-                # ARG_VALUE="/path/to/file"
+                arg_set_action_state
+                case $ARG_OPTION_STRINGS in
+                    ?*)
+                        continue
+                    ;;
+                esac
+                eval ARG_VALUE=\$$ARG_DEST
                 case "$ARG_VALUE" in
                     "")
                         break false 2>/dev/null
@@ -891,21 +938,74 @@ arg_is_position ()
     return 2
 }
 
-arg_set_action_state ()
+arg_check_required_args ()
 {
-    eval ARG_OPTION_STRINGS=\$ARG_OPTION_STRINGS_$ARG_INDEX \
-         ARG_DEST=\$ARG_DEST_$ARG_INDEX \
-         ARG_NARGS=\$ARG_NARGS_$ARG_INDEX \
-         ARG_CONST=\$ARG_CONST_$ARG_INDEX \
-         ARG_DEFAULT=\$ARG_DEFAULT_$ARG_INDEX \
-         ARG_TYPE=\$ARG_TYPE_$ARG_INDEX \
-         ARG_CHOICES=\$ARG_CHOICES_$ARG_INDEX \
-         ARG_REQUIRED=\$ARG_REQUIRED_$ARG_INDEX \
-         ARG_HELP=\$ARG_HELP_$ARG_INDEX \
-         ARG_METAVAR=\$ARG_METAVAR_$ARG_INDEX \
-         ARG_ACTION=\$ARG_ACTION_$ARG_INDEX
+    ARG_MISSING_INDEXES=
+    for ARG_INDEX in $ARG_REQUIRED_INDEXES
+    do
+        case "$ARG_RECEIVED_INDEXES" in
+            *" $ARG_INDEX "*)
+            ;;
+            *)
+                eval ARG_OPTION_STRINGS=\$ARG_OPTION_STRINGS_$ARG_INDEX
+                case "$ARG_OPTION_STRINGS" in
+                    "")
+                        eval ARG_DEST=\$ARG_DEST_$ARG_INDEX
+                        ARG_MISSING_INDEXES="${ARG_MISSING_INDEXES:+$ARG_MISSING_INDEXES, }$ARG_DEST"
+                    ;;
+                    *)
+                        set -- $ARG_OPTION_STRINGS
+                        arg_replace "$*" ' ' '/'
+                        ARG_MISSING_INDEXES="${ARG_MISSING_INDEXES:+$ARG_MISSING_INDEXES, }$ARG_STRING"
+                    ;;
+                esac
+                
+            ;;
+        esac
+    done
+    case "$ARG_MISSING_INDEXES" in
+        ?*)
+            echo "error: the following arguments are required: $ARG_MISSING_INDEXES"
+            return 2
+        ;;
+    esac
+}
 
-    ARG_NARGS_COUNT=$ARG_NARGS
+parse_args ()
+{
+    ARG_PARSING_OPTIONS=true
+    ARG_RECEIVED_INDEXES=
+    ARG_NARGS=
+    ARG_NARGS_COUNT=
+    while
+        case $# in
+            0)
+                false
+            ;;
+        esac
+    do
+        ARG_STRING=$1
+        $ARG_PARSING_OPTIONS && {
+            case "$ARG_STRING" in
+                '--')
+                    ARG_PARSING_OPTIONS=false
+                    shift
+                    continue
+                ;;
+                [$ARG_PREFIX_CHARS]*)
+                    arg_prev_has_value &&
+                    arg_set_action_state &&
+                    arg_is_option_string || return
+                ;;
+                *)
+                    arg_is_position || return
+                ;;
+            esac
+        } || arg_is_position || return
+        ARG_RECEIVED_INDEXES="$ARG_RECEIVED_INDEXES $ARG_INDEX "
+        shift
+    done
+    arg_check_required_args || return
 }
 
 arg_print_state ()
@@ -957,97 +1057,4 @@ arg_print_action_state ()
             done
         ;;
     esac
-}
-
-arg_check_required_args ()
-{
-    ARG_MISSING_INDEXES=
-    for ARG_INDEX in $ARG_REQUIRED_INDEXES
-    do
-        case "$ARG_RECEIVED_INDEXES" in
-            *" $ARG_INDEX "*)
-            ;;
-            *)
-                eval ARG_OPTION_STRINGS=\$ARG_OPTION_STRINGS_$ARG_INDEX
-                case "$ARG_OPTION_STRINGS" in
-                    "")
-                        eval ARG_DEST=\$ARG_DEST_$ARG_INDEX
-                        ARG_MISSING_INDEXES="${ARG_MISSING_INDEXES:+$ARG_MISSING_INDEXES, }$ARG_DEST"
-                    ;;
-                    *)
-                        set -- $ARG_OPTION_STRINGS
-                        arg_replace "$*" ' ' '/'
-                        ARG_MISSING_INDEXES="${ARG_MISSING_INDEXES:+$ARG_MISSING_INDEXES, }$ARG_STRING"
-                    ;;
-                esac
-                
-            ;;
-        esac
-    done
-    case "$ARG_MISSING_INDEXES" in
-        ?*)
-            echo "error: the following arguments are required: $ARG_MISSING_INDEXES"
-            return 2
-        ;;
-    esac
-}
-
-parse_args ()
-{
-    ARG_PARSING_OPTIONS=true
-    ARG_RECEIVED_INDEXES=
-    ARG_NARGS=
-    ARG_NARGS_COUNT=0
-    while
-        case $# in
-            0)
-                false
-            ;;
-        esac
-    do
-        ARG_STRING=$1
-        $ARG_PARSING_OPTIONS && {
-            case "$ARG_STRING" in
-                '--')
-                    ARG_PARSING_OPTIONS=false
-                    shift
-                    continue
-                ;;
-                [$ARG_PREFIX_CHARS]*)
-                    case "$ARG_NARGS_COUNT" in
-                        0)
-                        ;;
-                        *)
-                            set -- $ARG_OPTION_STRINGS
-                            arg_replace "$*" ' ' '/'
-                            case $ARG_NARGS in
-                                None)
-                                    ARG_NARGS='one argument'
-                                ;;
-                                +)
-                                    ARG_NARGS='at least one argument'
-                                ;;
-                                1)
-                                    ARG_NARGS='1 argument'
-                                ;;
-                                *)
-                                    ARG_NARGS="$ARG_NARGS arguments"
-                                ;;
-                            esac
-                            echo "error: argument $ARG_STRING: expected $ARG_NARGS"
-                            return 2
-                        ;;
-                    esac
-                    arg_is_option_string || return
-                    arg_set_action_state
-                ;;
-                *)
-                    arg_is_position || return
-                ;;
-            esac
-        } || arg_is_position || return
-        ARG_RECEIVED_INDEXES="$ARG_RECEIVED_INDEXES $ARG_INDEX "
-        shift
-    done
-    arg_check_required_args || return
 }
