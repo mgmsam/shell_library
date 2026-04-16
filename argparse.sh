@@ -691,7 +691,6 @@ arg_set_action_kwargs ()
                         ;;
                         1 | True)
                             ARG_REQUIRED=true
-                            ARG_REQUIRED_INDEXES="$ARG_REQUIRED_INDEXES $ARG_INDEX"
                         ;;
                         *)
                             echo "NameError: name '$ARG_REQUIRED' is not defined"
@@ -762,13 +761,8 @@ add_argument ()
     ARG_KEYWORD=
     ARG_VALUE=
 
-    ARG_INDEX=$((ARG_INDEX + 1))
     arg_validate_argument_sequence "$@" &&
-    arg_set_positional_kwargs action "$@" || {
-        ARG_RETURN_CODE=$?
-        ARG_INDEX=$((ARG_INDEX - 1))
-        return $ARG_RETURN_CODE
-    }
+    arg_set_positional_kwargs action "$@" || return
 
     ARG_DEST=${ARG_DEST:-${ARG_LONG_OPTION:-${ARG_SHORT_OPTION:-${ARG_POSITION:-}}}}
     case "$ARG_DEST" in
@@ -850,7 +844,10 @@ add_argument ()
         ;;
     esac
 
+    ARG_INDEX=$((ARG_INDEX + 1))
     ARG_INDEXS="$ARG_INDEXS $ARG_INDEX"
+    $ARG_REQUIRED &&
+        ARG_REQUIRED_INDEXES="$ARG_REQUIRED_INDEXES $ARG_INDEX" || :
 
     eval ARG_OPTION_STRINGS_$ARG_INDEX=\$ARG_OPTION_STRINGS \
          ARG_DEST_$ARG_INDEX=\$ARG_DEST \
@@ -911,10 +908,58 @@ arg_set_action_state ()
          ARG_ACTION=\$ARG_ACTION_$ARG_INDEX
 }
 
+arg_apply_action ()
+{
+    case "$ARG_ACTION" in
+        append_const)
+            arg_replace "$ARG_CONST" "'" "'\''"
+            eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }'$ARG_STRING'\""
+        ;;
+        count)
+            eval $ARG_DEST=$(($ARG_DEST + 1))
+        ;;
+        help)
+            # TODO: implement
+        ;;
+        store | append | extend)
+            $ARG_IS_OPTION || {
+                arg_replace "$ARG_STRING" "'" "'\''"
+                eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }'$ARG_STRING'\""
+                case "$ARG_NARGS_COUNT" in
+                    \?)
+                        ARG_NARGS_COUNT=0
+                        eval ARG_NARGS_COUNT_$ARG_INDEX=0
+                    ;;
+                    [*+])
+                    ;;
+                    *)
+                        ARG_NARGS_COUNT=$((ARG_NARGS_COUNT - 1))
+                        eval ARG_NARGS_COUNT_$ARG_INDEX=\$ARG_NARGS_COUNT
+                    ;;
+                esac
+            }
+        ;;
+        store_const)
+            arg_replace "$ARG_CONST" "'" "'\''"
+            eval $ARG_DEST="\"'$ARG_STRING'\""
+        ;;
+        store_false)
+            eval $ARG_DEST=false
+        ;;
+        store_true)
+            eval $ARG_DEST=true
+        ;;
+        version)
+            # TODO: implement
+        ;;
+    esac
+}
+
 arg_is_option_string ()
 {
     for ARG_INDEX in $ARG_INDEXS
     do
+        arg_set_action_state
         case "$ARG_OPTION_STRINGS" in
             "")
             ;;
@@ -948,34 +993,16 @@ arg_is_position ()
                 esac
                 case "$ARG_NARGS_COUNT" in
                     [!0]*)
-                        break false 2>/dev/null
+                        return
                     ;;
                 esac
             done
-        ;;
-        *)
             false
         ;;
     esac || {
-        arg_replace "$ARG_STRING" "'" "'\''"
-        eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST }'\$ARG_STRING'\""
-        case "$ARG_NARGS_COUNT" in
-            \?)
-                ARG_NARGS_COUNT=0
-                eval ARG_NARGS_COUNT_$ARG_INDEX=0
-            ;;
-            [*+])
-            ;;
-            *)
-                ARG_NARGS_COUNT=$((ARG_NARGS_COUNT - 1))
-                eval ARG_NARGS_COUNT_$ARG_INDEX=\$ARG_NARGS_COUNT
-            ;;
-        esac
-        return
+        echo "unrecognized argument '$ARG_STRING'"
+        return 2
     }
-    
-    echo "unrecognized argument '$ARG_STRING'"
-    return 2
 }
 
 arg_check_required_args ()
@@ -1025,6 +1052,7 @@ parse_args ()
         esac
     do
         ARG_STRING=$1
+        ARG_IS_OPTION=false
         $ARG_PARSING_OPTIONS && {
             case "$ARG_STRING" in
                 '--')
@@ -1034,39 +1062,15 @@ parse_args ()
                 ;;
                 [$ARG_PREFIX_CHARS]*)
                     arg_prev_has_value &&
-                    arg_set_action_state &&
                     arg_is_option_string || return
-                    case "$ARG_ACTION" in
-                        append_const)
-                            eval $ARG_DEST=\"\${$ARG_DEST:+\$$ARG_DEST, }\'$ARG_CONST\'\"
-                        ;;
-                        count)
-                            eval $ARG_DEST=$(($ARG_DEST + 1))
-                        ;;
-                        help)
-                            # TODO: implement
-                        ;;
-                        store | append | extend)
-                        ;;
-                        store_const)
-                            eval $ARG_DEST=\"\'$ARG_CONST\'\"
-                        ;;
-                        store_false)
-                            eval $ARG_DEST=false
-                        ;;
-                        store_true)
-                            eval $ARG_DEST=true
-                        ;;
-                        version)
-                            # TODO: implement
-                        ;;
-                    esac
+                    ARG_IS_OPTION=true
                 ;;
                 *)
-                    arg_is_position || return
+                    false
                 ;;
             esac
         } || arg_is_position || return
+        arg_apply_action
         ARG_RECEIVED_INDEXES="$ARG_RECEIVED_INDEXES $ARG_INDEX "
         shift
     done
