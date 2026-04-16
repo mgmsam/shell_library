@@ -797,18 +797,33 @@ add_argument ()
 
     case "$ARG_ACTION" in
         store | append | extend)
-            case $ARG_NARGS in
-                None | "")
-                    ARG_NARGS=None
-                    ARG_NARGS_COUNT=1
+            case "$ARG_CONST" in
+                "")
+                    case "$ARG_NARGS" in
+                        None | "")
+                            ARG_NARGS=None
+                            ARG_NARGS_COUNT=1
+                        ;;
+                        *)
+                            ARG_NARGS_COUNT="$ARG_NARGS"
+                        ;;
+                    esac
                 ;;
                 *)
-                    ARG_NARGS_COUNT="$ARG_NARGS"
+                    case "$ARG_NARGS" in
+                        '?')
+                            ARG_NARGS_COUNT=1
+                        ;;
+                        *)
+                            echo "ValueError: nargs must be '?' to supply const"
+                            return 2
+                        ;;
+                    esac
                 ;;
             esac
         ;;
         *)
-            case $ARG_NARGS in
+            case "$ARG_NARGS" in
                 None | "")
                     ARG_NARGS=None
                     ARG_NARGS_COUNT=0
@@ -818,6 +833,7 @@ add_argument ()
                     return 2
                 ;;
             esac
+
             case "$ARG_ACTION" in
                 append_const)
                     eval $ARG_DEST=
@@ -830,6 +846,12 @@ add_argument ()
                     # TODO: implement
                 ;;
                 store_const)
+                    case "$ARG_TYPE" in
+                        ?*)
+                            echo "TypeError: action=$ARG_ACTION got an unexpected keyword argument 'type'"
+                            return 2
+                        ;;
+                    esac
                     eval $ARG_DEST=
                 ;;
                 store_false)
@@ -864,6 +886,46 @@ add_argument ()
          ARG_ACTION_$ARG_INDEX=\$ARG_ACTION
 }
 
+arg_validate_const_type ()
+{
+    case "$ARG_CONST" in
+        *[!\.$ARG_DIGIT]*)
+            case "$ARG_TYPE" in
+                str)
+                    arg_replace "$ARG_CONST" "'" "'\''"
+                    eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }'$ARG_STRING'\""
+                ;;
+                *)
+                    false
+                ;;
+            esac
+        ;;
+        *[!$ARG_DIGIT]*)
+            case "$ARG_TYPE" in
+                float)
+                    eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
+                ;;
+                *)
+                    false
+                ;;
+            esac
+        ;;
+        *)
+            case "$ARG_TYPE" in
+                int)
+                    eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
+                ;;
+                *)
+                    false
+                ;;
+            esac
+        ;;
+    esac || {
+        echo "error: argument $ARG_CURRENT: invalid $ARG_TYPE value: '$ARG_CONST'"
+        return 2
+    }
+}
+
 arg_prev_has_value ()
 {
     case "$ARG_NARGS_COUNT" in
@@ -871,6 +933,13 @@ arg_prev_has_value ()
             true
         ;;
         *)
+            case "$ARG_CONST" in
+                ?*)
+                    arg_validate_const_type || return
+                    return
+                ;;
+            esac
+
             set -- $ARG_OPTION_STRINGS
             arg_replace "$*" ' ' '/'
             case $ARG_NARGS in
@@ -924,10 +993,38 @@ arg_apply_action ()
         ;;
         store | append | extend)
             $ARG_IS_OPTION || {
-                arg_replace "$ARG_STRING" "'" "'\''"
-                eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }'$ARG_STRING'\""
+                case "$ARG_TYPE" in
+                    "" | str)
+                        arg_replace "$ARG_CURRENT" "'" "'\''"
+                        eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }'$ARG_STRING'\""
+                    ;;
+                    int)
+                        case "$ARG_CURRENT" in
+                            *[!$ARG_DIGIT]*)
+                                false
+                            ;;
+                            *)
+                                eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
+                        esac
+                    ;;
+                    float)
+                        case "$ARG_CURRENT" in
+                            *[!\.$ARG_DIGIT]*)
+                                false
+                            ;;
+                            *)
+                                eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
+                        esac
+                    ;;
+                esac || {
+                    set -- $ARG_OPTION_STRINGS
+                    arg_replace "$*" ' ' '/'
+                    echo "error: argument $ARG_STRING: invalid $ARG_TYPE value: '$ARG_CURRENT'"
+                    return 2
+                }
+
                 case "$ARG_NARGS_COUNT" in
-                    \?)
+                    '?')
                         ARG_NARGS_COUNT=0
                         eval ARG_NARGS_COUNT_$ARG_INDEX=0
                     ;;
@@ -964,17 +1061,17 @@ arg_is_option_string ()
         case "$ARG_OPTION_STRINGS" in
             "")
             ;;
-            *" $ARG_STRING "*)
+            *" $ARG_CURRENT "*)
                 return
             ;;
         esac
     done
-    case ${#ARG_STRING} in
+    case ${#ARG_CURRENT} in
         2)
-            echo "invalid option -- '${ARG_STRING#?}'"
+            echo "invalid option -- '${ARG_CURRENT#?}'"
         ;;
         *)
-            echo "unrecognized option '$ARG_STRING'"
+            echo "unrecognized option '$ARG_CURRENT'"
         ;;
     esac
     return 2
@@ -1001,7 +1098,7 @@ arg_is_position ()
             false
         ;;
     esac || {
-        echo "unrecognized argument '$ARG_STRING'"
+        echo "unrecognized argument '$ARG_CURRENT'"
         return 2
     }
 }
@@ -1052,25 +1149,24 @@ parse_args ()
             ;;
         esac
     do
-        ARG_STRING=$1
+        ARG_CURRENT=$1
         ARG_IS_OPTION=false
-        $ARG_PARSING_OPTIONS && {
-            case "$ARG_STRING" in
-                '--')
-                    ARG_PARSING_OPTIONS=false
-                    shift
-                    continue
-                ;;
-                [$ARG_PREFIX_CHARS]*)
-                    arg_prev_has_value &&
-                    arg_is_option_string || return
-                    ARG_IS_OPTION=true
-                ;;
-                *)
-                    false
-                ;;
-            esac
-        } || arg_is_position || return
+        $ARG_PARSING_OPTIONS &&
+        case "$ARG_CURRENT" in
+            '--')
+                ARG_PARSING_OPTIONS=false
+                shift
+                continue
+            ;;
+            [$ARG_PREFIX_CHARS]*)
+                arg_prev_has_value &&
+                arg_is_option_string || return
+                ARG_IS_OPTION=true
+            ;;
+            *)
+                false
+            ;;
+        esac || arg_is_position || return
         arg_apply_action
         ARG_RECEIVED_INDEXES="$ARG_RECEIVED_INDEXES $ARG_INDEX "
         shift
@@ -1100,7 +1196,7 @@ version: ${ARG_VERSION:-None}"
 
 arg_print_action_state ()
 {
-    case "$1" in
+    case "${1:-}" in
         "")
             for ARG_INDEX in $ARG_INDEXS
             do
