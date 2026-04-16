@@ -744,7 +744,7 @@ add_argument ()
 {
     ARG_OPTION_STRINGS=
     ARG_DEST=
-    ARG_NARGS=1
+    ARG_NARGS=None
     ARG_CONST=
     ARG_DEFAULT=
     ARG_TYPE=
@@ -794,7 +794,7 @@ add_argument ()
     case "$ARG_ACTION" in
         store | append | extend)
             case $ARG_NARGS in
-                "")
+                None | "")
                     ARG_NARGS=None
                     ARG_NARGS_COUNT=1
                 ;;
@@ -805,7 +805,7 @@ add_argument ()
         ;;
         *)
             case $ARG_NARGS in
-                "")
+                None | "")
                     ARG_NARGS=None
                     ARG_NARGS_COUNT=0
                 ;;
@@ -830,7 +830,7 @@ add_argument ()
          ARG_REQUIRED_$ARG_INDEX=\$ARG_REQUIRED \
          ARG_HELP_$ARG_INDEX=\$ARG_HELP \
          ARG_METAVAR_$ARG_INDEX=\$ARG_METAVAR \
-         ARG_ACTION_$ARG_INDEX=\$ARG_DEST
+         ARG_ACTION_$ARG_INDEX=\$ARG_ACTION
 }
 
 arg_prev_has_value ()
@@ -904,22 +904,18 @@ arg_is_option_string ()
 arg_is_position ()
 {
     case "$ARG_NARGS_COUNT" in
-        0)
+        0 | "")
             for ARG_INDEX in $ARG_INDEXS
             do
                 arg_set_action_state
-                case $ARG_OPTION_STRINGS in
+                case "$ARG_OPTION_STRINGS" in
                     ?*)
                         continue
                     ;;
                 esac
-                eval ARG_VALUE=\$$ARG_DEST
-                case "$ARG_VALUE" in
-                    "")
+                case "$ARG_NARGS_COUNT" in
+                    [!0]*)
                         break false 2>/dev/null
-                    ;;
-                    *" $ARG_STRING "*)
-                        return
                     ;;
                 esac
             done
@@ -930,7 +926,18 @@ arg_is_position ()
     esac || {
         arg_replace "$ARG_STRING" "'" "'\''"
         eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST }'\$ARG_STRING'\""
-        ARG_NARGS_COUNT=$((ARG_NARGS_COUNT - 1))
+        case "$ARG_NARGS_COUNT" in
+            \?)
+                ARG_NARGS_COUNT=0
+                eval ARG_NARGS_COUNT_$ARG_INDEX=0
+            ;;
+            [*+])
+            ;;
+            *)
+                ARG_NARGS_COUNT=$((ARG_NARGS_COUNT - 1))
+                eval ARG_NARGS_COUNT_$ARG_INDEX=\$ARG_NARGS_COUNT
+            ;;
+        esac
         return
     }
     
@@ -1005,6 +1012,7 @@ parse_args ()
         ARG_RECEIVED_INDEXES="$ARG_RECEIVED_INDEXES $ARG_INDEX "
         shift
     done
+    arg_prev_has_value &&
     arg_check_required_args || return
 }
 
@@ -1014,13 +1022,15 @@ arg_print_state ()
 option_strings: $ARG_OPTION_STRINGS
 dest: $ARG_DEST
 nargs: $ARG_NARGS
+nargs_count: $ARG_NARGS_COUNT
 const: $ARG_CONST
 default: $ARG_DEFAULT
 type: $ARG_TYPE
 choices: $ARG_CHOICES
 required: $ARG_REQUIRED
 help: $ARG_HELP
-metavar: $ARG_METAVAR"
+metavar: $ARG_METAVAR
+action: $ARG_ACTION"
 }
 
 arg_print_action_state ()
