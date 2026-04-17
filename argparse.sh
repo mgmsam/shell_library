@@ -841,6 +841,13 @@ add_argument ()
                 ;;
             esac
 
+            case "$ARG_CHOICES" in
+                ?*)
+                    echo "TypeError: action=$ARG_ACTION got an unexpected keyword argument 'choices'"
+                    return 2
+                ;;
+            esac
+
             case "$ARG_ACTION" in
                 append_const)
                     eval $ARG_DEST=
