@@ -834,8 +834,18 @@ add_argument ()
                 ;;
             esac
 
+            case "$ARG_TYPE" in
+                ?*)
+                    echo "TypeError: action=$ARG_ACTION got an unexpected keyword argument 'type'"
+                    return 2
+                ;;
+            esac
+
             case "$ARG_ACTION" in
                 append_const)
+                    eval $ARG_DEST=
+                ;;
+                store_const)
                     eval $ARG_DEST=
                 ;;
                 *)
@@ -856,15 +866,6 @@ add_argument ()
                         ;;
                         help)
                             # TODO: implement
-                        ;;
-                        store_const)
-                            case "$ARG_TYPE" in
-                                ?*)
-                                    echo "TypeError: action=$ARG_ACTION got an unexpected keyword argument 'type'"
-                                    return 2
-                                ;;
-                            esac
-                            eval $ARG_DEST=
                         ;;
                         store_false)
                             eval $ARG_DEST=true
