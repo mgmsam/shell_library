@@ -838,30 +838,44 @@ add_argument ()
                 append_const)
                     eval $ARG_DEST=
                 ;;
-                count)
-                    eval $ARG_DEST=
-                    eval $ARG_DEST=${ARG_DEFAULT:-0}
-                ;;
-                help)
-                    # TODO: implement
-                ;;
-                store_const)
-                    case "$ARG_TYPE" in
-                        ?*)
-                            echo "TypeError: action=$ARG_ACTION got an unexpected keyword argument 'type'"
+                *)
+                    case "$ARG_CONST" in
+                        None | "")
+                            ARG_CONST=
+                        ;;
+                        *)
+                            echo "TypeError: action=$ARG_ACTION got an unexpected keyword argument 'const'"
                             return 2
                         ;;
                     esac
-                    eval $ARG_DEST=
-                ;;
-                store_false)
-                    eval $ARG_DEST=true
-                ;;
-                store_true)
-                    eval $ARG_DEST=false
-                ;;
-                version)
-                    # TODO: implement
+
+                    case "$ARG_ACTION" in
+                        count)
+                            eval $ARG_DEST=
+                            eval $ARG_DEST=${ARG_DEFAULT:-0}
+                        ;;
+                        help)
+                            # TODO: implement
+                        ;;
+                        store_const)
+                            case "$ARG_TYPE" in
+                                ?*)
+                                    echo "TypeError: action=$ARG_ACTION got an unexpected keyword argument 'type'"
+                                    return 2
+                                ;;
+                            esac
+                            eval $ARG_DEST=
+                        ;;
+                        store_false)
+                            eval $ARG_DEST=true
+                        ;;
+                        store_true)
+                            eval $ARG_DEST=false
+                        ;;
+                        version)
+                            # TODO: implement
+                        ;;
+                    esac
                 ;;
             esac
         ;;
