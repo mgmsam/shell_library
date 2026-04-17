@@ -573,6 +573,7 @@ ArgumentParser ()
     ARG_INDEX=0
     ARG_INDEXS=
     ARG_REQUIRED_INDEXES=
+    ARG_DEFAULT_INDEXES=
 
     arg_validate_argument_sequence "$@" &&
     arg_set_positional_kwargs parser "$@" || return
@@ -891,8 +892,13 @@ add_argument ()
 
     ARG_INDEX=$((ARG_INDEX + 1))
     ARG_INDEXS="$ARG_INDEXS $ARG_INDEX"
-    $ARG_REQUIRED &&
-        ARG_REQUIRED_INDEXES="$ARG_REQUIRED_INDEXES $ARG_INDEX" || :
+    $ARG_REQUIRED && ARG_REQUIRED_INDEXES="$ARG_REQUIRED_INDEXES $ARG_INDEX " || :
+
+    case "$ARG_DEFAULT" in
+        ?*)
+            ARG_DEFAULT_INDEXES="$ARG_DEFAULT_INDEXES $ARG_INDEX "
+        ;;
+    esac
 
     eval ARG_OPTION_STRINGS_$ARG_INDEX=\$ARG_OPTION_STRINGS \
          ARG_DEST_$ARG_INDEX=\$ARG_DEST \
@@ -908,14 +914,14 @@ add_argument ()
          ARG_ACTION_$ARG_INDEX=\$ARG_ACTION
 }
 
-arg_validate_const_type ()
+arg_apply_const ()
 {
     case "$ARG_CONST" in
         *[!\.$ARG_DIGIT]*)
             case "$ARG_TYPE" in
                 str)
                     arg_replace "$ARG_CONST" "'" "'\''"
-                    eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }'$ARG_STRING'\""
+                    eval $ARG_DEST="\"'$ARG_STRING'\""
                 ;;
                 *)
                     false
@@ -925,7 +931,7 @@ arg_validate_const_type ()
         *[!$ARG_DIGIT]*)
             case "$ARG_TYPE" in
                 float)
-                    eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
+                    eval $ARG_DEST="\"$ARG_CURRENT\""
                 ;;
                 *)
                     false
@@ -935,7 +941,7 @@ arg_validate_const_type ()
         *)
             case "$ARG_TYPE" in
                 int)
-                    eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
+                    eval $ARG_DEST="\"$ARG_CURRENT\""
                 ;;
                 *)
                     false
@@ -943,7 +949,9 @@ arg_validate_const_type ()
             esac
         ;;
     esac || {
-        echo "error: argument $ARG_CURRENT: invalid $ARG_TYPE value: '$ARG_CONST'"
+        set -- $ARG_OPTION_STRINGS
+        arg_replace "$*" ' ' '/'
+        echo "error: argument $ARG_STRING: invalid $ARG_TYPE value: '$ARG_CONST'"
         return 2
     }
 }
@@ -957,7 +965,7 @@ arg_prev_has_value ()
         *)
             case "$ARG_CONST" in
                 ?*)
-                    arg_validate_const_type || return
+                    arg_apply_const || return
                     return
                 ;;
             esac
@@ -1000,6 +1008,52 @@ arg_set_action_state ()
          ARG_ACTION=\$ARG_ACTION_$ARG_INDEX
 }
 
+arg_set_dest_value ()
+{
+    case "$ARG_TYPE" in
+        "" | str)
+            arg_replace "$ARG_CURRENT" "'" "'\''"
+            eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }'$ARG_STRING'\""
+        ;;
+        int)
+            case "$ARG_CURRENT" in
+                *[!$ARG_DIGIT]*)
+                    false
+                ;;
+                *)
+                    eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
+            esac
+        ;;
+        float)
+            case "$ARG_CURRENT" in
+                *[!\.$ARG_DIGIT]*)
+                    false
+                ;;
+                *)
+                    eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
+            esac
+        ;;
+    esac || {
+        set -- $ARG_OPTION_STRINGS
+        arg_replace "$*" ' ' '/'
+        echo "error: argument $ARG_STRING: invalid $ARG_TYPE value: '$ARG_CURRENT'"
+        return 2
+    }
+
+    case "$ARG_NARGS_COUNT" in
+        '?')
+            ARG_NARGS_COUNT=0
+            eval ARG_NARGS_COUNT_$ARG_INDEX=0
+        ;;
+        [*+])
+        ;;
+        *)
+            ARG_NARGS_COUNT=$((ARG_NARGS_COUNT - 1))
+            eval ARG_NARGS_COUNT_$ARG_INDEX=\$ARG_NARGS_COUNT
+        ;;
+    esac
+}
+
 arg_apply_action ()
 {
     case "$ARG_ACTION" in
@@ -1014,50 +1068,7 @@ arg_apply_action ()
             # TODO: implement
         ;;
         store | append | extend)
-            $ARG_IS_OPTION || {
-                case "$ARG_TYPE" in
-                    "" | str)
-                        arg_replace "$ARG_CURRENT" "'" "'\''"
-                        eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }'$ARG_STRING'\""
-                    ;;
-                    int)
-                        case "$ARG_CURRENT" in
-                            *[!$ARG_DIGIT]*)
-                                false
-                            ;;
-                            *)
-                                eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
-                        esac
-                    ;;
-                    float)
-                        case "$ARG_CURRENT" in
-                            *[!\.$ARG_DIGIT]*)
-                                false
-                            ;;
-                            *)
-                                eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
-                        esac
-                    ;;
-                esac || {
-                    set -- $ARG_OPTION_STRINGS
-                    arg_replace "$*" ' ' '/'
-                    echo "error: argument $ARG_STRING: invalid $ARG_TYPE value: '$ARG_CURRENT'"
-                    return 2
-                }
-
-                case "$ARG_NARGS_COUNT" in
-                    '?')
-                        ARG_NARGS_COUNT=0
-                        eval ARG_NARGS_COUNT_$ARG_INDEX=0
-                    ;;
-                    [*+])
-                    ;;
-                    *)
-                        ARG_NARGS_COUNT=$((ARG_NARGS_COUNT - 1))
-                        eval ARG_NARGS_COUNT_$ARG_INDEX=\$ARG_NARGS_COUNT
-                    ;;
-                esac
-            }
+            $ARG_IS_OPTION || arg_set_dest_value || return
         ;;
         store_const)
             arg_replace "$ARG_CONST" "'" "'\''"
@@ -1123,6 +1134,25 @@ arg_is_position ()
         echo "unrecognized argument '$ARG_CURRENT'"
         return 2
     }
+}
+
+arg_set_default_value ()
+{
+    for ARG_INDEX in $ARG_DEFAULT_INDEXES
+    do
+        case "$ARG_RECEIVED_INDEXES" in
+            *" $ARG_INDEX "*)
+            ;;
+            *)
+                eval ARG_OPTION_STRINGS=\$ARG_OPTION_STRINGS_$ARG_INDEX \
+                     ARG_DEST=\$ARG_DEST_$ARG_INDEX \
+                     ARG_NARGS_COUNT=\$ARG_NARGS_COUNT_$ARG_INDEX \
+                     ARG_CURRENT=\$ARG_DEFAULT_$ARG_INDEX \
+                     ARG_TYPE=\$ARG_TYPE_$ARG_INDEX
+                arg_set_dest_value
+            ;;
+        esac
+    done
 }
 
 arg_check_required_args ()
@@ -1194,6 +1224,7 @@ parse_args ()
         shift
     done
     arg_prev_has_value &&
+    arg_set_default_value &&
     arg_check_required_args || return
 }
 
