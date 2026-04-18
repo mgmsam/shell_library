@@ -403,7 +403,7 @@ arg_set_parser_kwargs ()
         prog | usage | description | epilog | parents | \
         formatter_class | prefix_chars | fromfile_prefix_chars | \
         argument_default | conflict_handler | \
-        add_help | allow_abbrev | exit_on_error | case_style | dest_prefix)
+        add_help | allow_abbrev | exit_on_error | case_style | dest_prefix | func_prefix)
             arg_validate_unique_kwargs || return
             arg_unquate "$ARG_VALUE" && {
                 ARG_VALUE=$ARG_STRING
@@ -517,6 +517,10 @@ arg_set_parser_kwargs ()
                     arg_none_is_string &&
                     ARG_DEFAULT_DEST_PREFIX=$ARG_VALUE || ARG_DEFAULT_DEST_PREFIX=
                 ;;
+                func_prefix)
+                    arg_none_is_string &&
+                    ARG_FUNC_PREFIX=$ARG_VALUE || ARG_FUNC_PREFIX=
+                ;;
             esac
         ;;
         *)
@@ -570,6 +574,7 @@ ArgumentParser ()
     ARG_VALUE_IS_STRING=false
     ARG_CASE_STYLE='lower'
     ARG_DEFAULT_DEST_PREFIX=
+    ARG_FUNC_PREFIX=
 
     ARG_OPTION_STRINGS=
 
@@ -586,9 +591,18 @@ ArgumentParser ()
     ARG_ADD_HELP=${ARG_ADD_HELP:-}
     ARG_ALLOW_ABBREV=${ARG_ALLOW_ABBREV:-}
     ARG_EXIT_ON_ERROR=${ARG_EXIT_ON_ERROR:-}
+
+    case "$ARG_FUNC_PREFIX" in
+        ?*)
+            eval "${ARG_FUNC_PREFIX}_add_argument () { add_argument \"\$@\"; }"
+            eval "${ARG_FUNC_PREFIX}_parse_args () { parse_args \"\$@\"; }"
+            eval "${ARG_FUNC_PREFIX}_print_parser_state () { print_parser_state; }"
+            eval "${ARG_FUNC_PREFIX}_print_action_state () { print_action_state; }"
+        ;;
+    esac
 }
 
-arg_print_parser_state ()
+print_parser_state ()
 {
     echo "prog: $ARG_PROG
 usage: $ARG_USAGE
@@ -1336,7 +1350,7 @@ version: ${ARG_VERSION:-None}"
     eval echo "dest: $ARG_DEST: [\$$ARG_DEST]"
 }
 
-arg_print_action_state ()
+print_action_state ()
 {
     case "${1:-}" in
         "")
