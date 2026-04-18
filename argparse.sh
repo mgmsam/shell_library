@@ -957,7 +957,7 @@ arg_apply_const ()
     case "$ARG_CONST" in
         *[!\.$ARG_DIGIT]*)
             case "$ARG_TYPE" in
-                str)
+                "" | str)
                     arg_replace "$ARG_CONST" "'" "'\''"
                     eval $ARG_DEST="\"'$ARG_STRING'\""
                 ;;
@@ -1094,6 +1094,17 @@ arg_set_dest_value ()
                     arg_check_choice || return
                     eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
             esac
+        ;;
+        bool)
+            case "$ARG_CURRENT" in
+                "")
+                    ARG_CURRENT=false
+                ;;
+                *)
+                    ARG_CURRENT=true
+            esac
+            arg_check_choice || return
+            eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
         ;;
     esac || {
         set -- $ARG_OPTION_STRINGS
