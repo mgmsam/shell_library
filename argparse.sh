@@ -1209,7 +1209,13 @@ arg_set_default_value ()
                      ARG_NARGS_COUNT=\$ARG_NARGS_COUNT_$ARG_INDEX \
                      ARG_CURRENT=\$ARG_DEFAULT_$ARG_INDEX \
                      ARG_TYPE=\$ARG_TYPE_$ARG_INDEX
-                arg_set_dest_value
+
+                eval ARG_VALUE=\$$ARG_DEST
+                case "$ARG_VALUE" in
+                    "")
+                        arg_set_dest_value
+                    ;;
+                esac
             ;;
         esac
     done
