@@ -26,7 +26,7 @@ ARG_ALNUM=$ARG_LOWERS$ARG_UPPERS$ARG_DIGIT
 ARG_ALPHA=$ARG_LOWERS$ARG_UPPERS
 ARG_SPACE=" "
 
-arg_lower ()
+_to_lower ()
 {
     ARG_TEMP=$1
     ARG_STRING=
@@ -61,7 +61,7 @@ arg_lower ()
     done
 }
 
-arg_upper ()
+_to_upper ()
 {
     ARG_TEMP=$1
     ARG_STRING=
@@ -96,7 +96,7 @@ arg_upper ()
     done
 }
 
-arg_replace ()
+_str_replace ()
 {
 ########################################################################
     # replace sub string in string
@@ -152,7 +152,7 @@ arg_replace ()
     done
 }
 
-arg_unique_chars ()
+_unique_chars ()
 {
 ########################################################################
     # remove dublicate characters in the string
@@ -180,7 +180,7 @@ arg_unique_chars ()
     ARG_VALUE=$ARG_STRING
 }
 
-arg_set_parens ()
+_set_parens ()
 {
     case "$1" in
         [\(\)])
@@ -202,7 +202,7 @@ arg_set_parens ()
     esac
 }
 
-arg_is_terminated ()
+_validate_terminated ()
 {
     ARG_STRING=$1
     while
@@ -237,7 +237,7 @@ arg_is_terminated ()
         ARG_STRING_LEFT=${ARG_STRING%%[][(){\}\<\>]*}
         ARG_PAREN=${ARG_STRING#$ARG_STRING_LEFT}
         ARG_PAREN=${ARG_PAREN%${ARG_PAREN#?}}
-        arg_set_parens "$ARG_PAREN"
+        _set_parens "$ARG_PAREN"
         case "$ARG_PAREN" in
             *[]\)}\>]*)
                 echo "SyntaxError: closing parenthesis '$ARG_CLOSE_PAREN' does not match opening parenthesis '$ARG_OPEN_PAREN'"
@@ -258,7 +258,7 @@ arg_is_terminated ()
     done
 }
 
-arg_unquate ()
+_trim_quotes ()
 {
     case "$1" in
         [\"\']*)
@@ -272,7 +272,7 @@ arg_unquate ()
     esac
 }
 
-arg_validate_argument_sequence ()
+_parse_arg_sequence ()
 {
     ARG_OPTION_IS_SET=false
     ARG_KEYWORD_IS_SET=false
@@ -281,8 +281,8 @@ arg_validate_argument_sequence ()
 
     for ARG
     do
-        arg_is_terminated "$ARG" || return
-        arg_unquate "$ARG" || :
+        _validate_terminated "$ARG" || return
+        _trim_quotes "$ARG" || :
         ARG=$ARG_STRING
         case "$ARG" in
             "")
@@ -305,7 +305,7 @@ arg_validate_argument_sequence ()
             *[!=]*=*)
                 case "$ARG" in
                     [_$ARG_ALPHA]*)
-                        arg_is_terminated "${ARG#*=}"
+                        _validate_terminated "${ARG#*=}"
                         case "${ARG#*=}" in
                             "")
                                 echo "SyntaxError: expected argument value expression"
@@ -338,7 +338,7 @@ arg_validate_argument_sequence ()
     done
 }
 
-arg_validate_unique_kwargs ()
+_check_unique_kwargs ()
 {
     case "$ARG_SEEN_KEYWORDS" in
         *"$ARG_KEYWORD"*)
@@ -349,7 +349,7 @@ arg_validate_unique_kwargs ()
     ARG_SEEN_KEYWORDS="$ARG_SEEN_KEYWORDS $ARG_KEYWORD"
 }
 
-arg_none_is_string ()
+_is_none_value ()
 {
     case "$ARG_VALUE" in
         None)
@@ -358,7 +358,7 @@ arg_none_is_string ()
     esac
 }
 
-set_bool_function ()
+_set_bool_var ()
 {
     case "$ARG_KEYWORD" in
         add_help)
@@ -373,7 +373,7 @@ set_bool_function ()
     esac
 }
 
-arg_set_positional_kwargs ()
+_set_positional_kwargs ()
 {
     ARG_PARSER=$1
     shift
@@ -383,29 +383,29 @@ arg_set_positional_kwargs ()
             *=*)
                 ARG_KEYWORD=${ARG%%=*}
                 ARG_VALUE=${ARG#*=}
-                arg_set_${ARG_PARSER}_kwargs || return
+                _set_${ARG_PARSER}_kwargs || return
             ;;
             *)
-                arg_unquate "$ARG" && {
+                _trim_quotes "$ARG" && {
                     ARG_VALUE=$ARG_STRING
                     ARG_VALUE_IS_STRING=true
                 } || :
-                arg_none_is_string || ARG_VALUE=
-                arg_set_${ARG_PARSER}_positional_args || return
+                _is_none_value || ARG_VALUE=
+                _set_${ARG_PARSER}_positional_args || return
             ;;
         esac
     done
 }
 
-arg_set_parser_kwargs ()
+_set_parser_kwargs ()
 {
     case "$ARG_KEYWORD" in
         prog | usage | description | epilog | parents | \
         formatter_class | prefix_chars | fromfile_prefix_chars | \
         argument_default | conflict_handler | \
         add_help | allow_abbrev | exit_on_error | case_style | dest_prefix | func_prefix)
-            arg_validate_unique_kwargs || return
-            arg_unquate "$ARG_VALUE" && {
+            _check_unique_kwargs || return
+            _trim_quotes "$ARG_VALUE" && {
                 ARG_VALUE=$ARG_STRING
                 ARG_VALUE_IS_STRING=true
             } || :
@@ -417,26 +417,26 @@ arg_set_parser_kwargs ()
             esac
             case "$ARG_KEYWORD" in
                 prog)
-                    arg_none_is_string &&
+                    _is_none_value &&
                     ARG_PROG=$ARG_VALUE || ARG_PROG=
                 ;;
                 usage)
-                    arg_none_is_string &&
+                    _is_none_value &&
                     ARG_USAGE=$ARG_VALUE || ARG_USAGE=
                 ;;
                 description)
-                    arg_none_is_string &&
+                    _is_none_value &&
                     ARG_DESCRIPTION=$ARG_VALUE || ARG_DESCRIPTION=
                 ;;
                 epilog)
-                    arg_none_is_string &&
+                    _is_none_value &&
                     ARG_EPILOG=$ARG_VALUE || ARG_EPILOG=
                 ;;
                 parents | formatter_class)
                     # TODO: implement
                 ;;
                 prefix_chars)
-                    arg_unique_chars
+                    _unique_chars
                     case "$ARG_VALUE" in
                         "$ARG_PREFIX_CHARS")
                         ;;
@@ -454,7 +454,7 @@ arg_set_parser_kwargs ()
                     # TODO: implement
                 ;;
                 argument_default)
-                    arg_none_is_string &&
+                    _is_none_value &&
                     ARG_ARGUMENT_DEFAULT=$ARG_VALUE || ARG_ARGUMENT_DEFAULT=
                 ;;
                 conflict_handler)
@@ -474,19 +474,19 @@ arg_set_parser_kwargs ()
                     $ARG_VALUE_IS_STRING && {
                         case "$ARG_VALUE" in
                             ?*)
-                                set_bool_function true
+                                _set_bool_var true
                             ;;
                             "")
-                                set_bool_function false
+                                _set_bool_var false
                             ;;
                         esac
                     } || {
                         case "$ARG_VALUE" in
                             0 | False)
-                                set_bool_function false
+                                _set_bool_var false
                             ;;
                             1 | True)
-                                set_bool_function true
+                                _set_bool_var true
                             ;;
                             *[!$ARG_DIGIT]*)
                                 echo "NameError: name '$ARG_VALUE' is not defined."
@@ -497,7 +497,7 @@ arg_set_parser_kwargs ()
                                 return 2
                             ;;
                             *)
-                                set_bool_function true
+                                _set_bool_var true
                             ;;
                         esac
                     }
@@ -514,11 +514,11 @@ arg_set_parser_kwargs ()
                     esac
                 ;;
                 dest_prefix)
-                    arg_none_is_string &&
+                    _is_none_value &&
                     ARG_DEFAULT_DEST_PREFIX=$ARG_VALUE || ARG_DEFAULT_DEST_PREFIX=
                 ;;
                 func_prefix)
-                    arg_none_is_string &&
+                    _is_none_value &&
                     ARG_FUNC_PREFIX=$ARG_VALUE || ARG_FUNC_PREFIX=
                 ;;
             esac
@@ -530,7 +530,7 @@ arg_set_parser_kwargs ()
     esac
 }
 
-arg_set_parser_positional_args ()
+_set_parser_positional_args ()
 {
     if case "$ARG_PROG" in ?*) false ;; esac
     then
@@ -583,8 +583,8 @@ ArgumentParser ()
     ARG_REQUIRED_INDEXES=
     ARG_DEFAULT_INDEXES=
 
-    arg_validate_argument_sequence "$@" &&
-    arg_set_positional_kwargs parser "$@" || return
+    _parse_arg_sequence "$@" &&
+    _set_positional_kwargs parser "$@" || return
 
     ARG_PARENTS=${ARG_PARENTS:-}
     ARG_FORMATTER_CLASS=${ARG_FORMATTER_CLASS:-argparse.HelpFormatter}
@@ -621,7 +621,7 @@ case_style: $ARG_CASE_STYLE
 dest_prefix: ${ARG_DEFAULT_DEST_PREFIX:-None}"
 }
 
-arg_split_chars ()
+_split_chars ()
 {
     ARG_STRING=${1:-}
     ARG_DELIMITER=${2:-,}
@@ -641,19 +641,19 @@ arg_split_chars ()
     ARG_STRING=$ARG_TEMP
 }
 
-arg_set_action_kwargs ()
+_set_action_kwargs ()
 {
     case "$ARG_KEYWORD" in
         action | nargs   | const | default | type | choices | required | \
         help   | metavar | dest  | dest_prefix)
-            arg_validate_unique_kwargs || return
-            arg_unquate "$ARG_VALUE" && {
+            _check_unique_kwargs || return
+            _trim_quotes "$ARG_VALUE" && {
                 ARG_VALUE=$ARG_STRING
                 ARG_VALUE_IS_STRING=true
             } || :
             case "$ARG_KEYWORD" in
                 action)
-                    arg_none_is_string &&
+                    _is_none_value &&
                     ARG_ACTION=${ARG_VALUE:-store} || ARG_ACTION=store
                     case "$ARG_ACTION" in
                         store | store_const | store_true | store_false | \
@@ -672,11 +672,11 @@ arg_set_action_kwargs ()
                             return 2
                         ;;
                     esac
-                    arg_none_is_string &&
+                    _is_none_value &&
                     ARG_DEST=$ARG_VALUE || ARG_DEST=
                 ;;
                 nargs)
-                    arg_none_is_string &&
+                    _is_none_value &&
                     ARG_NARGS="$ARG_VALUE" || ARG_NARGS=
                     case "$ARG_NARGS" in
                         "" | [?*+])
@@ -688,15 +688,15 @@ arg_set_action_kwargs ()
                     esac
                 ;;
                 const)
-                    arg_none_is_string &&
+                    _is_none_value &&
                     ARG_CONST=$ARG_VALUE || ARG_CONST=
                 ;;
                 default)
-                    arg_none_is_string &&
+                    _is_none_value &&
                     ARG_DEFAULT=$ARG_VALUE || ARG_DEFAULT=
                 ;;
                 type)
-                    arg_none_is_string &&
+                    _is_none_value &&
                     ARG_TYPE=$ARG_VALUE || ARG_TYPE=
                     case "$ARG_TYPE" in
                         "" | int | float | str | bool)
@@ -720,7 +720,7 @@ arg_set_action_kwargs ()
                 ;;
                 choices)
                     $ARG_VALUE_IS_STRING && {
-                        arg_split_chars "$ARG_CHOICES" ' '
+                        _split_chars "$ARG_CHOICES" ' '
                         ARG_CHOICES="$ARG_STRING"
                     } || {
                         ARG_VALUE=${ARG_VALUE#[}
@@ -732,13 +732,13 @@ arg_set_action_kwargs ()
                         ARG_CHOICES=
                         for ARG_STRING
                         do
-                            arg_replace "$ARG_STRING" "'" "'\''"
+                            _str_replace "$ARG_STRING" "'" "'\''"
                             ARG_CHOICES="${ARG_CHOICES:+$ARG_CHOICES }'$ARG_STRING'"
                         done
                     }
                 ;;
                 required)
-                    arg_none_is_string &&
+                    _is_none_value &&
                     ARG_REQUIRED=$ARG_VALUE || ARG_REQUIRED=
                     case "$ARG_REQUIRED" in
                         "" | 0 | False)
@@ -754,15 +754,15 @@ arg_set_action_kwargs ()
                     esac
                 ;;
                 help)
-                    arg_none_is_string &&
+                    _is_none_value &&
                     ARG_HELP=$ARG_VALUE || ARG_HELP=
                 ;;
                 metavar)
-                    arg_none_is_string &&
+                    _is_none_value &&
                     ARG_METAVAR=$ARG_VALUE || ARG_METAVAR=
                 ;;
                 dest_prefix)
-                    arg_none_is_string &&
+                    _is_none_value &&
                     ARG_DEST_PREFIX=$ARG_VALUE || ARG_DEST_PREFIX=
                 ;;
             esac
@@ -774,14 +774,14 @@ arg_set_action_kwargs ()
     esac
 }
 
-arg_set_action_positional_args ()
+_set_action_positional_args ()
 {
     case "$ARG" in
         [$ARG_PREFIX_CHARS][$ARG_PREFIX_CHARS]?*)
             case "$ARG_LONG_OPTION" in
                 "")
                     ARG_LONG_OPTION=${ARG#${ARG%%[!$ARG_PREFIX_CHARS]*}}
-                    arg_replace "$ARG_LONG_OPTION" '-' '_'
+                    _str_replace "$ARG_LONG_OPTION" '-' '_'
                     ARG_LONG_OPTION="$ARG_STRING"
                 ;;
             esac
@@ -824,8 +824,8 @@ add_argument ()
     ARG_KEYWORD=
     ARG_VALUE=
 
-    arg_validate_argument_sequence "$@" &&
-    arg_set_positional_kwargs action "$@" || return
+    _parse_arg_sequence "$@" &&
+    _set_positional_kwargs action "$@" || return
 
     ARG_DEST=${ARG_DEST:-${ARG_LONG_OPTION:-${ARG_SHORT_OPTION:-${ARG_POSITION:-}}}}
     case "$ARG_DEST" in
@@ -842,8 +842,8 @@ add_argument ()
             return 2
         ;;
         *)
-            arg_replace "$ARG_DEST" '-' '_'
-            arg_$ARG_CASE_STYLE "$ARG_STRING"
+            _str_replace "$ARG_DEST" '-' '_'
+            _to_$ARG_CASE_STYLE "$ARG_STRING"
             ARG_DEST=${ARG_DEST_PREFIX:+${ARG_DEST_PREFIX}_}$ARG_STRING
         ;;
     esac
@@ -975,13 +975,13 @@ add_argument ()
          ARG_ACTION_$ARG_INDEX=\$ARG_ACTION
 }
 
-arg_apply_const ()
+_apply_const ()
 {
     case "$ARG_CONST" in
         *[!\.$ARG_DIGIT]*)
             case "$ARG_TYPE" in
                 "" | str)
-                    arg_replace "$ARG_CONST" "'" "'\''"
+                    _str_replace "$ARG_CONST" "'" "'\''"
                     eval $ARG_DEST="\"'$ARG_STRING'\""
                 ;;
                 *)
@@ -1011,13 +1011,13 @@ arg_apply_const ()
         ;;
     esac || {
         set -- $ARG_OPTION_STRINGS
-        arg_replace "$*" ' ' '/'
+        _str_replace "$*" ' ' '/'
         echo "error: argument $ARG_STRING: invalid $ARG_TYPE value: '$ARG_CONST'"
         return 2
     }
 }
 
-arg_prev_has_value ()
+_prev_has_value ()
 {
     case "$ARG_NARGS_COUNT" in
         [0?*] | "")
@@ -1026,13 +1026,13 @@ arg_prev_has_value ()
         *)
             case "$ARG_CONST" in
                 ?*)
-                    arg_apply_const || return
+                    _apply_const || return
                     return
                 ;;
             esac
 
             set -- $ARG_OPTION_STRINGS
-            arg_replace "$*" ' ' '/'
+            _str_replace "$*" ' ' '/'
             case $ARG_NARGS in
                 None)
                     ARG_NARGS='one argument'
@@ -1053,7 +1053,7 @@ arg_prev_has_value ()
     esac
 }
 
-arg_set_action_state ()
+_set_action_state ()
 {
     eval ARG_OPTION_STRINGS=\$ARG_OPTION_STRINGS_$ARG_INDEX \
          ARG_DEST=\$ARG_DEST_$ARG_INDEX \
@@ -1069,7 +1069,7 @@ arg_set_action_state ()
          ARG_ACTION=\$ARG_ACTION_$ARG_INDEX
 }
 
-arg_check_choice ()
+_check_choice ()
 {
     case "$ARG_CHOICES" in
         ?*)
@@ -1083,19 +1083,19 @@ arg_check_choice ()
                 esac
             done
             set -- $ARG_OPTION_STRINGS
-            arg_replace "$*" ' ' '/'
+            _str_replace "$*" ' ' '/'
             echo "error: argument $ARG_STRING: invalid choice: '$ARG_CURRENT' (choose from $ARG_CHOICES)"
             return 2
         ;;
     esac
 }
 
-arg_set_dest_value ()
+_set_dest_value ()
 {
     case "$ARG_TYPE" in
         "" | str)
-            arg_check_choice || return
-            arg_replace "$ARG_CURRENT" "'" "'\''"
+            _check_choice || return
+            _str_replace "$ARG_CURRENT" "'" "'\''"
             eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }'$ARG_STRING'\""
         ;;
         int)
@@ -1104,7 +1104,7 @@ arg_set_dest_value ()
                     false
                 ;;
                 *)
-                    arg_check_choice || return
+                    _check_choice || return
                     eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
             esac
         ;;
@@ -1114,7 +1114,7 @@ arg_set_dest_value ()
                     false
                 ;;
                 *)
-                    arg_check_choice || return
+                    _check_choice || return
                     eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
             esac
         ;;
@@ -1126,12 +1126,12 @@ arg_set_dest_value ()
                 *)
                     ARG_CURRENT=true
             esac
-            arg_check_choice || return
+            _check_choice || return
             eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
         ;;
     esac || {
         set -- $ARG_OPTION_STRINGS
-        arg_replace "$*" ' ' '/'
+        _str_replace "$*" ' ' '/'
         echo "error: argument $ARG_STRING: invalid $ARG_TYPE value: '$ARG_CURRENT'"
         return 2
     }
@@ -1150,11 +1150,11 @@ arg_set_dest_value ()
     esac
 }
 
-arg_apply_action ()
+_apply_action ()
 {
     case "$ARG_ACTION" in
         append_const)
-            arg_replace "$ARG_CONST" "'" "'\''"
+            _str_replace "$ARG_CONST" "'" "'\''"
             eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }'$ARG_STRING'\""
         ;;
         count)
@@ -1164,10 +1164,10 @@ arg_apply_action ()
             # TODO: implement
         ;;
         store | append | extend)
-            $ARG_IS_OPTION || arg_set_dest_value || return
+            $ARG_IS_OPTION || _set_dest_value || return
         ;;
         store_const)
-            arg_replace "$ARG_CONST" "'" "'\''"
+            _str_replace "$ARG_CONST" "'" "'\''"
             eval $ARG_DEST="\"'$ARG_STRING'\""
         ;;
         store_false)
@@ -1182,11 +1182,11 @@ arg_apply_action ()
     esac
 }
 
-arg_is_option_string ()
+_parse_option ()
 {
     for ARG_INDEX in $ARG_INDEXS
     do
-        arg_set_action_state
+        _set_action_state
         case "$ARG_OPTION_STRINGS" in
             "")
             ;;
@@ -1206,13 +1206,13 @@ arg_is_option_string ()
     return 2
 }
 
-arg_is_position ()
+_parse_arg ()
 {
     case "$ARG_NARGS_COUNT" in
         0 | "")
             for ARG_INDEX in $ARG_INDEXS
             do
-                arg_set_action_state
+                _set_action_state
                 case "$ARG_OPTION_STRINGS" in
                     ?*)
                         continue
@@ -1232,7 +1232,7 @@ arg_is_position ()
     }
 }
 
-arg_set_default_value ()
+_set_default_value ()
 {
     for ARG_INDEX in $ARG_DEFAULT_INDEXES
     do
@@ -1249,7 +1249,7 @@ arg_set_default_value ()
                 eval ARG_VALUE=\$$ARG_DEST
                 case "$ARG_VALUE" in
                     "")
-                        arg_set_dest_value
+                        _set_dest_value
                     ;;
                 esac
             ;;
@@ -1257,7 +1257,7 @@ arg_set_default_value ()
     done
 }
 
-arg_check_required_args ()
+_check_required_args ()
 {
     ARG_MISSING_INDEXES=
     for ARG_INDEX in $ARG_REQUIRED_INDEXES
@@ -1274,7 +1274,7 @@ arg_check_required_args ()
                     ;;
                     *)
                         set -- $ARG_OPTION_STRINGS
-                        arg_replace "$*" ' ' '/'
+                        _str_replace "$*" ' ' '/'
                         ARG_MISSING_INDEXES="${ARG_MISSING_INDEXES:+$ARG_MISSING_INDEXES, }$ARG_STRING"
                     ;;
                 esac
@@ -1313,24 +1313,24 @@ parse_args ()
                 continue
             ;;
             [$ARG_PREFIX_CHARS]*)
-                arg_prev_has_value &&
-                arg_is_option_string || return
+                _prev_has_value &&
+                _parse_option || return
                 ARG_IS_OPTION=true
             ;;
             *)
                 false
             ;;
-        esac || arg_is_position || return
-        arg_apply_action
+        esac || _parse_arg || return
+        _apply_action
         ARG_RECEIVED_INDEXES="$ARG_RECEIVED_INDEXES $ARG_INDEX "
         shift
     done
-    arg_prev_has_value &&
-    arg_set_default_value &&
-    arg_check_required_args || return
+    _prev_has_value &&
+    _set_default_value &&
+    _check_required_args || return
 }
 
-arg_print_state ()
+_say_action_state ()
 {
     ARG_CHOICES_STRING=${ARG_CHOICES:+[$ARG_CHOICES]}
     echo "Action state (index $ARG_INDEX):
@@ -1356,8 +1356,8 @@ print_action_state ()
         "")
             for ARG_INDEX in $ARG_INDEXS
             do
-                arg_set_action_state
-                arg_print_state
+                _set_action_state
+                _say_action_state
             done
         ;;
         *[!$ARG_DIGIT]*)
@@ -1366,8 +1366,8 @@ print_action_state ()
                 eval ARG_DEST=\$ARG_DEST_$ARG_INDEX
                 case "$ARG_DEST" in
                     "$1")
-                        arg_set_action_state
-                        arg_print_state
+                        _set_action_state
+                        _say_action_state
                     ;;
                 esac
             done
@@ -1377,8 +1377,8 @@ print_action_state ()
             do
                 case "$ARG_INDEX" in
                     "$1")
-                        arg_set_action_state
-                        arg_print_state
+                        _set_action_state
+                        _say_action_state
                     ;;
                 esac
             done
