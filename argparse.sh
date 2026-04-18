@@ -759,6 +759,8 @@ arg_set_action_positional_args ()
             case "$ARG_LONG_OPTION" in
                 "")
                     ARG_LONG_OPTION=${ARG#${ARG%%[!$ARG_PREFIX_CHARS]*}}
+                    arg_replace "$ARG_LONG_OPTION" '-' '_'
+                    ARG_LONG_OPTION="$ARG_STRING"
                 ;;
             esac
             ARG_OPTION_STRINGS="$ARG_OPTION_STRINGS $ARG "
