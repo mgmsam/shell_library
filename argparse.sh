@@ -603,6 +603,26 @@ exit_on_error: $ARG_EXIT_ON_ERROR
 case_style: $ARG_CASE_STYLE"
 }
 
+arg_split_chars ()
+{
+    ARG_STRING=${1:-}
+    ARG_DELIMITER=${2:-,}
+    ARG_CHAR=
+    ARG_TEMP=
+    while
+        case "${#ARG_STRING}" in
+            0)
+                false
+            ;;
+        esac
+    do
+        ARG_CHAR=${ARG_STRING%${ARG_STRING#?}}
+        ARG_STRING=${ARG_STRING#?}
+        ARG_TEMP="${ARG_TEMP:+$ARG_TEMP$ARG_DELIMITER}'$ARG_CHAR'"
+    done
+    ARG_STRING=$ARG_TEMP
+}
+
 arg_set_action_kwargs ()
 {
     case "$ARG_KEYWORD" in
@@ -681,7 +701,23 @@ arg_set_action_kwargs ()
                     esac
                 ;;
                 choices)
-                    # TODO: implement
+                    $ARG_VALUE_IS_STRING && {
+                        arg_split_chars "$ARG_CHOICES" ' '
+                        ARG_CHOICES="$ARG_STRING"
+                    } || {
+                        ARG_VALUE=${ARG_VALUE#[}
+                        ARG_VALUE=${ARG_VALUE%]}
+                        POSIX_IFS=$IFS
+                        IFS=','
+                        eval set -- $ARG_STRING
+                        IFS=$POSIX_IFS
+                        ARG_CHOICES=
+                        for ARG_STRING
+                        do
+                            arg_replace "$ARG_STRING" "'" "'\''"
+                            ARG_CHOICES="${ARG_CHOICES:+$ARG_CHOICES }'$ARG_STRING'"
+                        done
+                    }
                 ;;
                 required)
                     arg_none_is_string &&
@@ -1008,10 +1044,32 @@ arg_set_action_state ()
          ARG_ACTION=\$ARG_ACTION_$ARG_INDEX
 }
 
+arg_check_choice ()
+{
+    case "$ARG_CHOICES" in
+        ?*)
+            eval set -- "$ARG_CHOICES"
+            for ARG_CHOICE
+            do
+                case "$ARG_CHOICE" in
+                    "$ARG_CURRENT")
+                        return
+                    ;;
+                esac
+            done
+            set -- $ARG_OPTION_STRINGS
+            arg_replace "$*" ' ' '/'
+            echo "error: argument $ARG_STRING: invalid choice: '$ARG_CURRENT' (choose from $ARG_CHOICES)"
+            return 2
+        ;;
+    esac
+}
+
 arg_set_dest_value ()
 {
     case "$ARG_TYPE" in
         "" | str)
+            arg_check_choice || return
             arg_replace "$ARG_CURRENT" "'" "'\''"
             eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }'$ARG_STRING'\""
         ;;
@@ -1021,6 +1079,7 @@ arg_set_dest_value ()
                     false
                 ;;
                 *)
+                    arg_check_choice || return
                     eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
             esac
         ;;
@@ -1030,6 +1089,7 @@ arg_set_dest_value ()
                     false
                 ;;
                 *)
+                    arg_check_choice || return
                     eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
             esac
         ;;
@@ -1230,6 +1290,7 @@ parse_args ()
 
 arg_print_state ()
 {
+    ARG_CHOICES_STRING=${ARG_CHOICES:+[$ARG_CHOICES]}
     echo "Action state (index $ARG_INDEX):
 option_strings: ${ARG_OPTION_STRINGS:-None}
 dest: $ARG_DEST
@@ -1238,7 +1299,7 @@ nargs_count: $ARG_NARGS_COUNT
 const: ${ARG_CONST:-None}
 default: ${ARG_DEFAULT:-None}
 type: ${ARG_TYPE:-None}
-choices: ${ARG_CHOICES:-None}
+choices: ${ARG_CHOICES_STRING:-None}
 required: $ARG_REQUIRED
 help: ${ARG_HELP:-None}
 metavar: ${ARG_METAVAR:-None}
