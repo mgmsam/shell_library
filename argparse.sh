@@ -59,7 +59,6 @@ arg_lower ()
         esac
         ARG_STRING=${ARG_STRING:-}$ARG_CHAR
     done
-    ARG_STRING=arg_$ARG_STRING
 }
 
 arg_upper ()
@@ -95,7 +94,6 @@ arg_upper ()
         esac
         ARG_STRING=${ARG_STRING:-}$ARG_CHAR
     done
-    ARG_STRING=ARG_$ARG_STRING
 }
 
 arg_replace ()
@@ -627,7 +625,7 @@ arg_set_action_kwargs ()
 {
     case "$ARG_KEYWORD" in
         action | nargs   | const | default | type | choices | required | \
-        help   | metavar | dest)
+        help   | metavar | dest  | dest_prefix)
             arg_validate_unique_kwargs || return
             arg_unquate "$ARG_VALUE" && {
                 ARG_VALUE=$ARG_STRING
@@ -743,6 +741,10 @@ arg_set_action_kwargs ()
                     arg_none_is_string &&
                     ARG_METAVAR=$ARG_VALUE || ARG_METAVAR=
                 ;;
+                dest_prefix)
+                    arg_none_is_string &&
+                    ARG_DEST_PREFIX=$ARG_VALUE || ARG_DEST_PREFIX=
+                ;;
             esac
         ;;
         *)
@@ -794,6 +796,7 @@ add_argument ()
 
     ARG_ACTION=store
 
+    ARG_DEST_PREFIX=
     ARG_LONG_OPTION=
     ARG_SHORT_OPTION=
     ARG_POSITION=
@@ -821,7 +824,7 @@ add_argument ()
         *)
             arg_replace "$ARG_DEST" '-' '_'
             arg_$ARG_CASE_STYLE "$ARG_STRING"
-            ARG_DEST=$ARG_STRING
+            ARG_DEST=${ARG_DEST_PREFIX:+${ARG_DEST_PREFIX}_}$ARG_STRING
         ;;
     esac
 
