@@ -403,7 +403,7 @@ arg_set_parser_kwargs ()
         prog | usage | description | epilog | parents | \
         formatter_class | prefix_chars | fromfile_prefix_chars | \
         argument_default | conflict_handler | \
-        add_help | allow_abbrev | exit_on_error | case_style)
+        add_help | allow_abbrev | exit_on_error | case_style | dest_prefix)
             arg_validate_unique_kwargs || return
             arg_unquate "$ARG_VALUE" && {
                 ARG_VALUE=$ARG_STRING
@@ -513,6 +513,10 @@ arg_set_parser_kwargs ()
                         ;;
                     esac
                 ;;
+                dest_prefix)
+                    arg_none_is_string &&
+                    ARG_DEFAULT_DEST_PREFIX=$ARG_VALUE || ARG_DEFAULT_DEST_PREFIX=
+                ;;
             esac
         ;;
         *)
@@ -565,6 +569,7 @@ ArgumentParser ()
     ARG_POSIX_PREFIX_CHARS=true
     ARG_VALUE_IS_STRING=false
     ARG_CASE_STYLE='lower'
+    ARG_DEFAULT_DEST_PREFIX=
 
     ARG_OPTION_STRINGS=
 
@@ -598,7 +603,8 @@ conflict_handler: $ARG_CONFLICT_HANDLER
 add_help: $ARG_ADD_HELP
 allow_abbrev: $ARG_ALLOW_ABBREV
 exit_on_error: $ARG_EXIT_ON_ERROR
-case_style: $ARG_CASE_STYLE"
+case_style: $ARG_CASE_STYLE
+dest_prefix: ${ARG_DEFAULT_DEST_PREFIX:-None}"
 }
 
 arg_split_chars ()
@@ -796,7 +802,7 @@ add_argument ()
 
     ARG_ACTION=store
 
-    ARG_DEST_PREFIX=
+    ARG_DEST_PREFIX=$ARG_DEFAULT_DEST_PREFIX
     ARG_LONG_OPTION=
     ARG_SHORT_OPTION=
     ARG_POSITION=
