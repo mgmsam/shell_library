@@ -570,7 +570,6 @@ ArgumentParser ()
     _AP_INDEX=0
     _AP_INDEXES=
     _AP_REQUIRED_INDEXES=
-    _AP_DEFAULT_INDEXES=
 
     _AP_VALUE_IS_STRING=false
 
@@ -945,12 +944,6 @@ add_argument ()
     $AP_ACTION_REQUIRED &&
         _AP_REQUIRED_INDEXES="$_AP_REQUIRED_INDEXES $_AP_INDEX " || :
 
-    case "$AP_ACTION_DEFAULT" in
-        ?*)
-            _AP_DEFAULT_INDEXES="$_AP_DEFAULT_INDEXES $_AP_INDEX "
-        ;;
-    esac
-
     eval AP_ACTION_OPTION_STRINGS_$_AP_INDEX=\$AP_ACTION_OPTION_STRINGS \
          AP_ACTION_DEST_$_AP_INDEX=\$AP_ACTION_DEST \
          AP_ACTION_NARGS_$_AP_INDEX=\$AP_ACTION_NARGS \
@@ -1224,7 +1217,7 @@ _parse_arg ()
 
 _set_default_value ()
 {
-    for _AP_INDEX in $_AP_DEFAULT_INDEXES
+    for _AP_INDEX in $_AP_INDEXES
     do
         case "$ACTIONS_RECEIVED_INDEXES" in
             *" $_AP_INDEX "*)
@@ -1236,10 +1229,17 @@ _set_default_value ()
                      AP_ACTION_TYPE=\$AP_ACTION_TYPE_$_AP_INDEX \
                      _AP_ARG=\$AP_ACTION_DEFAULT_$_AP_INDEX
 
-                eval _AP_KEYWORD_VALUE=\$$AP_ACTION_DEST
-                case "$_AP_KEYWORD_VALUE" in
+                eval _AP_DEST_VALUE=\$$AP_ACTION_DEST
+                case "$_AP_DEST_VALUE" in
                     "")
-                        _set_dest_value
+                        case "$_AP_ARG" in
+                            "")
+                                eval $AP_ACTION_DEST=
+                            ;;
+                            *)
+                                _set_dest_value
+                            ;;
+                        esac
                     ;;
                 esac
             ;;
