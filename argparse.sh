@@ -51,7 +51,7 @@ _to_lower ()
                         ;;
                     esac
                 do
-                    _AP_COUNT=$_AP_COUNT?
+                    _AP_COUNT="$_AP_COUNT?"
                 done
                 _AP_CHAR=${AP_LOWERS%${AP_LOWERS#$_AP_COUNT}}
                 _AP_CHAR=${_AP_CHAR#${_AP_CHAR%?}}
@@ -86,7 +86,7 @@ _to_upper ()
                         ;;
                     esac
                 do
-                    _AP_COUNT=$_AP_COUNT?
+                    _AP_COUNT="$_AP_COUNT?"
                 done
                 _AP_CHAR=${AP_UPPERS%${AP_UPPERS#$_AP_COUNT}}
                 _AP_CHAR=${_AP_CHAR#${_AP_CHAR%?}}
