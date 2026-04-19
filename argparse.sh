@@ -45,7 +45,7 @@ _to_lower ()
                 _AP_NUM=$((${#_AP_NUM} + 1))
                 _AP_COUNT=
                 while
-                    case $((${#_AP_COUNT} < $_AP_NUM)) in
+                    case $((${#_AP_COUNT} < _AP_NUM)) in
                         0)
                             false
                         ;;
@@ -80,7 +80,7 @@ _to_upper ()
                 _AP_NUM=$((${#_AP_NUM} + 1))
                 _AP_COUNT=
                 while
-                    case $((${#_AP_COUNT} < $_AP_NUM)) in
+                    case $((${#_AP_COUNT} < _AP_NUM)) in
                         0)
                             false
                         ;;
