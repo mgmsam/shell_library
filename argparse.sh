@@ -1323,9 +1323,12 @@ parse_args ()
 _say_action_state ()
 {
     AP_ACTION_CHOICES_STRING=${AP_ACTION_CHOICES:+[$AP_ACTION_CHOICES]}
+    eval AP_ACTION_DEST_VALUE=\$$AP_ACTION_DEST
+         AP_ACTION_DEST_VALUE=${AP_ACTION_DEST_VALUE:+[$AP_ACTION_DEST_VALUE]}
+
     echo "Action state (index $_AP_INDEX):
 option_strings: ${AP_ACTION_OPTION_STRINGS:-None}
-dest: $AP_ACTION_DEST
+dest: $AP_ACTION_DEST: ${AP_ACTION_DEST_VALUE:-None}
 nargs: $AP_ACTION_NARGS
 nargs_count: $AP_ACTION_NARGS_COUNT
 const: ${AP_ACTION_CONST:-None}
@@ -1337,7 +1340,6 @@ help: ${AP_ACTION_HELP:-None}
 metavar: ${AP_ACTION_METAVAR:-None}
 action: $AP_ACTION
 version: ${AP_VERSION:-None}"
-    eval echo "dest: $AP_ACTION_DEST: [\$$AP_ACTION_DEST]"
 }
 
 print_action_state ()
