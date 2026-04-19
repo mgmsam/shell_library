@@ -37,11 +37,11 @@ _to_lower ()
             ;;
         esac
     do
-        _AP_CHAR=${_AP_BUFFER%${_AP_BUFFER#?}}
+        _AP_CHAR=${_AP_BUFFER%"${_AP_BUFFER#?}"}
         _AP_BUFFER=${_AP_BUFFER#?}
         case $_AP_CHAR in
             [$AP_UPPERS])
-                _AP_NUM=${AP_UPPERS%%$_AP_CHAR*}
+                _AP_NUM=${AP_UPPERS%%"$_AP_CHAR"*}
                 _AP_NUM=$((${#_AP_NUM} + 1))
                 _AP_COUNT=
                 while
@@ -53,8 +53,8 @@ _to_lower ()
                 do
                     _AP_COUNT="$_AP_COUNT?"
                 done
-                _AP_CHAR=${AP_LOWERS%${AP_LOWERS#$_AP_COUNT}}
-                _AP_CHAR=${_AP_CHAR#${_AP_CHAR%?}}
+                _AP_CHAR=${AP_LOWERS%"${AP_LOWERS#$_AP_COUNT}"}
+                _AP_CHAR=${_AP_CHAR#"${_AP_CHAR%?}"}
             ;;
         esac
         _AP_STRING=${_AP_STRING:-}$_AP_CHAR
@@ -72,11 +72,11 @@ _to_upper ()
             ;;
         esac
     do
-        _AP_CHAR=${_AP_BUFFER%${_AP_BUFFER#?}}
+        _AP_CHAR=${_AP_BUFFER%"${_AP_BUFFER#?}"}
         _AP_BUFFER=${_AP_BUFFER#?}
         case $_AP_CHAR in
             [$AP_LOWERS])
-                _AP_NUM=${AP_LOWERS%%$_AP_CHAR*}
+                _AP_NUM=${AP_LOWERS%%"$_AP_CHAR"*}
                 _AP_NUM=$((${#_AP_NUM} + 1))
                 _AP_COUNT=
                 while
@@ -88,12 +88,13 @@ _to_upper ()
                 do
                     _AP_COUNT="$_AP_COUNT?"
                 done
-                _AP_CHAR=${AP_UPPERS%${AP_UPPERS#$_AP_COUNT}}
-                _AP_CHAR=${_AP_CHAR#${_AP_CHAR%?}}
+                _AP_CHAR=${AP_UPPERS%"${AP_UPPERS#$_AP_COUNT}"}
+                _AP_CHAR=${_AP_CHAR#"${_AP_CHAR%?}"}
             ;;
         esac
         _AP_STRING=${_AP_STRING:-}$_AP_CHAR
     done
+    echo "_AP_STRING [$_AP_STRING]"
 }
 
 _str_replace ()
@@ -138,7 +139,7 @@ _str_replace ()
                 ;;
             esac
         do
-            _AP_LEFT=${_AP_STRING%%$2*}
+            _AP_LEFT=${_AP_STRING%%"$2"*}
             case "$_AP_LEFT" in
                 "$_AP_STRING")
                     break
@@ -166,7 +167,7 @@ _unique_chars ()
             ;;
         esac
     do
-        _AP_CHAR=${_AP_STRING%${_AP_STRING#?}}
+        _AP_CHAR=${_AP_STRING%"${_AP_STRING#?}"}
         _AP_STRING=${_AP_STRING#?}
         case "$_AP_BUFFER" in
             *"$_AP_CHAR"*)
@@ -211,8 +212,8 @@ _validate_terminated ()
         esac
     do
         _AP_LEFT=${_AP_STRING%%[\'\"]*}
-        _AP_QUOTE=${_AP_STRING#$_AP_LEFT}
-        _AP_QUOTE=${_AP_QUOTE%${_AP_QUOTE#?}}
+        _AP_QUOTE=${_AP_STRING#"$_AP_LEFT"}
+        _AP_QUOTE=${_AP_QUOTE%"${_AP_QUOTE#?}"}
         _AP_BUFFER=${_AP_STRING#*"$_AP_QUOTE"}
         case "$_AP_BUFFER" in
             *$_AP_QUOTE*)
@@ -231,8 +232,8 @@ _validate_terminated ()
         esac
     do
         _AP_LEFT=${_AP_STRING%%[][(){\}\<\>]*}
-        _AP_PAREN=${_AP_STRING#$_AP_LEFT}
-        _AP_PAREN=${_AP_PAREN%${_AP_PAREN#?}}
+        _AP_PAREN=${_AP_STRING#"$_AP_LEFT"}
+        _AP_PAREN=${_AP_PAREN%"${_AP_PAREN#?}"}
         _set_parens "$_AP_PAREN"
         case "$_AP_PAREN" in
             *[]\)}\>]*)
@@ -624,7 +625,7 @@ _split_chars ()
             ;;
         esac
     do
-        _AP_CHAR=${_AP_STRING%${_AP_STRING#?}}
+        _AP_CHAR=${_AP_STRING%"${_AP_STRING#?}"}
         _AP_BUFFER="${_AP_BUFFER:+$_AP_BUFFER$_AP_DELIMITER}'$_AP_CHAR'"
         _AP_STRING=${_AP_STRING#?}
     done
@@ -769,7 +770,7 @@ _set_action_positional_args ()
         [$AP_PARSER_PREFIX_CHARS][$AP_PARSER_PREFIX_CHARS]?*)
             case "$AP_ACTION_LONG_OPTION" in
                 "")
-                    AP_ACTION_LONG_OPTION=${_AP_ARG#${_AP_ARG%%[!$AP_PARSER_PREFIX_CHARS]*}}
+                    AP_ACTION_LONG_OPTION=${_AP_ARG#"${_AP_ARG%%[!$AP_PARSER_PREFIX_CHARS]*}"}
                     _str_replace "$AP_ACTION_LONG_OPTION" '-' '_'
                     AP_ACTION_LONG_OPTION="$_AP_STRING"
                 ;;
