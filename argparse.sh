@@ -300,7 +300,7 @@ _parse_arg_sequence ()
             *[!=]*=*)
                 case "$_AP_ARG" in
                     [_$AP_ALPHA]*)
-                        _validate_terminated "${_AP_ARG#*=}"
+                        _validate_terminated "${_AP_ARG#*=}" || return
                         case "${_AP_ARG#*=}" in
                             "")
                                 echo "SyntaxError: expected argument value expression"
