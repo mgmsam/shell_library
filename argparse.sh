@@ -285,17 +285,15 @@ _parse_arg_sequence ()
                 return 2
             ;;
             [$AP_PARSER_PREFIX_CHARS]*)
-                if $_AP_KEYWORD_IS_SET
-                then
+                $_AP_KEYWORD_IS_SET && {
                     echo "SyntaxError: positional argument follows keyword argument"
                     return 2
-                elif $_AP_POSITION_ARG_IS_SET
-                then
-                    echo "ValueError: invalid option string '$_AP_POSITION_ARG': must start with a character '$AP_PARSER_PREFIX_CHARS'"
-                    return 2
-                else
-                    _AP_OPTION_IS_SET=true
-                fi
+                } || {
+                    $_AP_POSITION_ARG_IS_SET && {
+                        echo "ValueError: invalid option string '$_AP_POSITION_ARG': must start with a character '$AP_PARSER_PREFIX_CHARS'"
+                        return 2
+                    }
+                } || _AP_OPTION_IS_SET=true
             ;;
             *[!=]*=*)
                 case "$_AP_ARG" in
@@ -316,18 +314,15 @@ _parse_arg_sequence ()
                 esac
             ;;
             *)
-                if $_AP_KEYWORD_IS_SET
-                then
+                $_AP_KEYWORD_IS_SET && {
                     echo "SyntaxError: positional argument follows keyword argument"
                     return 2
-                elif $_AP_POSITION_ARG_IS_SET
-                then
-                    echo "ValueError: invalid option string '$_AP_POSITION_ARG': must start with a character '$AP_PARSER_PREFIX_CHARS'"
-                    return 2
-                else
-                    _AP_POSITION_ARG_IS_SET=true
-                    _AP_POSITION_ARG=$_AP_ARG
-                fi
+                } || {
+                    $_AP_POSITION_ARG_IS_SET && {
+                        echo "ValueError: invalid option string '$_AP_POSITION_ARG': must start with a character '$AP_PARSER_PREFIX_CHARS'"
+                        return 2
+                    }
+                } || _AP_OPTION_IS_SET=true _AP_POSITION_ARG=$_AP_ARG
             ;;
         esac
     done
