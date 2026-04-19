@@ -40,7 +40,7 @@ _to_lower ()
         _AP_CHAR=${_AP_BUFFER%"${_AP_BUFFER#?}"}
         _AP_BUFFER=${_AP_BUFFER#?}
         case $_AP_CHAR in
-            [$AP_UPPERS])
+            ["$AP_UPPERS"])
                 _AP_NUM=${AP_UPPERS%%"$_AP_CHAR"*}
                 _AP_NUM=$((${#_AP_NUM} + 1))
                 _AP_COUNT=
@@ -75,7 +75,7 @@ _to_upper ()
         _AP_CHAR=${_AP_BUFFER%"${_AP_BUFFER#?}"}
         _AP_BUFFER=${_AP_BUFFER#?}
         case $_AP_CHAR in
-            [$AP_LOWERS])
+            ["$AP_LOWERS"])
                 _AP_NUM=${AP_LOWERS%%"$_AP_CHAR"*}
                 _AP_NUM=$((${#_AP_NUM} + 1))
                 _AP_COUNT=
@@ -298,7 +298,7 @@ _parse_arg_sequence ()
             ;;
             *[!=]*=*)
                 case "$_AP_ARG" in
-                    [_$AP_ALPHA]*)
+                    [_"$AP_ALPHA"]*)
                         _validate_terminated "${_AP_ARG#*=}" || return
                         case "${_AP_ARG#*=}" in
                             "")
@@ -480,7 +480,7 @@ _set_parser_kwargs ()
                             1 | True)
                                 _set_bool_var true
                             ;;
-                            *[!$AP_DIGITS]*)
+                            *[!"$AP_DIGITS"]*)
                                 echo "NameError: name '$_AP_KEYWORD_VALUE' is not defined."
                                 return 2
                             ;;
@@ -672,7 +672,7 @@ _set_action_kwargs ()
                     case "$AP_ACTION_NARGS" in
                         "" | [?*+])
                         ;;
-                        *[!$AP_DIGITS]*)
+                        *[!"$AP_DIGITS"]*)
                             echo "NameError: name '$AP_ACTION_NARGS' is not defined"
                             return 2
                         ;;
@@ -767,7 +767,7 @@ _set_action_kwargs ()
 _set_action_positional_args ()
 {
     case "$_AP_ARG" in
-        [$AP_PARSER_PREFIX_CHARS][$AP_PARSER_PREFIX_CHARS]?*)
+        ["$AP_PARSER_PREFIX_CHARS"]["$AP_PARSER_PREFIX_CHARS"]?*)
             case "$AP_ACTION_LONG_OPTION" in
                 "")
                     AP_ACTION_LONG_OPTION=${_AP_ARG#"${_AP_ARG%%[!"$AP_PARSER_PREFIX_CHARS"]*}"}
@@ -777,7 +777,7 @@ _set_action_positional_args ()
             esac
             AP_ACTION_OPTION_STRINGS="$AP_ACTION_OPTION_STRINGS $_AP_ARG "
         ;;
-        [$AP_PARSER_PREFIX_CHARS]?*)
+        ["$AP_PARSER_PREFIX_CHARS"]?*)
             case "$AP_ACTION_SHORT_OPTION" in
                 "")
                     AP_ACTION_SHORT_OPTION=${_AP_ARG#?}
@@ -826,11 +826,11 @@ add_argument ()
             echo "TypeError: missing 1 required positional argument: 'dest'"
             return 2
         ;;
-        [$AP_DIGITS]*)
+        ["$AP_DIGITS"]*)
             echo "SyntaxError: invalid decimal literal"
             return 2
         ;;
-        *[!_$AP_ALNUM]*)
+        *[!_"$AP_ALNUM"]*)
             echo "AttributeError: 'Namespace' object has no attribute '$AP_ACTION_DEST'"
             return 2
         ;;
@@ -968,7 +968,7 @@ add_argument ()
 _apply_const ()
 {
     case "$AP_ACTION_CONST" in
-        *[!\.$AP_DIGITS]*)
+        *[!\."$AP_DIGITS"]*)
             case "$AP_ACTION_TYPE" in
                 "" | str)
                     _str_replace "$AP_ACTION_CONST" "'" "'\''"
@@ -979,7 +979,7 @@ _apply_const ()
                 ;;
             esac
         ;;
-        *[!$AP_DIGITS]*)
+        *[!"$AP_DIGITS"]*)
             case "$AP_ACTION_TYPE" in
                 float)
                     eval $AP_ACTION_DEST="'$_AP_ARG'"
@@ -1090,7 +1090,7 @@ _set_dest_value ()
         ;;
         int)
             case "$_AP_ARG" in
-                *[!$AP_DIGITS]*)
+                *[!"$AP_DIGITS"]*)
                     false
                 ;;
                 *)
@@ -1100,7 +1100,7 @@ _set_dest_value ()
         ;;
         float)
             case "$_AP_ARG" in
-                *[!\.$AP_DIGITS]*)
+                *[!\."$AP_DIGITS"]*)
                     false
                 ;;
                 *)
@@ -1302,7 +1302,7 @@ parse_args ()
                 shift
                 continue
             ;;
-            [$AP_PARSER_PREFIX_CHARS]*)
+            ["$AP_PARSER_PREFIX_CHARS"]*)
                 _prev_has_value &&
                 _parse_option || return
                 _AP_ARG_IS_OPTION=true
@@ -1350,7 +1350,7 @@ print_action_state ()
                 _say_action_state
             done
         ;;
-        *[!$AP_DIGITS]*)
+        *[!"$AP_DIGITS"]*)
             for _AP_INDEX in $_AP_INDEXES
             do
                 eval AP_ACTION_DEST=\$AP_ACTION_DEST_$_AP_INDEX
