@@ -24,7 +24,7 @@ AP_LOWERS='abcdefghijklmnopqrstuvwxyz'
 AP_DIGITS='0123456789'
 AP_ALNUM=$AP_LOWERS$AP_UPPERS$AP_DIGITS
 AP_ALPHA=$AP_LOWERS$AP_UPPERS
-POSIX_IFS=$IFS
+AP_POSIX_IFS=$IFS
 
 _to_lower ()
 {
@@ -717,7 +717,7 @@ _set_action_kwargs ()
                         _AP_KEYWORD_VALUE=${_AP_KEYWORD_VALUE%]}
                         IFS=','
                         eval set -- $_AP_STRING
-                        IFS=$POSIX_IFS
+                        IFS=$AP_POSIX_IFS
                         AP_ACTION_CHOICES=
                         for _AP_STRING
                         do
