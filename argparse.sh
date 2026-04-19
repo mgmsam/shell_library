@@ -562,7 +562,6 @@ ArgumentParser ()
     AP_PARSER_EXIT_ON_ERROR=true
 
     AP_PARSER_POSIX_PREFIX_CHARS=true
-    _AP_VALUE_IS_STRING=false
     AP_PARSER_CASE_STYLE='lower'
     AP_PARSER_DEFAULT_DEST_PREFIX=
     AP_PARSER_FUNC_PREFIX=
@@ -571,6 +570,8 @@ ArgumentParser ()
     AP_ACTIONS_INDEXES=
     AP_ACTIONS_REQUIRED_INDEXES=
     AP_ACTIONS_DEFAULT_INDEXES=
+
+    _AP_VALUE_IS_STRING=false
 
     _parse_arg_sequence "$@" &&
     _set_positional_kwargs parser "$@" || return
@@ -813,6 +814,8 @@ add_argument ()
     _AP_SEEN_KEYWORDS=
     _AP_KEYWORD=
     _AP_KEYWORD_VALUE=
+
+    _AP_VALUE_IS_STRING=false
 
     _parse_arg_sequence "$@" &&
     _set_positional_kwargs action "$@" || return
@@ -1269,7 +1272,7 @@ _check_required_args ()
                         _AP_MISSING_INDEXES="${_AP_MISSING_INDEXES:+$_AP_MISSING_INDEXES, }$_AP_STRING"
                     ;;
                 esac
-                
+
             ;;
         esac
     done
