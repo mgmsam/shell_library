@@ -19,80 +19,80 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-ARG_UPPERS='ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-ARG_LOWERS='abcdefghijklmnopqrstuvwxyz'
-ARG_DIGIT='0123456789'
-ARG_ALNUM=$ARG_LOWERS$ARG_UPPERS$ARG_DIGIT
-ARG_ALPHA=$ARG_LOWERS$ARG_UPPERS
-ARG_SPACE=" "
+AP_UPPERS='ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+AP_LOWERS='abcdefghijklmnopqrstuvwxyz'
+AP_DIGITS='0123456789'
+AP_ALNUM=$AP_LOWERS$AP_UPPERS$AP_DIGITS
+AP_ALPHA=$AP_LOWERS$AP_UPPERS
+AP_SPACE=" "
 
 _to_lower ()
 {
-    ARG_TEMP=$1
-    ARG_STRING=
+    _AP_BUFFER=$1
+    _AP_STRING=
     while
-        case $((${#ARG_TEMP} > 0)) in
+        case $((${#_AP_BUFFER} > 0)) in
             0)
                 false
             ;;
         esac
     do
-        ARG_CHAR=${ARG_TEMP%${ARG_TEMP#?}}
-        ARG_TEMP=${ARG_TEMP#?}
-        case $ARG_CHAR in
-            [$ARG_UPPERS])
-                ARG_NUM=${ARG_UPPERS%%$ARG_CHAR*}
-                ARG_NUM=$((${#ARG_NUM} + 1))
-                ARG_COUNT=
+        _AP_CHAR=${_AP_BUFFER%${_AP_BUFFER#?}}
+        _AP_BUFFER=${_AP_BUFFER#?}
+        case $_AP_CHAR in
+            [$AP_UPPERS])
+                _AP_NUM=${AP_UPPERS%%$_AP_CHAR*}
+                _AP_NUM=$((${#_AP_NUM} + 1))
+                _AP_COUNT=
                 while
-                    case $((${#ARG_COUNT} < $ARG_NUM)) in
+                    case $((${#_AP_COUNT} < $_AP_NUM)) in
                         0)
                             false
                         ;;
                     esac
                 do
-                    ARG_COUNT=$ARG_COUNT?
+                    _AP_COUNT=$_AP_COUNT?
                 done
-                ARG_CHAR=${ARG_LOWERS%${ARG_LOWERS#$ARG_COUNT}}
-                ARG_CHAR=${ARG_CHAR#${ARG_CHAR%?}}
+                _AP_CHAR=${AP_LOWERS%${AP_LOWERS#$_AP_COUNT}}
+                _AP_CHAR=${_AP_CHAR#${_AP_CHAR%?}}
             ;;
         esac
-        ARG_STRING=${ARG_STRING:-}$ARG_CHAR
+        _AP_STRING=${_AP_STRING:-}$_AP_CHAR
     done
 }
 
 _to_upper ()
 {
-    ARG_TEMP=$1
-    ARG_STRING=
+    _AP_BUFFER=$1
+    _AP_STRING=
     while
-        case $((${#ARG_TEMP} > 0)) in
+        case $((${#_AP_BUFFER} > 0)) in
             0)
                 false
             ;;
         esac
     do
-        ARG_CHAR=${ARG_TEMP%${ARG_TEMP#?}}
-        ARG_TEMP=${ARG_TEMP#?}
-        case $ARG_CHAR in
-            [$ARG_LOWERS])
-                ARG_NUM=${ARG_LOWERS%%$ARG_CHAR*}
-                ARG_NUM=$((${#ARG_NUM} + 1))
-                ARG_COUNT=
+        _AP_CHAR=${_AP_BUFFER%${_AP_BUFFER#?}}
+        _AP_BUFFER=${_AP_BUFFER#?}
+        case $_AP_CHAR in
+            [$AP_LOWERS])
+                _AP_NUM=${AP_LOWERS%%$_AP_CHAR*}
+                _AP_NUM=$((${#_AP_NUM} + 1))
+                _AP_COUNT=
                 while
-                    case $((${#ARG_COUNT} < $ARG_NUM)) in
+                    case $((${#_AP_COUNT} < $_AP_NUM)) in
                         0)
                             false
                         ;;
                     esac
                 do
-                    ARG_COUNT=$ARG_COUNT?
+                    _AP_COUNT=$_AP_COUNT?
                 done
-                ARG_CHAR=${ARG_UPPERS%${ARG_UPPERS#$ARG_COUNT}}
-                ARG_CHAR=${ARG_CHAR#${ARG_CHAR%?}}
+                _AP_CHAR=${AP_UPPERS%${AP_UPPERS#$_AP_COUNT}}
+                _AP_CHAR=${_AP_CHAR#${_AP_CHAR%?}}
             ;;
         esac
-        ARG_STRING=${ARG_STRING:-}$ARG_CHAR
+        _AP_STRING=${_AP_STRING:-}$_AP_CHAR
     done
 }
 
@@ -103,7 +103,7 @@ _str_replace ()
     # $1 - pattern
     # $2 - replace
 ########################################################################
-    ARG_LOOP_REPLACE=false
+    _AP_REPEAT=false
     while true
     do
         case "$1" in
@@ -112,7 +112,7 @@ _str_replace ()
                 break
             ;;
             -l)
-                ARG_LOOP_REPLACE=true
+                _AP_REPEAT=true
                 shift
             ;;
             *)
@@ -120,9 +120,9 @@ _str_replace ()
             ;;
         esac
     done
-    ARG_STRING="$1"
+    _AP_STRING="$1"
     while
-        case "$ARG_STRING" in
+        case "$_AP_STRING" in
             *$2*)
             ;;
             *)
@@ -130,25 +130,25 @@ _str_replace ()
             ;;
         esac
     do
-        ARG_TEMP=
+        _AP_BUFFER=
         while
-            case "${ARG_STRING:+${2:-}}" in
+            case "${_AP_STRING:+${2:-}}" in
                 "")
                     false
                 ;;
             esac
         do
-            ARG_LEFT=${ARG_STRING%%$2*}
-            case "$ARG_LEFT" in
-                "$ARG_STRING")
+            _AP_LEFT=${_AP_STRING%%$2*}
+            case "$_AP_LEFT" in
+                "$_AP_STRING")
                     break
                 ;;
             esac
-            ARG_TEMP=$ARG_TEMP$ARG_LEFT${3:-}
-            ARG_STRING=${ARG_STRING#*$2}
+            _AP_BUFFER=$_AP_BUFFER$_AP_LEFT${3:-}
+            _AP_STRING=${_AP_STRING#*$2}
         done
-        ARG_STRING=$ARG_TEMP$ARG_STRING
-        $ARG_LOOP_REPLACE || break
+        _AP_STRING=$_AP_BUFFER$_AP_STRING _AP_BUFFER=
+        $_AP_REPEAT || break
     done
 }
 
@@ -157,100 +157,96 @@ _unique_chars ()
 ########################################################################
     # remove dublicate characters in the string
 ########################################################################
-    ARG_STRING=
-    ARG_SEEN=
+    _AP_STRING="$1"
+    _AP_BUFFER=
     while
-        case "${ARG_VALUE:-}" in
+        case "${_AP_STRING:-}" in
             "")
                 false
             ;;
         esac
     do
-        ARG_CHAR=${ARG_VALUE%${ARG_VALUE#?}}
-        ARG_VALUE=${ARG_VALUE#?}
-        case "$ARG_SEEN" in
-            *"$ARG_CHAR"*)
+        _AP_CHAR=${_AP_STRING%${_AP_STRING#?}}
+        _AP_STRING=${_AP_STRING#?}
+        case "$_AP_BUFFER" in
+            *"$_AP_CHAR"*)
             ;;
             *)
-                ARG_SEEN=$ARG_SEEN$ARG_CHAR
-                ARG_STRING=$ARG_STRING$ARG_CHAR
+                _AP_BUFFER=$_AP_BUFFER$_AP_CHAR
             ;;
         esac
     done
-    ARG_VALUE=$ARG_STRING
+    _AP_STRING=$_AP_BUFFER
 }
 
 _set_parens ()
 {
     case "$1" in
         [\(\)])
-            ARG_OPEN_PAREN='('
-            ARG_CLOSE_PAREN=')'
+            _AP_L_PAREN='('
+            _AP_R_PAREN=')'
         ;;
         [\]\[])
-            ARG_OPEN_PAREN='['
-            ARG_CLOSE_PAREN=']'
+            _AP_L_PAREN='['
+            _AP_R_PAREN=']'
         ;;
         [\{\}])
-            ARG_OPEN_PAREN='{'
-            ARG_CLOSE_PAREN='}'
+            _AP_L_PAREN='{'
+            _AP_R_PAREN='}'
         ;;
         [\<\>])
-            ARG_OPEN_PAREN='<'
-            ARG_CLOSE_PAREN='>'
+            _AP_L_PAREN='<'
+            _AP_R_PAREN='>'
         ;;
     esac
 }
 
 _validate_terminated ()
 {
-    ARG_STRING=$1
+    _AP_STRING=$1
     while
-        case "$ARG_STRING" in
+        case "$_AP_STRING" in
             *[\'\"]*) true  ;;
                    *) false ;;
         esac
     do
-        ARG_STRING_LEFT=${ARG_STRING%%[\'\"]*}
-        ARG_QUOTE=${ARG_STRING#$ARG_STRING_LEFT}
-        ARG_QUOTE=${ARG_QUOTE%${ARG_QUOTE#?}}
-        ARG_TEMP=${ARG_STRING#*$ARG_QUOTE}
-        case "$ARG_TEMP" in
-            *$ARG_QUOTE*)
-                ARG_STRING=$ARG_STRING_LEFT${ARG_TEMP#*$ARG_QUOTE}
+        _AP_LEFT=${_AP_STRING%%[\'\"]*}
+        _AP_QUOTE=${_AP_STRING#$_AP_LEFT}
+        _AP_QUOTE=${_AP_QUOTE%${_AP_QUOTE#?}}
+        _AP_BUFFER=${_AP_STRING#*$_AP_QUOTE}
+        case "$_AP_BUFFER" in
+            *$_AP_QUOTE*)
+                _AP_STRING=$_AP_LEFT${_AP_BUFFER#*$_AP_QUOTE}
             ;;
             *)
                 echo "SyntaxError: unterminated string literal (detected at line 1)"
                 return 2
         esac
     done
+
     while
-        case "$ARG_STRING" in
-            *[][\(\){}\<\>]*)
-                true
-            ;;
-            *)
-                false
-            ;;
+        case "$_AP_STRING" in
+            *[][\(\){}\<\>]*) true  ;;
+                           *) false ;;
         esac
     do
-        ARG_STRING_LEFT=${ARG_STRING%%[][(){\}\<\>]*}
-        ARG_PAREN=${ARG_STRING#$ARG_STRING_LEFT}
-        ARG_PAREN=${ARG_PAREN%${ARG_PAREN#?}}
-        _set_parens "$ARG_PAREN"
-        case "$ARG_PAREN" in
+        _AP_LEFT=${_AP_STRING%%[][(){\}\<\>]*}
+        _AP_PAREN=${_AP_STRING#$_AP_LEFT}
+        _AP_PAREN=${_AP_PAREN%${_AP_PAREN#?}}
+        _set_parens "$_AP_PAREN"
+        case "$_AP_PAREN" in
             *[]\)}\>]*)
-                echo "SyntaxError: closing parenthesis '$ARG_CLOSE_PAREN' does not match opening parenthesis '$ARG_OPEN_PAREN'"
+                echo "SyntaxError: closing parenthesis '$_AP_R_PAREN' does not match opening parenthesis '$_AP_L_PAREN'"
                 return 2
             ;;
             *)
-                ARG_TEMP=${ARG_STRING#*$ARG_PARENT}
-                case "$ARG_TEMP" in
-                    *$ARG_CLOSE_PAREN*)
-                        ARG_STRING=${ARG_TEMP#*$ARG_CLOSE_PAREN}
+                _AP_BUFFER=${_AP_STRING#*$_AP_PARENT}
+                case "$_AP_BUFFER" in
+                    *$_AP_R_PAREN*)
+                        _AP_STRING=${_AP_BUFFER#*$_AP_R_PAREN}
                     ;;
                     *)
-                        echo "SyntaxError: opening parenthesis '$ARG_OPEN_PAREN' does not match closing parenthesis '$ARG_CLOSE_PAREN'"
+                        echo "SyntaxError: opening parenthesis '$_AP_L_PAREN' does not match closing parenthesis '$_AP_R_PAREN'"
                         return 2
                 esac
             ;;
@@ -260,78 +256,77 @@ _validate_terminated ()
 
 _trim_quotes ()
 {
-    case "$1" in
+    _AP_STRING=$1
+    case "$_AP_STRING" in
         [\"\']*)
-            ARG_STRING=${1#?}
-            ARG_STRING=${ARG_STRING%?}
-        ;;
-        *)
-            ARG_STRING=$1
-            false
+            _AP_STRING=${_AP_STRING#?}
+            _AP_STRING=${_AP_STRING%?}
+            return
         ;;
     esac
+    false
 }
 
 _parse_arg_sequence ()
 {
-    ARG_OPTION_IS_SET=false
-    ARG_KEYWORD_IS_SET=false
-    ARG_POSITION_ARG_IS_SET=false
-    ARG_POSITION_ARG=
+    _AP_OPTION_IS_SET=false
+    _AP_KEYWORD_IS_SET=false
+    _AP_POSITION_ARG_IS_SET=false
+    _AP_POSITION_ARG=
 
-    for ARG
+    for _AP_ARG
     do
-        _validate_terminated "$ARG" || return
-        _trim_quotes "$ARG" || :
-        ARG=$ARG_STRING
-        case "$ARG" in
+        _validate_terminated "$_AP_ARG" || return
+        _trim_quotes "$_AP_ARG" || :
+        _AP_ARG=$_AP_STRING
+        case "$_AP_ARG" in
             "")
-                echo "ValueError: invalid option string '$ARG': must start with a character '$ARG_PREFIX_CHARS'"
+                echo "ValueError: invalid option string '$_AP_ARG': must start with a character '$AP_PARSER_PREFIX_CHARS'"
                 return 2
             ;;
-            [$ARG_PREFIX_CHARS]*)
-                if $ARG_KEYWORD_IS_SET
+            [$AP_PARSER_PREFIX_CHARS]*)
+                if $_AP_KEYWORD_IS_SET
                 then
                     echo "SyntaxError: positional argument follows keyword argument"
                     return 2
-                elif $ARG_POSITION_ARG_IS_SET
+                elif $_AP_POSITION_ARG_IS_SET
                 then
-                    echo "ValueError: invalid option string '$ARG_POSITION_ARG': must start with a character '$ARG_PREFIX_CHARS'"
+                    echo "ValueError: invalid option string '$_AP_POSITION_ARG': must start with a character '$AP_PARSER_PREFIX_CHARS'"
                     return 2
                 else
-                    ARG_OPTION_IS_SET=true
+                    _AP_OPTION_IS_SET=true
                 fi
             ;;
             *[!=]*=*)
-                case "$ARG" in
-                    [_$ARG_ALPHA]*)
-                        _validate_terminated "${ARG#*=}"
-                        case "${ARG#*=}" in
+                case "$_AP_ARG" in
+                    [_$AP_ALPHA]*)
+                        _validate_terminated "${_AP_ARG#*=}"
+                        case "${_AP_ARG#*=}" in
                             "")
                                 echo "SyntaxError: expected argument value expression"
                                 return 2
                             ;;
                         esac
-                        ARG_KEYWORD_IS_SET=true
+                        _AP_KEYWORD_IS_SET=true
                     ;;
                     *)
-                        echo "SyntaxError: invalid keyword argument name '${ARG%%=*}'"
+                        echo "SyntaxError: invalid keyword argument name '${_AP_ARG%%=*}'"
                         return 2
                     ;;
                 esac
             ;;
             *)
-                if $ARG_KEYWORD_IS_SET
+                if $_AP_KEYWORD_IS_SET
                 then
                     echo "SyntaxError: positional argument follows keyword argument"
                     return 2
-                elif $ARG_POSITION_ARG_IS_SET
+                elif $_AP_POSITION_ARG_IS_SET
                 then
-                    echo "ValueError: invalid option string '$ARG_POSITION_ARG': must start with a character '$ARG_PREFIX_CHARS'"
+                    echo "ValueError: invalid option string '$_AP_POSITION_ARG': must start with a character '$AP_PARSER_PREFIX_CHARS'"
                     return 2
                 else
-                    ARG_POSITION_ARG_IS_SET=true
-                    ARG_POSITION_ARG=$ARG
+                    _AP_POSITION_ARG_IS_SET=true
+                    _AP_POSITION_ARG=$_AP_ARG
                 fi
             ;;
         esac
@@ -340,58 +335,58 @@ _parse_arg_sequence ()
 
 _check_unique_kwargs ()
 {
-    case "$ARG_SEEN_KEYWORDS" in
-        *"$ARG_KEYWORD"*)
-            echo "SyntaxError: keyword argument repeated: $ARG_KEYWORD"
+    case "$_AP_SEEN_KEYWORDS" in
+        *"$_AP_KEYWORD"*)
+            echo "SyntaxError: keyword argument repeated: $_AP_KEYWORD"
             return 2
         ;;
     esac
-    ARG_SEEN_KEYWORDS="$ARG_SEEN_KEYWORDS $ARG_KEYWORD"
+    _AP_SEEN_KEYWORDS="$_AP_SEEN_KEYWORDS $_AP_KEYWORD"
 }
 
 _is_none_value ()
 {
-    case "$ARG_VALUE" in
+    case "$_AP_KEYWORD_VALUE" in
         None)
-            $ARG_VALUE_IS_STRING
+            $_AP_VALUE_IS_STRING
         ;;
     esac
 }
 
 _set_bool_var ()
 {
-    case "$ARG_KEYWORD" in
+    case "$_AP_KEYWORD" in
         add_help)
-            ARG_ADD_HELP=$1
+            AP_PARSER_ADD_HELP=$1
         ;;
         allow_abbrev)
-            ARG_ALLOW_ABBREV=$1
+            AP_PARSER_ALLOW_ABBREV=$1
         ;;
         exit_on_error)
-            ARG_EXIT_ON_ERROR=$1
+            AP_PARSER_EXIT_ON_ERROR=$1
         ;;
     esac
 }
 
 _set_positional_kwargs ()
 {
-    ARG_PARSER=$1
+    _AP_AP_PARSER_FUNC=$1
     shift
-    for ARG
+    for _AP_ARG
     do
-        case "$ARG" in
+        case "$_AP_ARG" in
             *=*)
-                ARG_KEYWORD=${ARG%%=*}
-                ARG_VALUE=${ARG#*=}
-                _set_${ARG_PARSER}_kwargs || return
+                _AP_KEYWORD=${_AP_ARG%%=*}
+                _AP_KEYWORD_VALUE=${_AP_ARG#*=}
+                _set_${_AP_AP_PARSER_FUNC}_kwargs || return
             ;;
             *)
-                _trim_quotes "$ARG" && {
-                    ARG_VALUE=$ARG_STRING
-                    ARG_VALUE_IS_STRING=true
+                _trim_quotes "$_AP_ARG" && {
+                    _AP_KEYWORD_VALUE=$_AP_STRING
+                    _AP_VALUE_IS_STRING=true
                 } || :
-                _is_none_value || ARG_VALUE=
-                _set_${ARG_PARSER}_positional_args || return
+                _is_none_value || _AP_KEYWORD_VALUE=
+                _set_${_AP_AP_PARSER_FUNC}_positional_args || return
             ;;
         esac
     done
@@ -399,54 +394,55 @@ _set_positional_kwargs ()
 
 _set_parser_kwargs ()
 {
-    case "$ARG_KEYWORD" in
+    case "$_AP_KEYWORD" in
         prog | usage | description | epilog | parents | \
         formatter_class | prefix_chars | fromfile_prefix_chars | \
         argument_default | conflict_handler | \
         add_help | allow_abbrev | exit_on_error | case_style | dest_prefix | func_prefix)
             _check_unique_kwargs || return
-            _trim_quotes "$ARG_VALUE" && {
-                ARG_VALUE=$ARG_STRING
-                ARG_VALUE_IS_STRING=true
+            _trim_quotes "$_AP_KEYWORD_VALUE" && {
+                _AP_KEYWORD_VALUE=$_AP_STRING
+                _AP_VALUE_IS_STRING=true
             } || :
-            case "$ARG_VALUE" in
+            case "$_AP_KEYWORD_VALUE" in
                 *\`*)
                     echo "SyntaxError: invalid syntax"
                     return 2
                 ;;
             esac
-            case "$ARG_KEYWORD" in
+            case "$_AP_KEYWORD" in
                 prog)
                     _is_none_value &&
-                    ARG_PROG=$ARG_VALUE || ARG_PROG=
+                    AP_PARSER_PROG=$_AP_KEYWORD_VALUE || AP_PARSER_PROG=
                 ;;
                 usage)
                     _is_none_value &&
-                    ARG_USAGE=$ARG_VALUE || ARG_USAGE=
+                    AP_PARSER_USAGE=$_AP_KEYWORD_VALUE || AP_PARSER_USAGE=
                 ;;
                 description)
                     _is_none_value &&
-                    ARG_DESCRIPTION=$ARG_VALUE || ARG_DESCRIPTION=
+                    AP_PARSER_DESCRIPTION=$_AP_KEYWORD_VALUE || AP_PARSER_DESCRIPTION=
                 ;;
                 epilog)
                     _is_none_value &&
-                    ARG_EPILOG=$ARG_VALUE || ARG_EPILOG=
+                    AP_PARSER_EPILOG=$_AP_KEYWORD_VALUE || AP_PARSER_EPILOG=
                 ;;
                 parents | formatter_class)
                     # TODO: implement
                 ;;
                 prefix_chars)
-                    _unique_chars
-                    case "$ARG_VALUE" in
-                        "$ARG_PREFIX_CHARS")
+                    _unique_chars "$_AP_KEYWORD_VALUE"
+                    _AP_KEYWORD_VALUE=$_AP_STRING
+                    case "$_AP_KEYWORD_VALUE" in
+                        "$AP_PARSER_PREFIX_CHARS")
                         ;;
                         "")
                             echo "ValueError: prefix_chars must be a non-empty string"
                             return 2
                         ;;
                         *)
-                            ARG_PREFIX_CHARS=$ARG_VALUE
-                            ARG_POSIX_PREFIX_CHARS=false
+                            AP_PARSER_PREFIX_CHARS=$_AP_KEYWORD_VALUE
+                            AP_PARSER_POSIX_PREFIX_CHARS=false
                         ;;
                     esac
                 ;;
@@ -455,24 +451,24 @@ _set_parser_kwargs ()
                 ;;
                 argument_default)
                     _is_none_value &&
-                    ARG_ARGUMENT_DEFAULT=$ARG_VALUE || ARG_ARGUMENT_DEFAULT=
+                    AP_PARSER_ARGUMENT_DEFAULT=$_AP_KEYWORD_VALUE || AP_PARSER_ARGUMENT_DEFAULT=
                 ;;
                 conflict_handler)
-                    case "$ARG_VALUE" in
+                    case "$_AP_KEYWORD_VALUE" in
                         error | [Ff]alse | 0)
                         ;;
                         resolve | [Tt]rue | 1)
-                            ARG_CONFLICT_HANDLER=true
+                            AP_PARSER_CONFLICT_HANDLER=true
                         ;;
                         *)
-                            echo "ValueError: invalid conflict_resolution value: '$ARG_VALUE'"
+                            echo "ValueError: invalid conflict_resolution value: '$_AP_KEYWORD_VALUE'"
                             return 2
                         ;;
                     esac
                 ;;
                 add_help | allow_abbrev | exit_on_error)
-                    $ARG_VALUE_IS_STRING && {
-                        case "$ARG_VALUE" in
+                    $_AP_VALUE_IS_STRING && {
+                        case "$_AP_KEYWORD_VALUE" in
                             ?*)
                                 _set_bool_var true
                             ;;
@@ -481,15 +477,15 @@ _set_parser_kwargs ()
                             ;;
                         esac
                     } || {
-                        case "$ARG_VALUE" in
+                        case "$_AP_KEYWORD_VALUE" in
                             0 | False)
                                 _set_bool_var false
                             ;;
                             1 | True)
                                 _set_bool_var true
                             ;;
-                            *[!$ARG_DIGIT]*)
-                                echo "NameError: name '$ARG_VALUE' is not defined."
+                            *[!$AP_DIGITS]*)
+                                echo "NameError: name '$_AP_KEYWORD_VALUE' is not defined."
                                 return 2
                             ;;
                             0*[!0]*)
@@ -503,28 +499,28 @@ _set_parser_kwargs ()
                     }
                 ;;
                 case_style)
-                    case "$ARG_VALUE" in
+                    case "$_AP_KEYWORD_VALUE" in
                         upper | lower)
-                            ARG_CASE_STYLE=$ARG_VALUE
+                            AP_PARSER_CASE_STYLE=$_AP_KEYWORD_VALUE
                         ;;
                         *)
-                            echo "NameError: name '$ARG_VALUE' is not defined."
+                            echo "NameError: name '$_AP_KEYWORD_VALUE' is not defined."
                             return 2
                         ;;
                     esac
                 ;;
                 dest_prefix)
                     _is_none_value &&
-                    ARG_DEFAULT_DEST_PREFIX=$ARG_VALUE || ARG_DEFAULT_DEST_PREFIX=
+                    AP_PARSER_DEFAULT_DEST_PREFIX=$_AP_KEYWORD_VALUE || AP_PARSER_DEFAULT_DEST_PREFIX=
                 ;;
                 func_prefix)
                     _is_none_value &&
-                    ARG_FUNC_PREFIX=$ARG_VALUE || ARG_FUNC_PREFIX=
+                    AP_PARSER_FUNC_PREFIX=$_AP_KEYWORD_VALUE || AP_PARSER_FUNC_PREFIX=
                 ;;
             esac
         ;;
         *)
-            echo "TypeError: ArgumentParser got an unexpected keyword argument '$ARG_KEYWORD'"
+            echo "TypeError: ArgumentParser got an unexpected keyword argument '$_AP_KEYWORD'"
             return 2
         ;;
     esac
@@ -532,22 +528,22 @@ _set_parser_kwargs ()
 
 _set_parser_positional_args ()
 {
-    if case "$ARG_PROG" in ?*) false ;; esac
+    if case "$AP_PARSER_PROG" in ?*) false ;; esac
     then
-        ARG_PROG=$ARG_VALUE
-    elif case "$ARG_USAGE" in ?*) false ;; esac
+        AP_PARSER_PROG=$_AP_KEYWORD_VALUE
+    elif case "$AP_PARSER_USAGE" in ?*) false ;; esac
     then
-        ARG_USAGE=$ARG_VALUE
-    elif case "$ARG_DESCRIPTION" in ?*) false ;; esac
+        AP_PARSER_USAGE=$_AP_KEYWORD_VALUE
+    elif case "$AP_PARSER_DESCRIPTION" in ?*) false ;; esac
     then
-        ARG_DESCRIPTION=$ARG_VALUE
-    elif case "$ARG_EPILOG" in ?*) false ;; esac
+        AP_PARSER_DESCRIPTION=$_AP_KEYWORD_VALUE
+    elif case "$AP_PARSER_EPILOG" in ?*) false ;; esac
     then
-        ARG_EPILOG=$ARG_VALUE
-    elif case "$ARG_PARENTS" in ?*) false ;; esac
+        AP_PARSER_EPILOG=$_AP_KEYWORD_VALUE
+    elif case "$AP_PARSER_PARENTS" in ?*) false ;; esac
     then
         # TODO: implement
-        ARG_PARENTS=
+        AP_PARSER_PARENTS=
     else
         echo "ValueError: length of metavar tuple does not match nargs"
         return 2
@@ -556,149 +552,147 @@ _set_parser_positional_args ()
 
 ArgumentParser ()
 {
-    ARG_PROG=${LOG_PREFIX:-}
-    ARG_USAGE=
-    ARG_DESCRIPTION=
-    ARG_EPILOG=
-    ARG_PARENTS=
-    ARG_FORMATTER_CLASS=
-    ARG_PREFIX_CHARS=-
-    ARG_FROMFILE_PREFIX_CHARS=
-    ARG_ARGUMENT_DEFAULT=
-    ARG_CONFLICT_HANDLER=false
-    ARG_ADD_HELP=true
-    ARG_ALLOW_ABBREV=true
-    ARG_EXIT_ON_ERROR=true
+    AP_PARSER_PROG=${LOG_PREFIX:-}
+    AP_PARSER_USAGE=
+    AP_PARSER_DESCRIPTION=
+    AP_PARSER_EPILOG=
+    AP_PARSER_PARENTS=
+    AP_PARSER_FORMATTER_CLASS=
+    AP_PARSER_PREFIX_CHARS=-
+    AP_PARSER_FROMFILE_PREFIX_CHARS=
+    AP_PARSER_ARGUMENT_DEFAULT=
+    AP_PARSER_CONFLICT_HANDLER=false
+    AP_PARSER_ADD_HELP=true
+    AP_PARSER_ALLOW_ABBREV=true
+    AP_PARSER_EXIT_ON_ERROR=true
 
-    ARG_POSIX_PREFIX_CHARS=true
-    ARG_VALUE_IS_STRING=false
-    ARG_CASE_STYLE='lower'
-    ARG_DEFAULT_DEST_PREFIX=
-    ARG_FUNC_PREFIX=
+    AP_PARSER_POSIX_PREFIX_CHARS=true
+    _AP_VALUE_IS_STRING=false
+    AP_PARSER_CASE_STYLE='lower'
+    AP_PARSER_DEFAULT_DEST_PREFIX=
+    AP_PARSER_FUNC_PREFIX=
 
-    ARG_OPTION_STRINGS=
-
-    ARG_INDEX=0
-    ARG_INDEXS=
-    ARG_REQUIRED_INDEXES=
-    ARG_DEFAULT_INDEXES=
+    AP_ACTION_INDEX=0
+    ACTIONS_INDEXES=
+    ACTIONS_REQUIRED_INDEXES=
+    ACTIONS_DEFAULT_INDEXES=
 
     _parse_arg_sequence "$@" &&
     _set_positional_kwargs parser "$@" || return
 
-    ARG_PARENTS=${ARG_PARENTS:-}
-    ARG_FORMATTER_CLASS=${ARG_FORMATTER_CLASS:-argparse.HelpFormatter}
-    ARG_ADD_HELP=${ARG_ADD_HELP:-}
-    ARG_ALLOW_ABBREV=${ARG_ALLOW_ABBREV:-}
-    ARG_EXIT_ON_ERROR=${ARG_EXIT_ON_ERROR:-}
+    AP_PARSER_PARENTS=${AP_PARSER_PARENTS:-}
+    AP_PARSER_FORMATTER_CLASS=${AP_PARSER_FORMATTER_CLASS:-argparse.HelpFormatter}
+    AP_PARSER_ADD_HELP=${AP_PARSER_ADD_HELP:-}
+    AP_PARSER_ALLOW_ABBREV=${AP_PARSER_ALLOW_ABBREV:-}
+    AP_PARSER_EXIT_ON_ERROR=${AP_PARSER_EXIT_ON_ERROR:-}
 
-    case "$ARG_FUNC_PREFIX" in
+    case "$AP_PARSER_FUNC_PREFIX" in
         ?*)
-            eval "${ARG_FUNC_PREFIX}_add_argument () { add_argument \"\$@\"; }"
-            eval "${ARG_FUNC_PREFIX}_parse_args () { parse_args \"\$@\"; }"
-            eval "${ARG_FUNC_PREFIX}_print_parser_state () { print_parser_state; }"
-            eval "${ARG_FUNC_PREFIX}_print_action_state () { print_action_state; }"
+            eval "${AP_PARSER_FUNC_PREFIX}_add_argument () { add_argument \"\$@\"; }"
+            eval "${AP_PARSER_FUNC_PREFIX}_parse_args () { parse_args \"\$@\"; }"
+            eval "${AP_PARSER_FUNC_PREFIX}_print_parser_state () { print_parser_state; }"
+            eval "${AP_PARSER_FUNC_PREFIX}_print_action_state () { print_action_state; }"
         ;;
     esac
 }
 
 print_parser_state ()
 {
-    echo "prog: $ARG_PROG
-usage: $ARG_USAGE
-description: $ARG_DESCRIPTION
-epilog: $ARG_EPILOG
-parents: $ARG_PARENTS
-formatter_class: $ARG_FORMATTER_CLASS
-prefix_chars: $ARG_PREFIX_CHARS
-fromfile_prefix_chars: $ARG_FROMFILE_PREFIX_CHARS
-argument_default: $ARG_ARGUMENT_DEFAULT
-conflict_handler: $ARG_CONFLICT_HANDLER
-add_help: $ARG_ADD_HELP
-allow_abbrev: $ARG_ALLOW_ABBREV
-exit_on_error: $ARG_EXIT_ON_ERROR
-case_style: $ARG_CASE_STYLE
-dest_prefix: ${ARG_DEFAULT_DEST_PREFIX:-None}"
+    echo "prog: $AP_PARSER_PROG
+usage: $AP_PARSER_USAGE
+description: $AP_PARSER_DESCRIPTION
+epilog: $AP_PARSER_EPILOG
+parents: $AP_PARSER_PARENTS
+formatter_class: $AP_PARSER_FORMATTER_CLASS
+prefix_chars: $AP_PARSER_PREFIX_CHARS
+fromfile_prefix_chars: $AP_PARSER_FROMFILE_PREFIX_CHARS
+argument_default: $AP_PARSER_ARGUMENT_DEFAULT
+conflict_handler: $AP_PARSER_CONFLICT_HANDLER
+add_help: $AP_PARSER_ADD_HELP
+allow_abbrev: $AP_PARSER_ALLOW_ABBREV
+exit_on_error: $AP_PARSER_EXIT_ON_ERROR
+case_style: $AP_PARSER_CASE_STYLE
+dest_prefix: ${AP_PARSER_DEFAULT_DEST_PREFIX:-None}"
 }
 
 _split_chars ()
 {
-    ARG_STRING=${1:-}
-    ARG_DELIMITER=${2:-,}
-    ARG_CHAR=
-    ARG_TEMP=
+    _AP_STRING=${1:-}
+    _AP_DELIMITER=${2:-,}
+    _AP_CHAR=
+    _AP_BUFFER=
     while
-        case "${#ARG_STRING}" in
+        case "${#_AP_STRING}" in
             0)
                 false
             ;;
         esac
     do
-        ARG_CHAR=${ARG_STRING%${ARG_STRING#?}}
-        ARG_STRING=${ARG_STRING#?}
-        ARG_TEMP="${ARG_TEMP:+$ARG_TEMP$ARG_DELIMITER}'$ARG_CHAR'"
+        _AP_CHAR=${_AP_STRING%${_AP_STRING#?}}
+        _AP_BUFFER="${_AP_BUFFER:+$_AP_BUFFER$_AP_DELIMITER}'$_AP_CHAR'"
+        _AP_STRING=${_AP_STRING#?}
     done
-    ARG_STRING=$ARG_TEMP
+    _AP_STRING=$_AP_BUFFER
 }
 
 _set_action_kwargs ()
 {
-    case "$ARG_KEYWORD" in
-        action | nargs   | const | default | type | choices | required | \
-        help   | metavar | dest  | dest_prefix)
+    case "$_AP_KEYWORD" in
+        action | nargs | const | default | type | choices | required | \
+        help | metavar | dest | dest_prefix)
             _check_unique_kwargs || return
-            _trim_quotes "$ARG_VALUE" && {
-                ARG_VALUE=$ARG_STRING
-                ARG_VALUE_IS_STRING=true
+            _trim_quotes "$_AP_KEYWORD_VALUE" && {
+                _AP_KEYWORD_VALUE=$_AP_STRING
+                _AP_VALUE_IS_STRING=true
             } || :
-            case "$ARG_KEYWORD" in
+            case "$_AP_KEYWORD" in
                 action)
                     _is_none_value &&
-                    ARG_ACTION=${ARG_VALUE:-store} || ARG_ACTION=store
-                    case "$ARG_ACTION" in
+                    AP_ACTION=${_AP_KEYWORD_VALUE:-store} || AP_ACTION=store
+                    case "$AP_ACTION" in
                         store | store_const | store_true | store_false | \
                         append | append_const | count | help | version | extend)
                         ;;
                         *)
-                            echo "ValueError: unknown action \"$ARG_ACTION\""
+                            echo "ValueError: unknown action \"$AP_ACTION\""
                             return 2
                         ;;
                     esac
                 ;;
                 dest)
-                    case "$ARG_POSITION" in
+                    case "$AP_ACTION_POSITION_ARG" in
                         ?*)
                             echo "ValueError: dest supplied twice for positional argument"
                             return 2
                         ;;
                     esac
                     _is_none_value &&
-                    ARG_DEST=$ARG_VALUE || ARG_DEST=
+                    AP_ACTION_DEST=$_AP_KEYWORD_VALUE || AP_ACTION_DEST=
                 ;;
                 nargs)
                     _is_none_value &&
-                    ARG_NARGS="$ARG_VALUE" || ARG_NARGS=
-                    case "$ARG_NARGS" in
+                    AP_ACTION_NARGS="$_AP_KEYWORD_VALUE" || AP_ACTION_NARGS=
+                    case "$AP_ACTION_NARGS" in
                         "" | [?*+])
                         ;;
-                        *[!$ARG_DIGIT]*)
-                            echo "NameError: name '$ARG_NARGS' is not defined"
+                        *[!$AP_DIGITS]*)
+                            echo "NameError: name '$AP_ACTION_NARGS' is not defined"
                             return 2
                         ;;
                     esac
                 ;;
                 const)
                     _is_none_value &&
-                    ARG_CONST=$ARG_VALUE || ARG_CONST=
+                    AP_ACTION_CONST=$_AP_KEYWORD_VALUE || AP_ACTION_CONST=
                 ;;
                 default)
                     _is_none_value &&
-                    ARG_DEFAULT=$ARG_VALUE || ARG_DEFAULT=
+                    AP_ACTION_DEFAULT=$_AP_KEYWORD_VALUE || AP_ACTION_DEFAULT=
                 ;;
                 type)
                     _is_none_value &&
-                    ARG_TYPE=$ARG_VALUE || ARG_TYPE=
-                    case "$ARG_TYPE" in
+                    AP_ACTION_TYPE=$_AP_KEYWORD_VALUE || AP_ACTION_TYPE=
+                    case "$AP_ACTION_TYPE" in
                         "" | int | float | str | bool)
                             # TODO: implement
                         ;;
@@ -713,62 +707,62 @@ _set_action_kwargs ()
                             # TODO: implement
                         ;;
                         *)
-                            echo "NameError: name '$ARG_TYPE' is not defined"
+                            echo "NameError: name '$AP_ACTION_TYPE' is not defined"
                             return 2
                         ;;
                     esac
                 ;;
                 choices)
-                    $ARG_VALUE_IS_STRING && {
-                        _split_chars "$ARG_CHOICES" ' '
-                        ARG_CHOICES="$ARG_STRING"
+                    $_AP_VALUE_IS_STRING && {
+                        _split_chars "$AP_ACTION_CHOICES" ' '
+                        AP_ACTION_CHOICES="$_AP_STRING"
                     } || {
-                        ARG_VALUE=${ARG_VALUE#[}
-                        ARG_VALUE=${ARG_VALUE%]}
+                        _AP_KEYWORD_VALUE=${_AP_KEYWORD_VALUE#[}
+                        _AP_KEYWORD_VALUE=${_AP_KEYWORD_VALUE%]}
                         POSIX_IFS=$IFS
                         IFS=','
-                        eval set -- $ARG_STRING
+                        eval set -- $_AP_STRING
                         IFS=$POSIX_IFS
-                        ARG_CHOICES=
-                        for ARG_STRING
+                        AP_ACTION_CHOICES=
+                        for _AP_STRING
                         do
-                            _str_replace "$ARG_STRING" "'" "'\''"
-                            ARG_CHOICES="${ARG_CHOICES:+$ARG_CHOICES }'$ARG_STRING'"
+                            _str_replace "$_AP_STRING" "'" "'\''"
+                            AP_ACTION_CHOICES="${AP_ACTION_CHOICES:+$AP_ACTION_CHOICES }'$_AP_STRING'"
                         done
                     }
                 ;;
                 required)
                     _is_none_value &&
-                    ARG_REQUIRED=$ARG_VALUE || ARG_REQUIRED=
-                    case "$ARG_REQUIRED" in
+                    AP_ACTION_REQUIRED=$_AP_KEYWORD_VALUE || AP_ACTION_REQUIRED=
+                    case "$AP_ACTION_REQUIRED" in
                         "" | 0 | False)
-                            ARG_REQUIRED=false
+                            AP_ACTION_REQUIRED=false
                         ;;
                         1 | True)
-                            ARG_REQUIRED=true
+                            AP_ACTION_REQUIRED=true
                         ;;
                         *)
-                            echo "NameError: name '$ARG_REQUIRED' is not defined"
+                            echo "NameError: name '$AP_ACTION_REQUIRED' is not defined"
                             return 2
                         ;;
                     esac
                 ;;
                 help)
                     _is_none_value &&
-                    ARG_HELP=$ARG_VALUE || ARG_HELP=
+                    AP_ACTION_HELP=$_AP_KEYWORD_VALUE || AP_ACTION_HELP=
                 ;;
                 metavar)
                     _is_none_value &&
-                    ARG_METAVAR=$ARG_VALUE || ARG_METAVAR=
+                    AP_ACTION_METAVAR=$_AP_KEYWORD_VALUE || AP_ACTION_METAVAR=
                 ;;
                 dest_prefix)
                     _is_none_value &&
-                    ARG_DEST_PREFIX=$ARG_VALUE || ARG_DEST_PREFIX=
+                    AP_ACTION_DEST_PREFIX=$_AP_KEYWORD_VALUE || AP_ACTION_DEST_PREFIX=
                 ;;
             esac
         ;;
         *)
-            echo "TypeError: ArgumentParser got an unexpected keyword argument '$ARG_KEYWORD'"
+            echo "TypeError: ArgumentParser got an unexpected keyword argument '$_AP_KEYWORD'"
             return 2
         ;;
     esac
@@ -776,105 +770,106 @@ _set_action_kwargs ()
 
 _set_action_positional_args ()
 {
-    case "$ARG" in
-        [$ARG_PREFIX_CHARS][$ARG_PREFIX_CHARS]?*)
-            case "$ARG_LONG_OPTION" in
+    case "$_AP_ARG" in
+        [$AP_PARSER_PREFIX_CHARS][$AP_PARSER_PREFIX_CHARS]?*)
+            case "$AP_ACTION_LONG_OPTION" in
                 "")
-                    ARG_LONG_OPTION=${ARG#${ARG%%[!$ARG_PREFIX_CHARS]*}}
-                    _str_replace "$ARG_LONG_OPTION" '-' '_'
-                    ARG_LONG_OPTION="$ARG_STRING"
+                    AP_ACTION_LONG_OPTION=${_AP_ARG#${_AP_ARG%%[!$AP_PARSER_PREFIX_CHARS]*}}
+                    _str_replace "$AP_ACTION_LONG_OPTION" '-' '_'
+                    AP_ACTION_LONG_OPTION="$_AP_STRING"
                 ;;
             esac
-            ARG_OPTION_STRINGS="$ARG_OPTION_STRINGS $ARG "
+            AP_ACTION_OPTION_STRINGS="$AP_ACTION_OPTION_STRINGS $_AP_ARG "
         ;;
-        [$ARG_PREFIX_CHARS]?*)
-            case "$ARG_SHORT_OPTION" in
+        [$AP_PARSER_PREFIX_CHARS]?*)
+            case "$AP_ACTION_SHORT_OPTION" in
                 "")
-                    ARG_SHORT_OPTION=${ARG#?}
+                    AP_ACTION_SHORT_OPTION=${_AP_ARG#?}
                 ;;
             esac
-            ARG_OPTION_STRINGS="$ARG_OPTION_STRINGS $ARG "
+            AP_ACTION_OPTION_STRINGS="$AP_ACTION_OPTION_STRINGS $_AP_ARG "
         ;;
         *)
-            ARG_POSITION=$ARG
+            AP_ACTION_POSITION_ARG=$_AP_ARG
         ;;
     esac
 }
 
 add_argument ()
 {
-    ARG_OPTION_STRINGS=
-    ARG_DEST=
-    ARG_NARGS=None
-    ARG_CONST=
-    ARG_DEFAULT=
-    ARG_TYPE=
-    ARG_CHOICES=
-    ARG_REQUIRED=false
-    ARG_HELP=
-    ARG_METAVAR=
+    AP_ACTION_OPTION_STRINGS=
+    AP_ACTION_DEST=
+    AP_ACTION_NARGS=None
+    AP_ACTION_CONST=
+    AP_ACTION_DEFAULT=
+    AP_ACTION_TYPE=
+    AP_ACTION_CHOICES=
+    AP_ACTION_REQUIRED=false
+    AP_ACTION_HELP=
+    AP_ACTION_METAVAR=
 
-    ARG_ACTION=store
+    AP_ACTION=store
 
-    ARG_DEST_PREFIX=$ARG_DEFAULT_DEST_PREFIX
-    ARG_LONG_OPTION=
-    ARG_SHORT_OPTION=
-    ARG_POSITION=
-    ARG_SEEN_KEYWORDS=
-    ARG_KEYWORD=
-    ARG_VALUE=
+    AP_ACTION_DEST_PREFIX=$AP_PARSER_DEFAULT_DEST_PREFIX
+    AP_ACTION_LONG_OPTION=
+    AP_ACTION_SHORT_OPTION=
+    AP_ACTION_POSITION_ARG=
+
+    _AP_SEEN_KEYWORDS=
+    _AP_KEYWORD=
+    _AP_KEYWORD_VALUE=
 
     _parse_arg_sequence "$@" &&
     _set_positional_kwargs action "$@" || return
 
-    ARG_DEST=${ARG_DEST:-${ARG_LONG_OPTION:-${ARG_SHORT_OPTION:-${ARG_POSITION:-}}}}
-    case "$ARG_DEST" in
+    AP_ACTION_DEST=${AP_ACTION_DEST:-${AP_ACTION_LONG_OPTION:-${AP_ACTION_SHORT_OPTION:-${AP_ACTION_POSITION_ARG:-}}}}
+    case "$AP_ACTION_DEST" in
         "")
             echo "TypeError: missing 1 required positional argument: 'dest'"
             return 2
         ;;
-        [$ARG_DIGIT]*)
+        [$AP_DIGITS]*)
             echo "SyntaxError: invalid decimal literal"
             return 2
         ;;
-        *[!_$ARG_ALNUM]*)
-            echo "AttributeError: 'Namespace' object has no attribute '$ARG_DEST'"
+        *[!_$AP_ALNUM]*)
+            echo "AttributeError: 'Namespace' object has no attribute '$AP_ACTION_DEST'"
             return 2
         ;;
         *)
-            _str_replace "$ARG_DEST" '-' '_'
-            _to_$ARG_CASE_STYLE "$ARG_STRING"
-            ARG_DEST=${ARG_DEST_PREFIX:+${ARG_DEST_PREFIX}_}$ARG_STRING
+            _str_replace "$AP_ACTION_DEST" '-' '_'
+            _to_$AP_PARSER_CASE_STYLE "$_AP_STRING"
+            AP_ACTION_DEST=${AP_ACTION_DEST_PREFIX:+${AP_ACTION_DEST_PREFIX}_}$_AP_STRING
         ;;
     esac
 
-    case "$ARG_OPTION_STRINGS" in
+    case "$AP_ACTION_OPTION_STRINGS" in
         "")
-            "$ARG_REQUIRED" || {
+            "$AP_ACTION_REQUIRED" || {
                 echo "TypeError: 'required' is an invalid argument for positionals"
                 return 2
             }
         ;;
     esac
 
-    case "$ARG_ACTION" in
+    case "$AP_ACTION" in
         store | append | extend)
-            case "$ARG_CONST" in
+            case "$AP_ACTION_CONST" in
                 "")
-                    case "$ARG_NARGS" in
+                    case "$AP_ACTION_NARGS" in
                         None | "")
-                            ARG_NARGS=None
-                            ARG_NARGS_COUNT=1
+                            AP_ACTION_NARGS=None
+                            AP_ACTION_NARGS_COUNT=1
                         ;;
                         *)
-                            ARG_NARGS_COUNT="$ARG_NARGS"
+                            AP_ACTION_NARGS_COUNT="$AP_ACTION_NARGS"
                         ;;
                     esac
                 ;;
                 *)
-                    case "$ARG_NARGS" in
+                    case "$AP_ACTION_NARGS" in
                         '?')
-                            ARG_NARGS_COUNT=1
+                            AP_ACTION_NARGS_COUNT=1
                         ;;
                         *)
                             echo "ValueError: nargs must be '?' to supply const"
@@ -885,62 +880,62 @@ add_argument ()
             esac
         ;;
         *)
-            case "$ARG_NARGS" in
+            case "$AP_ACTION_NARGS" in
                 None | "")
-                    ARG_NARGS=None
-                    ARG_NARGS_COUNT=0
+                    AP_ACTION_NARGS=None
+                    AP_ACTION_NARGS_COUNT=0
                 ;;
                 *)
-                    echo "TypeError: action=$ARG_ACTION got an unexpected keyword argument 'nargs'"
+                    echo "TypeError: action=$AP_ACTION got an unexpected keyword argument 'nargs'"
                     return 2
                 ;;
             esac
 
-            case "$ARG_TYPE" in
+            case "$AP_ACTION_TYPE" in
                 ?*)
-                    echo "TypeError: action=$ARG_ACTION got an unexpected keyword argument 'type'"
+                    echo "TypeError: action=$AP_ACTION got an unexpected keyword argument 'type'"
                     return 2
                 ;;
             esac
 
-            case "$ARG_CHOICES" in
+            case "$AP_ACTION_CHOICES" in
                 ?*)
-                    echo "TypeError: action=$ARG_ACTION got an unexpected keyword argument 'choices'"
+                    echo "TypeError: action=$AP_ACTION got an unexpected keyword argument 'choices'"
                     return 2
                 ;;
             esac
 
-            case "$ARG_ACTION" in
+            case "$AP_ACTION" in
                 append_const)
-                    eval $ARG_DEST=
+                    eval $AP_ACTION_DEST=
                 ;;
                 store_const)
-                    eval $ARG_DEST=
+                    eval $AP_ACTION_DEST=
                 ;;
                 *)
-                    case "$ARG_CONST" in
+                    case "$AP_ACTION_CONST" in
                         None | "")
-                            ARG_CONST=
+                            AP_ACTION_CONST=
                         ;;
                         *)
-                            echo "TypeError: action=$ARG_ACTION got an unexpected keyword argument 'const'"
+                            echo "TypeError: action=$AP_ACTION got an unexpected keyword argument 'const'"
                             return 2
                         ;;
                     esac
 
-                    case "$ARG_ACTION" in
+                    case "$AP_ACTION" in
                         count)
-                            eval $ARG_DEST=
-                            eval $ARG_DEST=${ARG_DEFAULT:-0}
+                            eval $AP_ACTION_DEST=
+                            eval $AP_ACTION_DEST=${AP_ACTION_DEFAULT:-0}
                         ;;
                         help)
                             # TODO: implement
                         ;;
                         store_false)
-                            eval $ARG_DEST=true
+                            eval $AP_ACTION_DEST=true
                         ;;
                         store_true)
-                            eval $ARG_DEST=false
+                            eval $AP_ACTION_DEST=false
                         ;;
                         version)
                             # TODO: implement
@@ -951,48 +946,49 @@ add_argument ()
         ;;
     esac
 
-    ARG_INDEX=$((ARG_INDEX + 1))
-    ARG_INDEXS="$ARG_INDEXS $ARG_INDEX"
-    $ARG_REQUIRED && ARG_REQUIRED_INDEXES="$ARG_REQUIRED_INDEXES $ARG_INDEX " || :
+    AP_ACTION_INDEX=$((AP_ACTION_INDEX + 1))
+    ACTIONS_INDEXES="$ACTIONS_INDEXES $AP_ACTION_INDEX"
+    $AP_ACTION_REQUIRED &&
+        ACTIONS_REQUIRED_INDEXES="$ACTIONS_REQUIRED_INDEXES $AP_ACTION_INDEX " || :
 
-    case "$ARG_DEFAULT" in
+    case "$AP_ACTION_DEFAULT" in
         ?*)
-            ARG_DEFAULT_INDEXES="$ARG_DEFAULT_INDEXES $ARG_INDEX "
+            ACTIONS_DEFAULT_INDEXES="$ACTIONS_DEFAULT_INDEXES $AP_ACTION_INDEX "
         ;;
     esac
 
-    eval ARG_OPTION_STRINGS_$ARG_INDEX=\$ARG_OPTION_STRINGS \
-         ARG_DEST_$ARG_INDEX=\$ARG_DEST \
-         ARG_NARGS_$ARG_INDEX=\$ARG_NARGS \
-         ARG_NARGS_COUNT_$ARG_INDEX=\$ARG_NARGS_COUNT \
-         ARG_CONST_$ARG_INDEX=\$ARG_CONST \
-         ARG_DEFAULT_$ARG_INDEX=\$ARG_DEFAULT \
-         ARG_TYPE_$ARG_INDEX=\$ARG_TYPE \
-         ARG_CHOICES_$ARG_INDEX=\$ARG_CHOICES \
-         ARG_REQUIRED_$ARG_INDEX=\$ARG_REQUIRED \
-         ARG_HELP_$ARG_INDEX=\$ARG_HELP \
-         ARG_METAVAR_$ARG_INDEX=\$ARG_METAVAR \
-         ARG_ACTION_$ARG_INDEX=\$ARG_ACTION
+    eval AP_ACTION_OPTION_STRINGS_$AP_ACTION_INDEX=\$AP_ACTION_OPTION_STRINGS \
+         AP_ACTION_DEST_$AP_ACTION_INDEX=\$AP_ACTION_DEST \
+         AP_ACTION_NARGS_$AP_ACTION_INDEX=\$AP_ACTION_NARGS \
+         AP_ACTION_NARGS_COUNT_$AP_ACTION_INDEX=\$AP_ACTION_NARGS_COUNT \
+         AP_ACTION_CONST_$AP_ACTION_INDEX=\$AP_ACTION_CONST \
+         AP_ACTION_DEFAULT_$AP_ACTION_INDEX=\$AP_ACTION_DEFAULT \
+         AP_ACTION_TYPE_$AP_ACTION_INDEX=\$AP_ACTION_TYPE \
+         AP_ACTION_CHOICES_$AP_ACTION_INDEX=\$AP_ACTION_CHOICES \
+         AP_ACTION_REQUIRED_$AP_ACTION_INDEX=\$AP_ACTION_REQUIRED \
+         AP_ACTION_HELP_$AP_ACTION_INDEX=\$AP_ACTION_HELP \
+         AP_ACTION_METAVAR_$AP_ACTION_INDEX=\$AP_ACTION_METAVAR \
+         AP_ACTION_$AP_ACTION_INDEX=\$AP_ACTION
 }
 
 _apply_const ()
 {
-    case "$ARG_CONST" in
-        *[!\.$ARG_DIGIT]*)
-            case "$ARG_TYPE" in
+    case "$AP_ACTION_CONST" in
+        *[!\.$AP_DIGITS]*)
+            case "$AP_ACTION_TYPE" in
                 "" | str)
-                    _str_replace "$ARG_CONST" "'" "'\''"
-                    eval $ARG_DEST="\"'$ARG_STRING'\""
+                    _str_replace "$AP_ACTION_CONST" "'" "'\''"
+                    eval $AP_ACTION_DEST="\"'$_AP_STRING'\""
                 ;;
                 *)
                     false
                 ;;
             esac
         ;;
-        *[!$ARG_DIGIT]*)
-            case "$ARG_TYPE" in
+        *[!$AP_DIGITS]*)
+            case "$AP_ACTION_TYPE" in
                 float)
-                    eval $ARG_DEST="\"$ARG_CURRENT\""
+                    eval $AP_ACTION_DEST="\"$_AP_ARG\""
                 ;;
                 *)
                     false
@@ -1000,9 +996,9 @@ _apply_const ()
             esac
         ;;
         *)
-            case "$ARG_TYPE" in
+            case "$AP_ACTION_TYPE" in
                 int)
-                    eval $ARG_DEST="\"$ARG_CURRENT\""
+                    eval $AP_ACTION_DEST="\"$_AP_ARG\""
                 ;;
                 *)
                     false
@@ -1010,44 +1006,44 @@ _apply_const ()
             esac
         ;;
     esac || {
-        set -- $ARG_OPTION_STRINGS
+        set -- $AP_ACTION_OPTION_STRINGS
         _str_replace "$*" ' ' '/'
-        echo "error: argument $ARG_STRING: invalid $ARG_TYPE value: '$ARG_CONST'"
+        echo "error: argument $_AP_STRING: invalid $AP_ACTION_TYPE value: '$AP_ACTION_CONST'"
         return 2
     }
 }
 
 _prev_has_value ()
 {
-    case "$ARG_NARGS_COUNT" in
+    case "$AP_ACTION_NARGS_COUNT" in
         [0?*] | "")
             true
         ;;
         *)
-            case "$ARG_CONST" in
+            case "$AP_ACTION_CONST" in
                 ?*)
                     _apply_const || return
                     return
                 ;;
             esac
 
-            set -- $ARG_OPTION_STRINGS
+            set -- $AP_ACTION_OPTION_STRINGS
             _str_replace "$*" ' ' '/'
-            case $ARG_NARGS in
+            case $AP_ACTION_NARGS in
                 None)
-                    ARG_NARGS='one argument'
+                    AP_ACTION_NARGS='one argument'
                 ;;
                 +)
-                    ARG_NARGS='at least one argument'
+                    AP_ACTION_NARGS='at least one argument'
                 ;;
                 1)
-                    ARG_NARGS='1 argument'
+                    AP_ACTION_NARGS='1 argument'
                 ;;
                 *)
-                    ARG_NARGS="$ARG_NARGS arguments"
+                    AP_ACTION_NARGS="$AP_ACTION_NARGS arguments"
                 ;;
             esac
-            echo "error: argument $ARG_STRING: expected $ARG_NARGS"
+            echo "error: argument $_AP_STRING: expected $AP_ACTION_NARGS"
             return 2
         ;;
     esac
@@ -1055,36 +1051,36 @@ _prev_has_value ()
 
 _set_action_state ()
 {
-    eval ARG_OPTION_STRINGS=\$ARG_OPTION_STRINGS_$ARG_INDEX \
-         ARG_DEST=\$ARG_DEST_$ARG_INDEX \
-         ARG_NARGS=\$ARG_NARGS_$ARG_INDEX \
-         ARG_NARGS_COUNT=\$ARG_NARGS_COUNT_$ARG_INDEX \
-         ARG_CONST=\$ARG_CONST_$ARG_INDEX \
-         ARG_DEFAULT=\$ARG_DEFAULT_$ARG_INDEX \
-         ARG_TYPE=\$ARG_TYPE_$ARG_INDEX \
-         ARG_CHOICES=\$ARG_CHOICES_$ARG_INDEX \
-         ARG_REQUIRED=\$ARG_REQUIRED_$ARG_INDEX \
-         ARG_HELP=\$ARG_HELP_$ARG_INDEX \
-         ARG_METAVAR=\$ARG_METAVAR_$ARG_INDEX \
-         ARG_ACTION=\$ARG_ACTION_$ARG_INDEX
+    eval AP_ACTION_OPTION_STRINGS=\$AP_ACTION_OPTION_STRINGS_$AP_ACTION_INDEX \
+         AP_ACTION_DEST=\$AP_ACTION_DEST_$AP_ACTION_INDEX \
+         AP_ACTION_NARGS=\$AP_ACTION_NARGS_$AP_ACTION_INDEX \
+         AP_ACTION_NARGS_COUNT=\$AP_ACTION_NARGS_COUNT_$AP_ACTION_INDEX \
+         AP_ACTION_CONST=\$AP_ACTION_CONST_$AP_ACTION_INDEX \
+         AP_ACTION_DEFAULT=\$AP_ACTION_DEFAULT_$AP_ACTION_INDEX \
+         AP_ACTION_TYPE=\$AP_ACTION_TYPE_$AP_ACTION_INDEX \
+         AP_ACTION_CHOICES=\$AP_ACTION_CHOICES_$AP_ACTION_INDEX \
+         AP_ACTION_REQUIRED=\$AP_ACTION_REQUIRED_$AP_ACTION_INDEX \
+         AP_ACTION_HELP=\$AP_ACTION_HELP_$AP_ACTION_INDEX \
+         AP_ACTION_METAVAR=\$AP_ACTION_METAVAR_$AP_ACTION_INDEX \
+         AP_ACTION=\$AP_ACTION_$AP_ACTION_INDEX
 }
 
 _check_choice ()
 {
-    case "$ARG_CHOICES" in
+    case "$AP_ACTION_CHOICES" in
         ?*)
-            eval set -- "$ARG_CHOICES"
-            for ARG_CHOICE
+            eval set -- "$AP_ACTION_CHOICES"
+            for AP_ACTION_CHOICE
             do
-                case "$ARG_CHOICE" in
-                    "$ARG_CURRENT")
+                case "$AP_ACTION_CHOICE" in
+                    "$_AP_ARG")
                         return
                     ;;
                 esac
             done
-            set -- $ARG_OPTION_STRINGS
+            set -- $AP_ACTION_OPTION_STRINGS
             _str_replace "$*" ' ' '/'
-            echo "error: argument $ARG_STRING: invalid choice: '$ARG_CURRENT' (choose from $ARG_CHOICES)"
+            echo "error: argument $_AP_STRING: invalid choice: '$_AP_ARG' (choose from $AP_ACTION_CHOICES)"
             return 2
         ;;
     esac
@@ -1092,89 +1088,89 @@ _check_choice ()
 
 _set_dest_value ()
 {
-    case "$ARG_TYPE" in
+    case "$AP_ACTION_TYPE" in
         "" | str)
             _check_choice || return
-            _str_replace "$ARG_CURRENT" "'" "'\''"
-            eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }'$ARG_STRING'\""
+            _str_replace "$_AP_ARG" "'" "'\''"
+            eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST, }'$_AP_STRING'\""
         ;;
         int)
-            case "$ARG_CURRENT" in
-                *[!$ARG_DIGIT]*)
+            case "$_AP_ARG" in
+                *[!$AP_DIGITS]*)
                     false
                 ;;
                 *)
                     _check_choice || return
-                    eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
+                    eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST, }$_AP_ARG\""
             esac
         ;;
         float)
-            case "$ARG_CURRENT" in
-                *[!\.$ARG_DIGIT]*)
+            case "$_AP_ARG" in
+                *[!\.$AP_DIGITS]*)
                     false
                 ;;
                 *)
                     _check_choice || return
-                    eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
+                    eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST, }$_AP_ARG\""
             esac
         ;;
         bool)
-            case "$ARG_CURRENT" in
+            case "$_AP_ARG" in
                 "")
-                    ARG_CURRENT=false
+                    _AP_ARG=false
                 ;;
                 *)
-                    ARG_CURRENT=true
+                    _AP_ARG=true
             esac
             _check_choice || return
-            eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }$ARG_CURRENT\""
+            eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST, }$_AP_ARG\""
         ;;
     esac || {
-        set -- $ARG_OPTION_STRINGS
+        set -- $AP_ACTION_OPTION_STRINGS
         _str_replace "$*" ' ' '/'
-        echo "error: argument $ARG_STRING: invalid $ARG_TYPE value: '$ARG_CURRENT'"
+        echo "error: argument $_AP_STRING: invalid $AP_ACTION_TYPE value: '$_AP_ARG'"
         return 2
     }
 
-    case "$ARG_NARGS_COUNT" in
+    case "$AP_ACTION_NARGS_COUNT" in
         '?')
-            ARG_NARGS_COUNT=0
-            eval ARG_NARGS_COUNT_$ARG_INDEX=0
+            AP_ACTION_NARGS_COUNT=0
+            eval AP_ACTION_NARGS_COUNT_$AP_ACTION_INDEX=0
         ;;
         [*+])
         ;;
         *)
-            ARG_NARGS_COUNT=$((ARG_NARGS_COUNT - 1))
-            eval ARG_NARGS_COUNT_$ARG_INDEX=\$ARG_NARGS_COUNT
+            AP_ACTION_NARGS_COUNT=$((AP_ACTION_NARGS_COUNT - 1))
+            eval AP_ACTION_NARGS_COUNT_$AP_ACTION_INDEX=\$AP_ACTION_NARGS_COUNT
         ;;
     esac
 }
 
 _apply_action ()
 {
-    case "$ARG_ACTION" in
+    case "$AP_ACTION" in
         append_const)
-            _str_replace "$ARG_CONST" "'" "'\''"
-            eval $ARG_DEST="\"\${$ARG_DEST:+\$$ARG_DEST, }'$ARG_STRING'\""
+            _str_replace "$AP_ACTION_CONST" "'" "'\''"
+            eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST, }'$_AP_STRING'\""
         ;;
         count)
-            eval $ARG_DEST=$(($ARG_DEST + 1))
+            eval $AP_ACTION_DEST=$(($AP_ACTION_DEST + 1))
         ;;
         help)
             # TODO: implement
         ;;
         store | append | extend)
-            $ARG_IS_OPTION || _set_dest_value || return
+            $_AP_ARG_IS_OPTION || _set_dest_value || return
         ;;
         store_const)
-            _str_replace "$ARG_CONST" "'" "'\''"
-            eval $ARG_DEST="\"'$ARG_STRING'\""
+            _str_replace "$AP_ACTION_CONST" "'" "'\''"
+            eval $AP_ACTION_DEST="\"'$_AP_STRING'\""
         ;;
         store_false)
-            eval $ARG_DEST=false
+            eval $AP_ACTION_DEST=false
         ;;
         store_true)
-            eval $ARG_DEST=true
+            eval $AP_ACTION_DEST=true
         ;;
         version)
             # TODO: implement
@@ -1184,23 +1180,23 @@ _apply_action ()
 
 _parse_option ()
 {
-    for ARG_INDEX in $ARG_INDEXS
+    for AP_ACTION_INDEX in $ACTIONS_INDEXES
     do
         _set_action_state
-        case "$ARG_OPTION_STRINGS" in
+        case "$AP_ACTION_OPTION_STRINGS" in
             "")
             ;;
-            *" $ARG_CURRENT "*)
+            *" $_AP_ARG "*)
                 return
             ;;
         esac
     done
-    case ${#ARG_CURRENT} in
+    case ${#_AP_ARG} in
         2)
-            echo "invalid option -- '${ARG_CURRENT#?}'"
+            echo "invalid option -- '${_AP_ARG#?}'"
         ;;
         *)
-            echo "unrecognized option '$ARG_CURRENT'"
+            echo "unrecognized option '$_AP_ARG'"
         ;;
     esac
     return 2
@@ -1208,17 +1204,17 @@ _parse_option ()
 
 _parse_arg ()
 {
-    case "$ARG_NARGS_COUNT" in
+    case "$AP_ACTION_NARGS_COUNT" in
         0 | "")
-            for ARG_INDEX in $ARG_INDEXS
+            for AP_ACTION_INDEX in $ACTIONS_INDEXES
             do
                 _set_action_state
-                case "$ARG_OPTION_STRINGS" in
+                case "$AP_ACTION_OPTION_STRINGS" in
                     ?*)
                         continue
                     ;;
                 esac
-                case "$ARG_NARGS_COUNT" in
+                case "$AP_ACTION_NARGS_COUNT" in
                     [!0]*)
                         return
                     ;;
@@ -1227,27 +1223,27 @@ _parse_arg ()
             false
         ;;
     esac || {
-        echo "unrecognized argument '$ARG_CURRENT'"
+        echo "unrecognized argument '$_AP_ARG'"
         return 2
     }
 }
 
 _set_default_value ()
 {
-    for ARG_INDEX in $ARG_DEFAULT_INDEXES
+    for AP_ACTION_INDEX in $ACTIONS_DEFAULT_INDEXES
     do
-        case "$ARG_RECEIVED_INDEXES" in
-            *" $ARG_INDEX "*)
+        case "$ACTIONS_RECEIVED_INDEXES" in
+            *" $AP_ACTION_INDEX "*)
             ;;
             *)
-                eval ARG_OPTION_STRINGS=\$ARG_OPTION_STRINGS_$ARG_INDEX \
-                     ARG_DEST=\$ARG_DEST_$ARG_INDEX \
-                     ARG_NARGS_COUNT=\$ARG_NARGS_COUNT_$ARG_INDEX \
-                     ARG_CURRENT=\$ARG_DEFAULT_$ARG_INDEX \
-                     ARG_TYPE=\$ARG_TYPE_$ARG_INDEX
+                eval AP_ACTION_OPTION_STRINGS=\$AP_ACTION_OPTION_STRINGS_$AP_ACTION_INDEX \
+                     AP_ACTION_DEST=\$AP_ACTION_DEST_$AP_ACTION_INDEX \
+                     AP_ACTION_NARGS_COUNT=\$AP_ACTION_NARGS_COUNT_$AP_ACTION_INDEX \
+                     AP_ACTION_TYPE=\$AP_ACTION_TYPE_$AP_ACTION_INDEX \
+                     _AP_ARG=\$AP_ACTION_DEFAULT_$AP_ACTION_INDEX
 
-                eval ARG_VALUE=\$$ARG_DEST
-                case "$ARG_VALUE" in
+                eval _AP_KEYWORD_VALUE=\$$AP_ACTION_DEST
+                case "$_AP_KEYWORD_VALUE" in
                     "")
                         _set_dest_value
                     ;;
@@ -1259,32 +1255,32 @@ _set_default_value ()
 
 _check_required_args ()
 {
-    ARG_MISSING_INDEXES=
-    for ARG_INDEX in $ARG_REQUIRED_INDEXES
+    _AP_MISSING_INDEXES=
+    for AP_ACTION_INDEX in $ACTIONS_REQUIRED_INDEXES
     do
-        case "$ARG_RECEIVED_INDEXES" in
-            *" $ARG_INDEX "*)
+        case "$ACTIONS_RECEIVED_INDEXES" in
+            *" $AP_ACTION_INDEX "*)
             ;;
             *)
-                eval ARG_OPTION_STRINGS=\$ARG_OPTION_STRINGS_$ARG_INDEX
-                case "$ARG_OPTION_STRINGS" in
+                eval AP_ACTION_OPTION_STRINGS=\$AP_ACTION_OPTION_STRINGS_$AP_ACTION_INDEX
+                case "$AP_ACTION_OPTION_STRINGS" in
                     "")
-                        eval ARG_DEST=\$ARG_DEST_$ARG_INDEX
-                        ARG_MISSING_INDEXES="${ARG_MISSING_INDEXES:+$ARG_MISSING_INDEXES, }$ARG_DEST"
+                        eval AP_ACTION_DEST=\$AP_ACTION_DEST_$AP_ACTION_INDEX
+                        _AP_MISSING_INDEXES="${_AP_MISSING_INDEXES:+$_AP_MISSING_INDEXES, }$AP_ACTION_DEST"
                     ;;
                     *)
-                        set -- $ARG_OPTION_STRINGS
+                        set -- $AP_ACTION_OPTION_STRINGS
                         _str_replace "$*" ' ' '/'
-                        ARG_MISSING_INDEXES="${ARG_MISSING_INDEXES:+$ARG_MISSING_INDEXES, }$ARG_STRING"
+                        _AP_MISSING_INDEXES="${_AP_MISSING_INDEXES:+$_AP_MISSING_INDEXES, }$_AP_STRING"
                     ;;
                 esac
                 
             ;;
         esac
     done
-    case "$ARG_MISSING_INDEXES" in
+    case "$_AP_MISSING_INDEXES" in
         ?*)
-            echo "error: the following arguments are required: $ARG_MISSING_INDEXES"
+            echo "error: the following arguments are required: $_AP_MISSING_INDEXES"
             return 2
         ;;
     esac
@@ -1292,10 +1288,10 @@ _check_required_args ()
 
 parse_args ()
 {
-    ARG_PARSING_OPTIONS=true
-    ARG_RECEIVED_INDEXES=
-    ARG_NARGS=
-    ARG_NARGS_COUNT=
+    ACTIONS_RECEIVED_INDEXES=
+    AP_ACTION_NARGS=
+    AP_ACTION_NARGS_COUNT=
+    _AP_PARSING_OPTIONS=true
     while
         case $# in
             0)
@@ -1303,26 +1299,26 @@ parse_args ()
             ;;
         esac
     do
-        ARG_CURRENT=$1
-        ARG_IS_OPTION=false
-        $ARG_PARSING_OPTIONS &&
-        case "$ARG_CURRENT" in
+        _AP_ARG=$1
+        _AP_ARG_IS_OPTION=false
+        $_AP_PARSING_OPTIONS &&
+        case "$_AP_ARG" in
             '--')
-                ARG_PARSING_OPTIONS=false
+                _AP_PARSING_OPTIONS=false
                 shift
                 continue
             ;;
-            [$ARG_PREFIX_CHARS]*)
+            [$AP_PARSER_PREFIX_CHARS]*)
                 _prev_has_value &&
                 _parse_option || return
-                ARG_IS_OPTION=true
+                _AP_ARG_IS_OPTION=true
             ;;
             *)
                 false
             ;;
         esac || _parse_arg || return
         _apply_action
-        ARG_RECEIVED_INDEXES="$ARG_RECEIVED_INDEXES $ARG_INDEX "
+        ACTIONS_RECEIVED_INDEXES="$ACTIONS_RECEIVED_INDEXES $AP_ACTION_INDEX "
         shift
     done
     _prev_has_value &&
@@ -1332,39 +1328,39 @@ parse_args ()
 
 _say_action_state ()
 {
-    ARG_CHOICES_STRING=${ARG_CHOICES:+[$ARG_CHOICES]}
-    echo "Action state (index $ARG_INDEX):
-option_strings: ${ARG_OPTION_STRINGS:-None}
-dest: $ARG_DEST
-nargs: $ARG_NARGS
-nargs_count: $ARG_NARGS_COUNT
-const: ${ARG_CONST:-None}
-default: ${ARG_DEFAULT:-None}
-type: ${ARG_TYPE:-None}
-choices: ${ARG_CHOICES_STRING:-None}
-required: $ARG_REQUIRED
-help: ${ARG_HELP:-None}
-metavar: ${ARG_METAVAR:-None}
-action: $ARG_ACTION
-version: ${ARG_VERSION:-None}"
-    eval echo "dest: $ARG_DEST: [\$$ARG_DEST]"
+    AP_ACTION_CHOICES_STRING=${AP_ACTION_CHOICES:+[$AP_ACTION_CHOICES]}
+    echo "Action state (index $AP_ACTION_INDEX):
+option_strings: ${AP_ACTION_OPTION_STRINGS:-None}
+dest: $AP_ACTION_DEST
+nargs: $AP_ACTION_NARGS
+nargs_count: $AP_ACTION_NARGS_COUNT
+const: ${AP_ACTION_CONST:-None}
+default: ${AP_ACTION_DEFAULT:-None}
+type: ${AP_ACTION_TYPE:-None}
+choices: ${AP_ACTION_CHOICES_STRING:-None}
+required: $AP_ACTION_REQUIRED
+help: ${AP_ACTION_HELP:-None}
+metavar: ${AP_ACTION_METAVAR:-None}
+action: $AP_ACTION
+version: ${AP_VERSION:-None}"
+    eval echo "dest: $AP_ACTION_DEST: [\$$AP_ACTION_DEST]"
 }
 
 print_action_state ()
 {
     case "${1:-}" in
         "")
-            for ARG_INDEX in $ARG_INDEXS
+            for AP_ACTION_INDEX in $ACTIONS_INDEXES
             do
                 _set_action_state
                 _say_action_state
             done
         ;;
-        *[!$ARG_DIGIT]*)
-            for ARG_INDEX in $ARG_INDEXS
+        *[!$AP_DIGITS]*)
+            for AP_ACTION_INDEX in $ACTIONS_INDEXES
             do
-                eval ARG_DEST=\$ARG_DEST_$ARG_INDEX
-                case "$ARG_DEST" in
+                eval AP_ACTION_DEST=\$AP_ACTION_DEST_$AP_ACTION_INDEX
+                case "$AP_ACTION_DEST" in
                     "$1")
                         _set_action_state
                         _say_action_state
@@ -1373,9 +1369,9 @@ print_action_state ()
             done
         ;;
         *)
-            for ARG_INDEX in $ARG_INDEXS
+            for AP_ACTION_INDEX in $ACTIONS_INDEXES
             do
-                case "$ARG_INDEX" in
+                case "$AP_ACTION_INDEX" in
                     "$1")
                         _set_action_state
                         _say_action_state
