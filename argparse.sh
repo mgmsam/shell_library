@@ -145,7 +145,7 @@ _str_replace ()
                 ;;
             esac
             _AP_BUFFER=$_AP_BUFFER$_AP_LEFT${3:-}
-            _AP_STRING=${_AP_STRING#*$2}
+            _AP_STRING=${_AP_STRING#*"$2"}
         done
         _AP_STRING=$_AP_BUFFER$_AP_STRING _AP_BUFFER=
         $_AP_REPEAT || break
@@ -213,10 +213,10 @@ _validate_terminated ()
         _AP_LEFT=${_AP_STRING%%[\'\"]*}
         _AP_QUOTE=${_AP_STRING#$_AP_LEFT}
         _AP_QUOTE=${_AP_QUOTE%${_AP_QUOTE#?}}
-        _AP_BUFFER=${_AP_STRING#*$_AP_QUOTE}
+        _AP_BUFFER=${_AP_STRING#*"$_AP_QUOTE"}
         case "$_AP_BUFFER" in
             *$_AP_QUOTE*)
-                _AP_STRING=$_AP_LEFT${_AP_BUFFER#*$_AP_QUOTE}
+                _AP_STRING=$_AP_LEFT${_AP_BUFFER#*"$_AP_QUOTE"}
             ;;
             *)
                 echo "SyntaxError: unterminated string literal (detected at line 1)"
@@ -240,10 +240,10 @@ _validate_terminated ()
                 return 2
             ;;
             *)
-                _AP_BUFFER=${_AP_STRING#*$_AP_PARENT}
+                _AP_BUFFER=${_AP_STRING#*"$_AP_PARENT"}
                 case "$_AP_BUFFER" in
                     *$_AP_R_PAREN*)
-                        _AP_STRING=${_AP_BUFFER#*$_AP_R_PAREN}
+                        _AP_STRING=${_AP_BUFFER#*"$_AP_R_PAREN"}
                     ;;
                     *)
                         echo "SyntaxError: opening parenthesis '$_AP_L_PAREN' does not match closing parenthesis '$_AP_R_PAREN'"
