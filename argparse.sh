@@ -770,7 +770,7 @@ _set_action_positional_args ()
         [$AP_PARSER_PREFIX_CHARS][$AP_PARSER_PREFIX_CHARS]?*)
             case "$AP_ACTION_LONG_OPTION" in
                 "")
-                    AP_ACTION_LONG_OPTION=${_AP_ARG#"${_AP_ARG%%[!$AP_PARSER_PREFIX_CHARS]*}"}
+                    AP_ACTION_LONG_OPTION=${_AP_ARG#"${_AP_ARG%%[!"$AP_PARSER_PREFIX_CHARS"]*}"}
                     _str_replace "$AP_ACTION_LONG_OPTION" '-' '_'
                     AP_ACTION_LONG_OPTION="$_AP_STRING"
                 ;;
