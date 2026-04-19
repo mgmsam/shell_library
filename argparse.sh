@@ -904,10 +904,8 @@ add_argument ()
 
             case "$AP_ACTION" in
                 append_const)
-                    eval $AP_ACTION_DEST=
                 ;;
                 store_const)
-                    eval $AP_ACTION_DEST=
                 ;;
                 *)
                     case "$AP_ACTION_CONST" in
@@ -922,8 +920,6 @@ add_argument ()
 
                     case "$AP_ACTION" in
                         count)
-                            eval $AP_ACTION_DEST=
-                            eval $AP_ACTION_DEST=${AP_ACTION_DEFAULT:-0}
                         ;;
                         help)
                             # TODO: implement
@@ -975,7 +971,7 @@ _apply_const ()
             case "$AP_ACTION_TYPE" in
                 "" | str)
                     _str_replace "$AP_ACTION_CONST" "'" "'\''"
-                    eval $AP_ACTION_DEST="\"'$_AP_STRING'\""
+                    eval $AP_ACTION_DEST="'$_AP_STRING'"
                 ;;
                 *)
                     false
@@ -985,7 +981,7 @@ _apply_const ()
         *[!$AP_DIGITS]*)
             case "$AP_ACTION_TYPE" in
                 float)
-                    eval $AP_ACTION_DEST="\"$_AP_ARG\""
+                    eval $AP_ACTION_DEST="'$_AP_ARG'"
                 ;;
                 *)
                     false
@@ -995,7 +991,7 @@ _apply_const ()
         *)
             case "$AP_ACTION_TYPE" in
                 int)
-                    eval $AP_ACTION_DEST="\"$_AP_ARG\""
+                    eval $AP_ACTION_DEST="'$_AP_ARG'"
                 ;;
                 *)
                     false
