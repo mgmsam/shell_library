@@ -568,9 +568,9 @@ ArgumentParser ()
     AP_PARSER_FUNC_PREFIX=
 
     AP_ACTION_INDEX=0
-    ACTIONS_INDEXES=
-    ACTIONS_REQUIRED_INDEXES=
-    ACTIONS_DEFAULT_INDEXES=
+    AP_ACTIONS_INDEXES=
+    AP_ACTIONS_REQUIRED_INDEXES=
+    AP_ACTIONS_DEFAULT_INDEXES=
 
     _parse_arg_sequence "$@" &&
     _set_positional_kwargs parser "$@" || return
@@ -942,13 +942,13 @@ add_argument ()
     esac
 
     AP_ACTION_INDEX=$((AP_ACTION_INDEX + 1))
-    ACTIONS_INDEXES="$ACTIONS_INDEXES $AP_ACTION_INDEX"
+    AP_ACTIONS_INDEXES="$AP_ACTIONS_INDEXES $AP_ACTION_INDEX"
     $AP_ACTION_REQUIRED &&
-        ACTIONS_REQUIRED_INDEXES="$ACTIONS_REQUIRED_INDEXES $AP_ACTION_INDEX " || :
+        AP_ACTIONS_REQUIRED_INDEXES="$AP_ACTIONS_REQUIRED_INDEXES $AP_ACTION_INDEX " || :
 
     case "$AP_ACTION_DEFAULT" in
         ?*)
-            ACTIONS_DEFAULT_INDEXES="$ACTIONS_DEFAULT_INDEXES $AP_ACTION_INDEX "
+            AP_ACTIONS_DEFAULT_INDEXES="$AP_ACTIONS_DEFAULT_INDEXES $AP_ACTION_INDEX "
         ;;
     esac
 
@@ -1175,7 +1175,7 @@ _apply_action ()
 
 _parse_option ()
 {
-    for AP_ACTION_INDEX in $ACTIONS_INDEXES
+    for AP_ACTION_INDEX in $AP_ACTIONS_INDEXES
     do
         _set_action_state
         case "$AP_ACTION_OPTION_STRINGS" in
@@ -1201,7 +1201,7 @@ _parse_arg ()
 {
     case "$AP_ACTION_NARGS_COUNT" in
         0 | "")
-            for AP_ACTION_INDEX in $ACTIONS_INDEXES
+            for AP_ACTION_INDEX in $AP_ACTIONS_INDEXES
             do
                 _set_action_state
                 case "$AP_ACTION_OPTION_STRINGS" in
@@ -1225,7 +1225,7 @@ _parse_arg ()
 
 _set_default_value ()
 {
-    for AP_ACTION_INDEX in $ACTIONS_DEFAULT_INDEXES
+    for AP_ACTION_INDEX in $AP_ACTIONS_DEFAULT_INDEXES
     do
         case "$ACTIONS_RECEIVED_INDEXES" in
             *" $AP_ACTION_INDEX "*)
@@ -1251,7 +1251,7 @@ _set_default_value ()
 _check_required_args ()
 {
     _AP_MISSING_INDEXES=
-    for AP_ACTION_INDEX in $ACTIONS_REQUIRED_INDEXES
+    for AP_ACTION_INDEX in $AP_ACTIONS_REQUIRED_INDEXES
     do
         case "$ACTIONS_RECEIVED_INDEXES" in
             *" $AP_ACTION_INDEX "*)
@@ -1345,14 +1345,14 @@ print_action_state ()
 {
     case "${1:-}" in
         "")
-            for AP_ACTION_INDEX in $ACTIONS_INDEXES
+            for AP_ACTION_INDEX in $AP_ACTIONS_INDEXES
             do
                 _set_action_state
                 _say_action_state
             done
         ;;
         *[!$AP_DIGITS]*)
-            for AP_ACTION_INDEX in $ACTIONS_INDEXES
+            for AP_ACTION_INDEX in $AP_ACTIONS_INDEXES
             do
                 eval AP_ACTION_DEST=\$AP_ACTION_DEST_$AP_ACTION_INDEX
                 case "$AP_ACTION_DEST" in
@@ -1364,7 +1364,7 @@ print_action_state ()
             done
         ;;
         *)
-            for AP_ACTION_INDEX in $ACTIONS_INDEXES
+            for AP_ACTION_INDEX in $AP_ACTIONS_INDEXES
             do
                 case "$AP_ACTION_INDEX" in
                     "$1")
