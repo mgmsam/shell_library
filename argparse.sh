@@ -566,10 +566,10 @@ ArgumentParser ()
     AP_PARSER_DEFAULT_DEST_PREFIX=
     AP_PARSER_FUNC_PREFIX=
 
-    AP_ACTION_INDEX=0
-    AP_ACTIONS_INDEXES=
-    AP_ACTIONS_REQUIRED_INDEXES=
-    AP_ACTIONS_DEFAULT_INDEXES=
+    _AP_INDEX=0
+    _AP_INDEXES=
+    _AP_REQUIRED_INDEXES=
+    _AP_DEFAULT_INDEXES=
 
     _AP_VALUE_IS_STRING=false
 
@@ -943,29 +943,29 @@ add_argument ()
         ;;
     esac
 
-    AP_ACTION_INDEX=$((AP_ACTION_INDEX + 1))
-    AP_ACTIONS_INDEXES="$AP_ACTIONS_INDEXES $AP_ACTION_INDEX"
+    _AP_INDEX=$((_AP_INDEX + 1))
+    _AP_INDEXES="$_AP_INDEXES $_AP_INDEX"
     $AP_ACTION_REQUIRED &&
-        AP_ACTIONS_REQUIRED_INDEXES="$AP_ACTIONS_REQUIRED_INDEXES $AP_ACTION_INDEX " || :
+        _AP_REQUIRED_INDEXES="$_AP_REQUIRED_INDEXES $_AP_INDEX " || :
 
     case "$AP_ACTION_DEFAULT" in
         ?*)
-            AP_ACTIONS_DEFAULT_INDEXES="$AP_ACTIONS_DEFAULT_INDEXES $AP_ACTION_INDEX "
+            _AP_DEFAULT_INDEXES="$_AP_DEFAULT_INDEXES $_AP_INDEX "
         ;;
     esac
 
-    eval AP_ACTION_OPTION_STRINGS_$AP_ACTION_INDEX=\$AP_ACTION_OPTION_STRINGS \
-         AP_ACTION_DEST_$AP_ACTION_INDEX=\$AP_ACTION_DEST \
-         AP_ACTION_NARGS_$AP_ACTION_INDEX=\$AP_ACTION_NARGS \
-         AP_ACTION_NARGS_COUNT_$AP_ACTION_INDEX=\$AP_ACTION_NARGS_COUNT \
-         AP_ACTION_CONST_$AP_ACTION_INDEX=\$AP_ACTION_CONST \
-         AP_ACTION_DEFAULT_$AP_ACTION_INDEX=\$AP_ACTION_DEFAULT \
-         AP_ACTION_TYPE_$AP_ACTION_INDEX=\$AP_ACTION_TYPE \
-         AP_ACTION_CHOICES_$AP_ACTION_INDEX=\$AP_ACTION_CHOICES \
-         AP_ACTION_REQUIRED_$AP_ACTION_INDEX=\$AP_ACTION_REQUIRED \
-         AP_ACTION_HELP_$AP_ACTION_INDEX=\$AP_ACTION_HELP \
-         AP_ACTION_METAVAR_$AP_ACTION_INDEX=\$AP_ACTION_METAVAR \
-         AP_ACTION_$AP_ACTION_INDEX=\$AP_ACTION
+    eval AP_ACTION_OPTION_STRINGS_$_AP_INDEX=\$AP_ACTION_OPTION_STRINGS \
+         AP_ACTION_DEST_$_AP_INDEX=\$AP_ACTION_DEST \
+         AP_ACTION_NARGS_$_AP_INDEX=\$AP_ACTION_NARGS \
+         AP_ACTION_NARGS_COUNT_$_AP_INDEX=\$AP_ACTION_NARGS_COUNT \
+         AP_ACTION_CONST_$_AP_INDEX=\$AP_ACTION_CONST \
+         AP_ACTION_DEFAULT_$_AP_INDEX=\$AP_ACTION_DEFAULT \
+         AP_ACTION_TYPE_$_AP_INDEX=\$AP_ACTION_TYPE \
+         AP_ACTION_CHOICES_$_AP_INDEX=\$AP_ACTION_CHOICES \
+         AP_ACTION_REQUIRED_$_AP_INDEX=\$AP_ACTION_REQUIRED \
+         AP_ACTION_HELP_$_AP_INDEX=\$AP_ACTION_HELP \
+         AP_ACTION_METAVAR_$_AP_INDEX=\$AP_ACTION_METAVAR \
+         AP_ACTION_$_AP_INDEX=\$AP_ACTION
 }
 
 _apply_const ()
@@ -1048,18 +1048,18 @@ _prev_has_value ()
 
 _set_action_state ()
 {
-    eval AP_ACTION_OPTION_STRINGS=\$AP_ACTION_OPTION_STRINGS_$AP_ACTION_INDEX \
-         AP_ACTION_DEST=\$AP_ACTION_DEST_$AP_ACTION_INDEX \
-         AP_ACTION_NARGS=\$AP_ACTION_NARGS_$AP_ACTION_INDEX \
-         AP_ACTION_NARGS_COUNT=\$AP_ACTION_NARGS_COUNT_$AP_ACTION_INDEX \
-         AP_ACTION_CONST=\$AP_ACTION_CONST_$AP_ACTION_INDEX \
-         AP_ACTION_DEFAULT=\$AP_ACTION_DEFAULT_$AP_ACTION_INDEX \
-         AP_ACTION_TYPE=\$AP_ACTION_TYPE_$AP_ACTION_INDEX \
-         AP_ACTION_CHOICES=\$AP_ACTION_CHOICES_$AP_ACTION_INDEX \
-         AP_ACTION_REQUIRED=\$AP_ACTION_REQUIRED_$AP_ACTION_INDEX \
-         AP_ACTION_HELP=\$AP_ACTION_HELP_$AP_ACTION_INDEX \
-         AP_ACTION_METAVAR=\$AP_ACTION_METAVAR_$AP_ACTION_INDEX \
-         AP_ACTION=\$AP_ACTION_$AP_ACTION_INDEX
+    eval AP_ACTION_OPTION_STRINGS=\$AP_ACTION_OPTION_STRINGS_$_AP_INDEX \
+         AP_ACTION_DEST=\$AP_ACTION_DEST_$_AP_INDEX \
+         AP_ACTION_NARGS=\$AP_ACTION_NARGS_$_AP_INDEX \
+         AP_ACTION_NARGS_COUNT=\$AP_ACTION_NARGS_COUNT_$_AP_INDEX \
+         AP_ACTION_CONST=\$AP_ACTION_CONST_$_AP_INDEX \
+         AP_ACTION_DEFAULT=\$AP_ACTION_DEFAULT_$_AP_INDEX \
+         AP_ACTION_TYPE=\$AP_ACTION_TYPE_$_AP_INDEX \
+         AP_ACTION_CHOICES=\$AP_ACTION_CHOICES_$_AP_INDEX \
+         AP_ACTION_REQUIRED=\$AP_ACTION_REQUIRED_$_AP_INDEX \
+         AP_ACTION_HELP=\$AP_ACTION_HELP_$_AP_INDEX \
+         AP_ACTION_METAVAR=\$AP_ACTION_METAVAR_$_AP_INDEX \
+         AP_ACTION=\$AP_ACTION_$_AP_INDEX
 }
 
 _check_choice ()
@@ -1132,13 +1132,13 @@ _set_dest_value ()
     case "$AP_ACTION_NARGS_COUNT" in
         '?')
             AP_ACTION_NARGS_COUNT=0
-            eval AP_ACTION_NARGS_COUNT_$AP_ACTION_INDEX=0
+            eval AP_ACTION_NARGS_COUNT_$_AP_INDEX=0
         ;;
         [*+])
         ;;
         *)
             AP_ACTION_NARGS_COUNT=$((AP_ACTION_NARGS_COUNT - 1))
-            eval AP_ACTION_NARGS_COUNT_$AP_ACTION_INDEX=\$AP_ACTION_NARGS_COUNT
+            eval AP_ACTION_NARGS_COUNT_$_AP_INDEX=\$AP_ACTION_NARGS_COUNT
         ;;
     esac
 }
@@ -1177,7 +1177,7 @@ _apply_action ()
 
 _parse_option ()
 {
-    for AP_ACTION_INDEX in $AP_ACTIONS_INDEXES
+    for _AP_INDEX in $_AP_INDEXES
     do
         _set_action_state
         case "$AP_ACTION_OPTION_STRINGS" in
@@ -1203,7 +1203,7 @@ _parse_arg ()
 {
     case "$AP_ACTION_NARGS_COUNT" in
         0 | "")
-            for AP_ACTION_INDEX in $AP_ACTIONS_INDEXES
+            for _AP_INDEX in $_AP_INDEXES
             do
                 _set_action_state
                 case "$AP_ACTION_OPTION_STRINGS" in
@@ -1227,17 +1227,17 @@ _parse_arg ()
 
 _set_default_value ()
 {
-    for AP_ACTION_INDEX in $AP_ACTIONS_DEFAULT_INDEXES
+    for _AP_INDEX in $_AP_DEFAULT_INDEXES
     do
         case "$ACTIONS_RECEIVED_INDEXES" in
-            *" $AP_ACTION_INDEX "*)
+            *" $_AP_INDEX "*)
             ;;
             *)
-                eval AP_ACTION_OPTION_STRINGS=\$AP_ACTION_OPTION_STRINGS_$AP_ACTION_INDEX \
-                     AP_ACTION_DEST=\$AP_ACTION_DEST_$AP_ACTION_INDEX \
-                     AP_ACTION_NARGS_COUNT=\$AP_ACTION_NARGS_COUNT_$AP_ACTION_INDEX \
-                     AP_ACTION_TYPE=\$AP_ACTION_TYPE_$AP_ACTION_INDEX \
-                     _AP_ARG=\$AP_ACTION_DEFAULT_$AP_ACTION_INDEX
+                eval AP_ACTION_OPTION_STRINGS=\$AP_ACTION_OPTION_STRINGS_$_AP_INDEX \
+                     AP_ACTION_DEST=\$AP_ACTION_DEST_$_AP_INDEX \
+                     AP_ACTION_NARGS_COUNT=\$AP_ACTION_NARGS_COUNT_$_AP_INDEX \
+                     AP_ACTION_TYPE=\$AP_ACTION_TYPE_$_AP_INDEX \
+                     _AP_ARG=\$AP_ACTION_DEFAULT_$_AP_INDEX
 
                 eval _AP_KEYWORD_VALUE=\$$AP_ACTION_DEST
                 case "$_AP_KEYWORD_VALUE" in
@@ -1253,16 +1253,16 @@ _set_default_value ()
 _check_required_args ()
 {
     _AP_MISSING_INDEXES=
-    for AP_ACTION_INDEX in $AP_ACTIONS_REQUIRED_INDEXES
+    for _AP_INDEX in $_AP_REQUIRED_INDEXES
     do
         case "$ACTIONS_RECEIVED_INDEXES" in
-            *" $AP_ACTION_INDEX "*)
+            *" $_AP_INDEX "*)
             ;;
             *)
-                eval AP_ACTION_OPTION_STRINGS=\$AP_ACTION_OPTION_STRINGS_$AP_ACTION_INDEX
+                eval AP_ACTION_OPTION_STRINGS=\$AP_ACTION_OPTION_STRINGS_$_AP_INDEX
                 case "$AP_ACTION_OPTION_STRINGS" in
                     "")
-                        eval AP_ACTION_DEST=\$AP_ACTION_DEST_$AP_ACTION_INDEX
+                        eval AP_ACTION_DEST=\$AP_ACTION_DEST_$_AP_INDEX
                         _AP_MISSING_INDEXES="${_AP_MISSING_INDEXES:+$_AP_MISSING_INDEXES, }$AP_ACTION_DEST"
                     ;;
                     *)
@@ -1315,7 +1315,7 @@ parse_args ()
             ;;
         esac || _parse_arg || return
         _apply_action
-        ACTIONS_RECEIVED_INDEXES="$ACTIONS_RECEIVED_INDEXES $AP_ACTION_INDEX "
+        ACTIONS_RECEIVED_INDEXES="$ACTIONS_RECEIVED_INDEXES $_AP_INDEX "
         shift
     done
     _prev_has_value &&
@@ -1326,7 +1326,7 @@ parse_args ()
 _say_action_state ()
 {
     AP_ACTION_CHOICES_STRING=${AP_ACTION_CHOICES:+[$AP_ACTION_CHOICES]}
-    echo "Action state (index $AP_ACTION_INDEX):
+    echo "Action state (index $_AP_INDEX):
 option_strings: ${AP_ACTION_OPTION_STRINGS:-None}
 dest: $AP_ACTION_DEST
 nargs: $AP_ACTION_NARGS
@@ -1347,16 +1347,16 @@ print_action_state ()
 {
     case "${1:-}" in
         "")
-            for AP_ACTION_INDEX in $AP_ACTIONS_INDEXES
+            for _AP_INDEX in $_AP_INDEXES
             do
                 _set_action_state
                 _say_action_state
             done
         ;;
         *[!$AP_DIGITS]*)
-            for AP_ACTION_INDEX in $AP_ACTIONS_INDEXES
+            for _AP_INDEX in $_AP_INDEXES
             do
-                eval AP_ACTION_DEST=\$AP_ACTION_DEST_$AP_ACTION_INDEX
+                eval AP_ACTION_DEST=\$AP_ACTION_DEST_$_AP_INDEX
                 case "$AP_ACTION_DEST" in
                     "$1")
                         _set_action_state
@@ -1366,9 +1366,9 @@ print_action_state ()
             done
         ;;
         *)
-            for AP_ACTION_INDEX in $AP_ACTIONS_INDEXES
+            for _AP_INDEX in $_AP_INDEXES
             do
-                case "$AP_ACTION_INDEX" in
+                case "$_AP_INDEX" in
                     "$1")
                         _set_action_state
                         _say_action_state
