@@ -57,7 +57,7 @@ _to_lower ()
                 _AP_CHAR=${_AP_CHAR#"${_AP_CHAR%?}"}
             ;;
         esac
-        _AP_STRING=${_AP_STRING:-}$_AP_CHAR
+        _AP_STRING=$_AP_STRING$_AP_CHAR
     done
 }
 
@@ -92,7 +92,7 @@ _to_upper ()
                 _AP_CHAR=${_AP_CHAR#"${_AP_CHAR%?}"}
             ;;
         esac
-        _AP_STRING=${_AP_STRING:-}$_AP_CHAR
+        _AP_STRING=$_AP_STRING$_AP_CHAR
     done
     echo "_AP_STRING [$_AP_STRING]"
 }
@@ -161,7 +161,7 @@ _unique_chars ()
     _AP_STRING="$1"
     _AP_BUFFER=
     while
-        case "${_AP_STRING:-}" in
+        case "$_AP_STRING" in
             "")
                 false
             ;;
@@ -926,10 +926,10 @@ add_argument ()
                             # TODO: implement
                         ;;
                         store_false)
-                            eval $AP_ACTION_DEST=true
+                            AP_ACTION_DEFAULT=${AP_ACTION_DEFAULT:-true}
                         ;;
                         store_true)
-                            eval $AP_ACTION_DEST=false
+                            AP_ACTION_DEFAULT=${AP_ACTION_DEFAULT:-false}
                         ;;
                         version)
                             # TODO: implement
