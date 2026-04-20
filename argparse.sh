@@ -94,7 +94,6 @@ _to_upper ()
         esac
         _AP_STRING=$_AP_STRING$_AP_CHAR
     done
-    echo "_AP_STRING [$_AP_STRING]"
 }
 
 _str_replace ()
@@ -953,6 +952,9 @@ add_argument ()
         _AP_REQUIRED_INDEXES="$_AP_REQUIRED_INDEXES $_AP_INDEX " || :
 
     eval AP_ACTION_OPTION_STRINGS_$_AP_INDEX=\$AP_ACTION_OPTION_STRINGS \
+         AP_ACTION_SHORT_OPTION_$_AP_INDEX=\$AP_ACTION_SHORT_OPTION \
+         AP_ACTION_LONG_OPTION_$_AP_INDEX=\$AP_ACTION_LONG_OPTION \
+         AP_ACTION_POSITION_ARG_$_AP_INDEX=\$AP_ACTION_POSITION_ARG \
          AP_ACTION_DEST_$_AP_INDEX=\$AP_ACTION_DEST \
          AP_ACTION_NARGS_$_AP_INDEX=\$AP_ACTION_NARGS \
          AP_ACTION_NARGS_COUNT_$_AP_INDEX=\$AP_ACTION_NARGS_COUNT \
@@ -1006,6 +1008,104 @@ _apply_const ()
         echo "error: argument $_AP_STRING: invalid $AP_ACTION_TYPE value: '$AP_ACTION_CONST'"
         return 2
     }
+}
+
+_format_usage ()
+{
+    AP_USAGE_STRING="Usage:${AP_PARSER_PROG:+ $AP_PARSER_PROG:}"
+    _AP_OPTION_ARGS=
+    _AP_POSITION_ARGS=
+    for _AP_INDEX in $_AP_INDEXES
+    do
+        eval AP_ACTION_OPTION_STRINGS=\$AP_ACTION_OPTION_STRINGS_$_AP_INDEX \
+             AP_ACTION_SHORT_OPTION=\$AP_ACTION_SHORT_OPTION_$_AP_INDEX \
+             AP_ACTION_LONG_OPTION=\$AP_ACTION_LONG_OPTION_$_AP_INDEX \
+             AP_ACTION_POSITION_ARG=\$AP_ACTION_POSITION_ARG_$_AP_INDEX \
+             AP_ACTION_NARGS=\$AP_ACTION_NARGS_$_AP_INDEX \
+             AP_ACTION_CHOICES=\$AP_ACTION_CHOICES_$_AP_INDEX \
+             AP_ACTION_REQUIRED=\$AP_ACTION_REQUIRED_$_AP_INDEX
+
+        set -- $AP_ACTION_OPTION_STRINGS
+        case "${1:-}" in
+            "")
+                _to_upper "$AP_ACTION_POSITION_ARG"
+                _AP_POSITION_ARG="$_AP_STRING"
+                case "$AP_ACTION_NARGS" in
+                    None)
+                        _AP_POSITION_ARG=" $_AP_POSITION_ARG"
+                    ;;
+                    '?')
+                        _AP_POSITION_ARG=" [$_AP_POSITION_ARG]"
+                    ;;
+                    '*')
+                        _AP_POSITION_ARG=" [$_AP_POSITION_ARG ...]"
+                    ;;
+                    '+')
+                        _AP_POSITION_ARG=" $_AP_POSITION_ARG [$_AP_POSITION_ARG ...]"
+                    ;;
+                    *)
+                        _AP_BUFFER=
+                        _AP_COUNT=$AP_ACTION_NARGS
+                        while
+                            case "$_AP_COUNT" in
+                                0)
+                                    false
+                                ;;
+                            esac
+                        do
+                            _AP_BUFFER="$_AP_BUFFER $_AP_POSITION_ARG"
+                            _AP_COUNT=$((_AP_COUNT - 1))
+                        done
+                        _AP_POSITION_ARG=$_AP_BUFFER
+                    ;;
+                esac
+                _AP_POSITION_ARGS=$_AP_POSITION_ARGS$_AP_POSITION_ARG
+            ;;
+            *)
+                _to_upper "${AP_ACTION_LONG_OPTION:-$AP_ACTION_SHORT_OPTION}"
+                _AP_OPTION_ARG=$_AP_STRING
+                case "$AP_ACTION_NARGS" in
+                    None | "")
+                        _AP_OPTION="$1"
+                    ;;
+                    '?')
+                        _AP_OPTION="$1 [$_AP_OPTION_ARG]"
+                    ;;
+                    '*')
+                        _AP_OPTION="$1 [$_AP_OPTION_ARG ...]"
+                    ;;
+                    '+')
+                        _AP_OPTION="$1 $_AP_OPTION_ARG [$_AP_OPTION_ARG ...]"
+                    ;;
+                    *)
+                        _AP_BUFFER=
+                        _AP_COUNT=$AP_ACTION_NARGS
+                        while
+                            case "$_AP_COUNT" in
+                                0)
+                                    false
+                                ;;
+                            esac
+                        do
+                            _AP_BUFFER="$_AP_BUFFER $_AP_OPTION_ARG"
+                            _AP_COUNT=$((_AP_COUNT - 1))
+                        done
+                        _AP_OPTION=$_AP_BUFFER
+                    ;;
+                esac
+                $AP_ACTION_REQUIRED && _AP_OPTION=" $_AP_OPTION" ||
+                                       _AP_OPTION=" [$_AP_OPTION]"
+                _AP_OPTION_ARGS=$_AP_OPTION_ARGS$_AP_OPTION
+            ;;
+        esac
+    done
+    AP_USAGE_STRING="$AP_USAGE_STRING$_AP_OPTION_ARGS$_AP_POSITION_ARGS"
+}
+
+print_usage ()
+{
+    _format_usage
+    echo "$AP_USAGE_STRING"
 }
 
 _prev_has_value ()
