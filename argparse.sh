@@ -25,6 +25,9 @@ AP_DIGITS='0123456789'
 AP_ALNUM=$AP_LOWERS$AP_UPPERS$AP_DIGITS
 AP_ALPHA=$AP_LOWERS$AP_UPPERS
 AP_POSIX_IFS=$IFS
+AP_SPACE=' '
+AP_LF='
+'
 
 _to_lower ()
 {
@@ -970,20 +973,20 @@ add_argument ()
 
 _get_positional_strings ()
 {
-    _to_upper "$AP_ACTION_POSITION_ARG"
+    _to_upper "${AP_ACTION_METAVAR:-$AP_ACTION_POSITION_ARG}"
     _AP_POSITION_ARG="$_AP_STRING"
     case "$AP_ACTION_NARGS" in
         None)
-            _AP_POSITION_ARG=" $_AP_POSITION_ARG"
+            _AP_USAGE_STR="$_AP_POSITION_ARG"
         ;;
         '?')
-            _AP_POSITION_ARG=" [$_AP_POSITION_ARG]"
+            _AP_USAGE_STR="[$_AP_POSITION_ARG]"
         ;;
         '*')
-            _AP_POSITION_ARG=" [$_AP_POSITION_ARG ...]"
+            _AP_USAGE_STR="[$_AP_POSITION_ARG ...]"
         ;;
         '+')
-            _AP_POSITION_ARG=" $_AP_POSITION_ARG [$_AP_POSITION_ARG ...]"
+            _AP_USAGE_STR="$_AP_POSITION_ARG [$_AP_POSITION_ARG ...]"
         ;;
         *)
             _AP_BUFFER=
@@ -998,28 +1001,28 @@ _get_positional_strings ()
                 _AP_BUFFER="$_AP_BUFFER $_AP_POSITION_ARG"
                 _AP_COUNT=$((_AP_COUNT - 1))
             done
-            _AP_POSITION_ARG=$_AP_BUFFER
+            _AP_BUFFER="${_AP_BUFFER#"${_AP_BUFFER%%[!$AP_SPACE]*}"}"
+            _AP_USAGE_STR=$_AP_BUFFER
         ;;
     esac
-    _AP_POSITION_ARGS=$_AP_POSITION_ARGS$_AP_POSITION_ARG
+    _AP_USAGE_POSITION_STR="$_AP_USAGE_POSITION_STR $_AP_USAGE_STR"
 }
 
 _get_option_strings ()
 {
-    _to_upper "${AP_ACTION_LONG_OPTION:-$AP_ACTION_SHORT_OPTION}"
+    _to_upper "${AP_ACTION_METAVAR:-${AP_ACTION_LONG_OPTION:-$AP_ACTION_SHORT_OPTION}}"
     _AP_OPTION_ARG=$_AP_STRING
     case "$AP_ACTION_NARGS" in
         None | "")
-            _AP_OPTION="$1"
         ;;
         '?')
-            _AP_OPTION="$1 [$_AP_OPTION_ARG]"
+            _AP_OPTION_ARG="[$_AP_OPTION_ARG]"
         ;;
         '*')
-            _AP_OPTION="$1 [$_AP_OPTION_ARG ...]"
+            _AP_OPTION_ARG="[$_AP_OPTION_ARG ...]"
         ;;
         '+')
-            _AP_OPTION="$1 $_AP_OPTION_ARG [$_AP_OPTION_ARG ...]"
+            _AP_OPTION_ARG="$_AP_OPTION_ARG [$_AP_OPTION_ARG ...]"
         ;;
         *)
             _AP_BUFFER=
@@ -1034,40 +1037,111 @@ _get_option_strings ()
                 _AP_BUFFER="$_AP_BUFFER $_AP_OPTION_ARG"
                 _AP_COUNT=$((_AP_COUNT - 1))
             done
-            _AP_OPTION=$_AP_BUFFER
+            _AP_BUFFER="${_AP_BUFFER#"${_AP_BUFFER%%[!$AP_SPACE]*}"}"
+            _AP_OPTION_ARG=$_AP_BUFFER
         ;;
     esac
-    $AP_ACTION_REQUIRED && _AP_OPTION=" $_AP_OPTION" ||
-                            _AP_OPTION=" [$_AP_OPTION]"
-    _AP_OPTION_ARGS=$_AP_OPTION_ARGS$_AP_OPTION
+    $AP_ACTION_REQUIRED && _AP_USAGE_STR="$1 $_AP_OPTION_ARG" ||
+                           _AP_USAGE_STR="[$1 $_AP_OPTION_ARG]"
+    _AP_USAGE_OPTION_STR="$_AP_USAGE_OPTION_STR $_AP_USAGE_STR"
+}
+
+_get_help_string ()
+{
+    case "$AP_ACTION_DEFAULT" in
+        ?*)
+            AP_ACTION_HELP="$AP_ACTION_HELP (default: '$AP_ACTION_DEFAULT')"
+        ;;
+    esac
+}
+
+_get_positional_help ()
+{
+    _get_help_string
+    _AP_POSITIONAL_HELP="$_AP_POSITIONAL_HELP$AP_LF  $_AP_POSITION_ARG  $AP_ACTION_HELP"
+}
+
+_get_option_help ()
+{
+    _get_help_string
+    _AP_OPTION_HELP="$_AP_OPTION_HELP$AP_LF  $_AP_OPTIONS $_AP_OPTION_ARG  $AP_ACTION_HELP"
+}
+
+_format_description ()
+{
+    case "$AP_PARSER_DESCRIPTION" in
+        ?*)
+            AP_HELP_STRING="$AP_USAGE_STRING$AP_LF$AP_LF$AP_PARSER_DESCRIPTION"
+        ;;
+        *)
+            AP_HELP_STRING="$AP_USAGE_STRING"
+        ;;
+    esac
+}
+
+_format_positional_help ()
+{
+    case "$_AP_POSITIONAL_HELP" in
+        ?*)
+            AP_HELP_STRING="$AP_HELP_STRING$AP_LF$AP_LF$_AP_POSITIONAL_HELP"
+        ;;
+    esac
+}
+
+_format_option_help ()
+{
+    case "$_AP_OPTION_HELP" in
+        ?*)
+            AP_HELP_STRING="$AP_HELP_STRING$AP_LF$AP_LF$_AP_OPTION_HELP"
+        ;;
+    esac
+}
+
+_format_epilog ()
+{
+    case "$AP_PARSER_EPILOG" in
+        ?*)
+            AP_HELP_STRING="$AP_HELP_STRING$AP_LF$AP_LF$AP_PARSER_EPILOG"
+        ;;
+    esac
 }
 
 _format_usage ()
 {
     AP_USAGE_STRING="Usage:${AP_PARSER_PROG:+ $AP_PARSER_PROG:}"
-    _AP_OPTION_ARGS=
-    _AP_POSITION_ARGS=
+    AP_HELP_STRING=
+    _AP_USAGE_OPTION_STR=
+    _AP_OPTION_HELP="options:"
+    _AP_USAGE_POSITION_STR=
+    _AP_POSITIONAL_HELP="positional arguments:"
     for _AP_INDEX in $_AP_INDEXES
     do
         eval AP_ACTION_OPTION_STRINGS=\$AP_ACTION_OPTION_STRINGS_$_AP_INDEX \
              AP_ACTION_SHORT_OPTION=\$AP_ACTION_SHORT_OPTION_$_AP_INDEX \
              AP_ACTION_LONG_OPTION=\$AP_ACTION_LONG_OPTION_$_AP_INDEX \
              AP_ACTION_POSITION_ARG=\$AP_ACTION_POSITION_ARG_$_AP_INDEX \
+             AP_ACTION_DEFAULT=\$AP_ACTION_DEFAULT_$_AP_INDEX \
              AP_ACTION_NARGS=\$AP_ACTION_NARGS_$_AP_INDEX \
              AP_ACTION_CHOICES=\$AP_ACTION_CHOICES_$_AP_INDEX \
-             AP_ACTION_REQUIRED=\$AP_ACTION_REQUIRED_$_AP_INDEX
+             AP_ACTION_REQUIRED=\$AP_ACTION_REQUIRED_$_AP_INDEX \
+             AP_ACTION_HELP=\$AP_ACTION_HELP_$_AP_INDEX \
+             AP_ACTION_METAVAR=\$AP_ACTION_METAVAR_$_AP_INDEX
 
         set -- $AP_ACTION_OPTION_STRINGS
+        _str_replace -- "$*" ' ' ", "
+        _AP_OPTIONS=$_AP_STRING
         case "${1:-}" in
             "")
                 _get_positional_strings
+                _get_positional_help
             ;;
             *)
                 _get_option_strings "$1"
+                _get_option_help
             ;;
         esac
     done
-    AP_USAGE_STRING="$AP_USAGE_STRING$_AP_OPTION_ARGS$_AP_POSITION_ARGS"
+    AP_USAGE_STRING="$AP_USAGE_STRING$_AP_USAGE_OPTION_STR$_AP_USAGE_POSITION_STR"
 }
 
 print_usage ()
@@ -1080,6 +1154,21 @@ _error ()
 {
     print_usage
     echo "${AP_PARSER_PROG:+$AP_PARSER_PROG: }${1:-}"
+}
+
+_format_help ()
+{
+    _format_usage
+    _format_description
+    _format_positional_help
+    _format_option_help
+    _format_epilog
+}
+
+print_help ()
+{
+    _format_help
+    echo "$AP_HELP_STRING"
 }
 
 _apply_const ()
