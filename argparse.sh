@@ -741,6 +741,10 @@ _set_action_kwargs ()
                             return 2
                         ;;
                     esac
+                    $_AP_IS_OPTION || {
+                        echo "TypeError: 'required' is an invalid argument for positionals"
+                        return 2
+                    }
                 ;;
                 help)
                     _is_none_value &&
@@ -786,6 +790,7 @@ _set_action_positional_args ()
         ;;
         *)
             AP_ACTION_POSITION_ARG=$_AP_ARG
+            _AP_IS_OPTION=false
         ;;
     esac
 }
@@ -810,6 +815,7 @@ add_argument ()
     AP_ACTION_SHORT_OPTION=
     AP_ACTION_POSITION_ARG=
 
+    _AP_IS_OPTION=true
     _AP_SEEN_KEYWORDS=
     _AP_KEYWORD=
     _AP_KEYWORD_VALUE=
@@ -840,15 +846,6 @@ add_argument ()
         ;;
     esac
 
-    case "$AP_ACTION_OPTION_STRINGS" in
-        "")
-            "$AP_ACTION_REQUIRED" || {
-                echo "TypeError: 'required' is an invalid argument for positionals"
-                return 2
-            }
-        ;;
-    esac
-
     case "$AP_ACTION" in
         store | append | extend)
             case "$AP_ACTION_CONST" in
@@ -857,9 +854,14 @@ add_argument ()
                         None | "")
                             AP_ACTION_NARGS=None
                             AP_ACTION_NARGS_COUNT=1
+                            $_AP_IS_OPTION || AP_ACTION_REQUIRED=true
+                        ;;
+                        [?*])
+                            AP_ACTION_NARGS_COUNT="$AP_ACTION_NARGS"
                         ;;
                         *)
                             AP_ACTION_NARGS_COUNT="$AP_ACTION_NARGS"
+                            $_AP_IS_OPTION || AP_ACTION_REQUIRED=true
                         ;;
                     esac
                 ;;
@@ -902,6 +904,7 @@ add_argument ()
                 ;;
             esac
 
+            $_AP_IS_OPTION || AP_ACTION_REQUIRED=true
             case "$AP_ACTION" in
                 append_const)
                 ;;
@@ -923,6 +926,7 @@ add_argument ()
                         ;;
                         help)
                             # TODO: implement
+                            $_AP_IS_OPTION || ! $AP_ACTION_REQUIRED
                         ;;
                         store_false)
                             AP_ACTION_DEFAULT=${AP_ACTION_DEFAULT:-true}
@@ -932,8 +936,12 @@ add_argument ()
                         ;;
                         version)
                             # TODO: implement
+                            $_AP_IS_OPTION || ! $AP_ACTION_REQUIRED
                         ;;
-                    esac
+                    esac || {
+                        echo "TypeError: action=$AP_ACTION got an unexpected keyword argument 'required'"
+                        return 2
+                    }
                 ;;
             esac
         ;;
