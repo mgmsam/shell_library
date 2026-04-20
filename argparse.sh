@@ -809,6 +809,7 @@ add_argument ()
     AP_ACTION_REQUIRED=false
     AP_ACTION_HELP=
     AP_ACTION_METAVAR=
+    AP_ACTION_ADD_METAVAR=true
 
     AP_ACTION=store
 
@@ -923,11 +924,19 @@ add_argument ()
                         ;;
                     esac
 
+                    case "$AP_ACTION_METAVAR" in
+                        ?*)
+                            echo "TypeError: action=$AP_ACTION got an unexpected keyword argument 'metavar'"
+                            return 2
+                        ;;
+                    esac
+
+                    AP_ACTION_ADD_METAVAR=false
+
                     case "$AP_ACTION" in
                         count)
                         ;;
                         help)
-                            # TODO: implement
                             $_AP_IS_OPTION || ! $AP_ACTION_REQUIRED
                         ;;
                         store_false)
@@ -968,25 +977,25 @@ add_argument ()
          AP_ACTION_REQUIRED_$_AP_INDEX=\$AP_ACTION_REQUIRED \
          AP_ACTION_HELP_$_AP_INDEX=\$AP_ACTION_HELP \
          AP_ACTION_METAVAR_$_AP_INDEX=\$AP_ACTION_METAVAR \
+         AP_ACTION_ADD_METAVAR_$_AP_INDEX=\$AP_ACTION_ADD_METAVAR \
          AP_ACTION_$_AP_INDEX=\$AP_ACTION
 }
 
 _get_positional_strings ()
 {
-    _to_upper "${AP_ACTION_METAVAR:-$AP_ACTION_POSITION_ARG}"
-    _AP_POSITION_ARG="$_AP_STRING"
+    AP_ACTION_METAVAR="${AP_ACTION_METAVAR:-$AP_ACTION_POSITION_ARG}"
     case "$AP_ACTION_NARGS" in
         None)
-            _AP_USAGE_STR="$_AP_POSITION_ARG"
+            _AP_USAGE_STR="$AP_ACTION_METAVAR"
         ;;
         '?')
-            _AP_USAGE_STR="[$_AP_POSITION_ARG]"
+            _AP_USAGE_STR="[$AP_ACTION_METAVAR]"
         ;;
         '*')
-            _AP_USAGE_STR="[$_AP_POSITION_ARG ...]"
+            _AP_USAGE_STR="[$AP_ACTION_METAVAR ...]"
         ;;
         '+')
-            _AP_USAGE_STR="$_AP_POSITION_ARG [$_AP_POSITION_ARG ...]"
+            _AP_USAGE_STR="$AP_ACTION_METAVAR [$AP_ACTION_METAVAR ...]"
         ;;
         *)
             _AP_BUFFER=
@@ -998,7 +1007,7 @@ _get_positional_strings ()
                     ;;
                 esac
             do
-                _AP_BUFFER="$_AP_BUFFER $_AP_POSITION_ARG"
+                _AP_BUFFER="$_AP_BUFFER $AP_ACTION_METAVAR"
                 _AP_COUNT=$((_AP_COUNT - 1))
             done
             _AP_BUFFER="${_AP_BUFFER#"${_AP_BUFFER%%[!$AP_SPACE]*}"}"
@@ -1010,19 +1019,24 @@ _get_positional_strings ()
 
 _get_option_strings ()
 {
-    _to_upper "${AP_ACTION_METAVAR:-${AP_ACTION_LONG_OPTION:-$AP_ACTION_SHORT_OPTION}}"
-    _AP_OPTION_ARG=$_AP_STRING
+    $AP_ACTION_ADD_METAVAR &&
+    case "$AP_ACTION_METAVAR" in
+        "")
+            _to_upper "${AP_ACTION_LONG_OPTION:-$AP_ACTION_SHORT_OPTION}"
+            AP_ACTION_METAVAR=$_AP_STRING
+        ;;
+    esac &&
     case "$AP_ACTION_NARGS" in
         None | "")
         ;;
         '?')
-            _AP_OPTION_ARG="[$_AP_OPTION_ARG]"
+            AP_ACTION_METAVAR="[$AP_ACTION_METAVAR]"
         ;;
         '*')
-            _AP_OPTION_ARG="[$_AP_OPTION_ARG ...]"
+            AP_ACTION_METAVAR="[$AP_ACTION_METAVAR ...]"
         ;;
         '+')
-            _AP_OPTION_ARG="$_AP_OPTION_ARG [$_AP_OPTION_ARG ...]"
+            AP_ACTION_METAVAR="$AP_ACTION_METAVAR [$AP_ACTION_METAVAR ...]"
         ;;
         *)
             _AP_BUFFER=
@@ -1034,21 +1048,21 @@ _get_option_strings ()
                     ;;
                 esac
             do
-                _AP_BUFFER="$_AP_BUFFER $_AP_OPTION_ARG"
+                _AP_BUFFER="$_AP_BUFFER $AP_ACTION_METAVAR"
                 _AP_COUNT=$((_AP_COUNT - 1))
             done
             _AP_BUFFER="${_AP_BUFFER#"${_AP_BUFFER%%[!$AP_SPACE]*}"}"
-            _AP_OPTION_ARG=$_AP_BUFFER
+            AP_ACTION_METAVAR=$_AP_BUFFER
         ;;
-    esac
-    $AP_ACTION_REQUIRED && _AP_USAGE_STR="$1 $_AP_OPTION_ARG" ||
-                           _AP_USAGE_STR="[$1 $_AP_OPTION_ARG]"
+    esac && _AP_USAGE_STR="$1 $AP_ACTION_METAVAR" || _AP_USAGE_STR="$1"
+
+    $AP_ACTION_REQUIRED || _AP_USAGE_STR="[$_AP_USAGE_STR]"
     _AP_USAGE_OPTION_STR="$_AP_USAGE_OPTION_STR $_AP_USAGE_STR"
 }
 
 _get_help_string ()
 {
-    case "$AP_ACTION_DEFAULT" in
+    case "${AP_ACTION_HELP:+$AP_ACTION_DEFAULT}" in
         ?*)
             AP_ACTION_HELP="$AP_ACTION_HELP (default: '$AP_ACTION_DEFAULT')"
         ;;
@@ -1058,13 +1072,13 @@ _get_help_string ()
 _get_positional_help ()
 {
     _get_help_string
-    _AP_POSITIONAL_HELP="$_AP_POSITIONAL_HELP$AP_LF  $_AP_POSITION_ARG  $AP_ACTION_HELP"
+    _AP_POSITIONAL_HELP="$_AP_POSITIONAL_HELP$AP_LF  $AP_ACTION_METAVAR${AP_ACTION_HELP:+  $AP_ACTION_HELP}"
 }
 
 _get_option_help ()
 {
     _get_help_string
-    _AP_OPTION_HELP="$_AP_OPTION_HELP$AP_LF  $_AP_OPTIONS $_AP_OPTION_ARG  $AP_ACTION_HELP"
+    _AP_OPTION_HELP="$_AP_OPTION_HELP$AP_LF  $_AP_OPTIONS${AP_ACTION_METAVAR:+" $AP_ACTION_METAVAR"}${AP_ACTION_HELP:+  $AP_ACTION_HELP}"
 }
 
 _format_description ()
@@ -1125,7 +1139,8 @@ _format_usage ()
              AP_ACTION_CHOICES=\$AP_ACTION_CHOICES_$_AP_INDEX \
              AP_ACTION_REQUIRED=\$AP_ACTION_REQUIRED_$_AP_INDEX \
              AP_ACTION_HELP=\$AP_ACTION_HELP_$_AP_INDEX \
-             AP_ACTION_METAVAR=\$AP_ACTION_METAVAR_$_AP_INDEX
+             AP_ACTION_METAVAR=\$AP_ACTION_METAVAR_$_AP_INDEX \
+             AP_ACTION_ADD_METAVAR=\$AP_ACTION_ADD_METAVAR_$_AP_INDEX
 
         set -- $AP_ACTION_OPTION_STRINGS
         _str_replace -- "$*" ' ' ", "
@@ -1169,6 +1184,18 @@ print_help ()
 {
     _format_help
     echo "$AP_HELP_STRING"
+}
+
+_add_help ()
+{
+    _AP_INDEX=0
+    _AP_INDEXES="$_AP_INDEX $_AP_INDEXES"
+    eval AP_ACTION_OPTION_STRINGS_$_AP_INDEX="'-h --help'" \
+         AP_ACTION_DEFAULT_$_AP_INDEX= \
+         AP_ACTION_REQUIRED_$_AP_INDEX=false \
+         AP_ACTION_HELP_$_AP_INDEX="'show this help message and exit'" \
+         AP_ACTION_METAVAR_$_AP_INDEX= \
+         AP_ACTION_ADD_METAVAR_$_AP_INDEX=false
 }
 
 _apply_const ()
@@ -1357,7 +1384,7 @@ _apply_action ()
             eval $AP_ACTION_DEST=$(($AP_ACTION_DEST + 1))
         ;;
         help)
-            # TODO: implement
+            _AP_SKIP_HELP=false
         ;;
         store | append | extend)
             $_AP_ARG_IS_OPTION || _set_dest_value || return
@@ -1499,6 +1526,8 @@ parse_args ()
     AP_ACTION_NARGS=
     AP_ACTION_NARGS_COUNT=
     _AP_PARSING_OPTIONS=true
+    _AP_SKIP_HELP=true
+    $AP_PARSER_ADD_HELP && _add_help || :
     while
         case $# in
             0)
@@ -1531,6 +1560,7 @@ parse_args ()
     _prev_has_value &&
     _set_default_value &&
     _check_required_args || return
+    $_AP_SKIP_HELP || print_help
 }
 
 _say_action_state ()
