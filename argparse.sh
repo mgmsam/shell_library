@@ -968,48 +968,6 @@ add_argument ()
          AP_ACTION_$_AP_INDEX=\$AP_ACTION
 }
 
-_apply_const ()
-{
-    case "$AP_ACTION_CONST" in
-        *[!\."$AP_DIGITS"]*)
-            case "$AP_ACTION_TYPE" in
-                "" | str)
-                    _str_replace "$AP_ACTION_CONST" "'" "'\''"
-                    eval $AP_ACTION_DEST="'$_AP_STRING'"
-                ;;
-                *)
-                    false
-                ;;
-            esac
-        ;;
-        *[!"$AP_DIGITS"]*)
-            case "$AP_ACTION_TYPE" in
-                float)
-                    eval $AP_ACTION_DEST="'$_AP_ARG'"
-                ;;
-                *)
-                    false
-                ;;
-            esac
-        ;;
-        *)
-            case "$AP_ACTION_TYPE" in
-                int)
-                    eval $AP_ACTION_DEST="'$_AP_ARG'"
-                ;;
-                *)
-                    false
-                ;;
-            esac
-        ;;
-    esac || {
-        set -- $AP_ACTION_OPTION_STRINGS
-        _str_replace "$*" ' ' '/'
-        echo "error: argument $_AP_STRING: invalid $AP_ACTION_TYPE value: '$AP_ACTION_CONST'"
-        return 2
-    }
-}
-
 _get_positional_strings ()
 {
     _to_upper "$AP_ACTION_POSITION_ARG"
@@ -1118,6 +1076,54 @@ print_usage ()
     echo "$AP_USAGE_STRING"
 }
 
+_error ()
+{
+    print_usage
+    echo "${AP_PARSER_PROG:+$AP_PARSER_PROG: }${1:-}"
+}
+
+_apply_const ()
+{
+    case "$AP_ACTION_CONST" in
+        *[!\."$AP_DIGITS"]*)
+            case "$AP_ACTION_TYPE" in
+                "" | str)
+                    _str_replace "$AP_ACTION_CONST" "'" "'\''"
+                    eval $AP_ACTION_DEST="'$_AP_STRING'"
+                ;;
+                *)
+                    false
+                ;;
+            esac
+        ;;
+        *[!"$AP_DIGITS"]*)
+            case "$AP_ACTION_TYPE" in
+                float)
+                    eval $AP_ACTION_DEST="'$_AP_ARG'"
+                ;;
+                *)
+                    false
+                ;;
+            esac
+        ;;
+        *)
+            case "$AP_ACTION_TYPE" in
+                int)
+                    eval $AP_ACTION_DEST="'$_AP_ARG'"
+                ;;
+                *)
+                    false
+                ;;
+            esac
+        ;;
+    esac || {
+        set -- $AP_ACTION_OPTION_STRINGS
+        _str_replace "$*" ' ' '/'
+        _error "error: argument $_AP_STRING: invalid $AP_ACTION_TYPE value: '$AP_ACTION_CONST'"
+        return 2
+    }
+}
+
 _prev_has_value ()
 {
     case "$AP_ACTION_NARGS_COUNT" in
@@ -1148,7 +1154,7 @@ _prev_has_value ()
                     AP_ACTION_NARGS="$AP_ACTION_NARGS arguments"
                 ;;
             esac
-            echo "error: argument $_AP_STRING: expected $AP_ACTION_NARGS"
+            _error "error: argument $_AP_STRING: expected $AP_ACTION_NARGS"
             return 2
         ;;
     esac
@@ -1185,7 +1191,7 @@ _check_choice ()
             done
             set -- $AP_ACTION_OPTION_STRINGS
             _str_replace "$*" ' ' '/'
-            echo "error: argument $_AP_STRING: invalid choice: '$_AP_ARG' (choose from $AP_ACTION_CHOICES)"
+            _error "error: argument $_AP_STRING: invalid choice: '$_AP_ARG' (choose from $AP_ACTION_CHOICES)"
             return 2
         ;;
     esac
@@ -1233,7 +1239,7 @@ _set_dest_value ()
     esac || {
         set -- $AP_ACTION_OPTION_STRINGS
         _str_replace "$*" ' ' '/'
-        echo "error: argument $_AP_STRING: invalid $AP_ACTION_TYPE value: '$_AP_ARG'"
+        _error "error: argument $_AP_STRING: invalid $AP_ACTION_TYPE value: '$_AP_ARG'"
         return 2
     }
 
@@ -1298,10 +1304,10 @@ _parse_option ()
     done
     case ${#_AP_ARG} in
         2)
-            echo "invalid option -- '${_AP_ARG#?}'"
+            _error "invalid option -- '${_AP_ARG#?}'"
         ;;
         *)
-            echo "unrecognized option '$_AP_ARG'"
+            _error "unrecognized option '$_AP_ARG'"
         ;;
     esac
     return 2
@@ -1328,7 +1334,7 @@ _parse_arg ()
             false
         ;;
     esac || {
-        echo "unrecognized argument '$_AP_ARG'"
+        _error "unrecognized argument '$_AP_ARG'"
         return 2
     }
 }
@@ -1392,7 +1398,7 @@ _check_required_args ()
     done
     case "$_AP_MISSING_INDEXES" in
         ?*)
-            echo "error: the following arguments are required: $_AP_MISSING_INDEXES"
+            _error "error: the following arguments are required: $_AP_MISSING_INDEXES"
             return 2
         ;;
     esac
