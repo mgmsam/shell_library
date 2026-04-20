@@ -1010,6 +1010,42 @@ _apply_const ()
     }
 }
 
+_get_positional_strings ()
+{
+    _to_upper "$AP_ACTION_POSITION_ARG"
+    _AP_POSITION_ARG="$_AP_STRING"
+    case "$AP_ACTION_NARGS" in
+        None)
+            _AP_POSITION_ARG=" $_AP_POSITION_ARG"
+        ;;
+        '?')
+            _AP_POSITION_ARG=" [$_AP_POSITION_ARG]"
+        ;;
+        '*')
+            _AP_POSITION_ARG=" [$_AP_POSITION_ARG ...]"
+        ;;
+        '+')
+            _AP_POSITION_ARG=" $_AP_POSITION_ARG [$_AP_POSITION_ARG ...]"
+        ;;
+        *)
+            _AP_BUFFER=
+            _AP_COUNT=$AP_ACTION_NARGS
+            while
+                case "$_AP_COUNT" in
+                    0)
+                        false
+                    ;;
+                esac
+            do
+                _AP_BUFFER="$_AP_BUFFER $_AP_POSITION_ARG"
+                _AP_COUNT=$((_AP_COUNT - 1))
+            done
+            _AP_POSITION_ARG=$_AP_BUFFER
+        ;;
+    esac
+    _AP_POSITION_ARGS=$_AP_POSITION_ARGS$_AP_POSITION_ARG
+}
+
 _get_option_strings ()
 {
     _to_upper "${AP_ACTION_LONG_OPTION:-$AP_ACTION_SHORT_OPTION}"
@@ -1048,42 +1084,6 @@ _get_option_strings ()
     _AP_OPTION_ARGS=$_AP_OPTION_ARGS$_AP_OPTION
 }
 
-_get_positional_strings ()
-{
-    _to_upper "$AP_ACTION_POSITION_ARG"
-    _AP_POSITION_ARG="$_AP_STRING"
-    case "$AP_ACTION_NARGS" in
-        None)
-            _AP_POSITION_ARG=" $_AP_POSITION_ARG"
-        ;;
-        '?')
-            _AP_POSITION_ARG=" [$_AP_POSITION_ARG]"
-        ;;
-        '*')
-            _AP_POSITION_ARG=" [$_AP_POSITION_ARG ...]"
-        ;;
-        '+')
-            _AP_POSITION_ARG=" $_AP_POSITION_ARG [$_AP_POSITION_ARG ...]"
-        ;;
-        *)
-            _AP_BUFFER=
-            _AP_COUNT=$AP_ACTION_NARGS
-            while
-                case "$_AP_COUNT" in
-                    0)
-                        false
-                    ;;
-                esac
-            do
-                _AP_BUFFER="$_AP_BUFFER $_AP_POSITION_ARG"
-                _AP_COUNT=$((_AP_COUNT - 1))
-            done
-            _AP_POSITION_ARG=$_AP_BUFFER
-        ;;
-    esac
-    _AP_POSITION_ARGS=$_AP_POSITION_ARGS$_AP_POSITION_ARG
-}
-
 _format_usage ()
 {
     AP_USAGE_STRING="Usage:${AP_PARSER_PROG:+ $AP_PARSER_PROG:}"
@@ -1105,7 +1105,7 @@ _format_usage ()
                 _get_positional_strings
             ;;
             *)
-                _get_option_strings
+                _get_option_strings "$1"
             ;;
         esac
     done
