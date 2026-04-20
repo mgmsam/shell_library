@@ -760,7 +760,7 @@ _set_action_kwargs ()
             esac
         ;;
         *)
-            echo "TypeError: ArgumentParser got an unexpected keyword argument '$_AP_KEYWORD'"
+            echo "TypeError: add_argument got an unexpected keyword argument '$_AP_KEYWORD'"
             return 2
         ;;
     esac
