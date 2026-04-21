@@ -637,7 +637,7 @@ _set_action_kwargs ()
 {
     case "$_AP_KEYWORD" in
         action | nargs | const | default | type | choices | required | \
-        help | metavar | dest | dest_prefix)
+        help | metavar | version | dest | dest_prefix)
             _check_unique_kwargs || return
             _trim_quotes "$_AP_KEYWORD_VALUE" && {
                 _AP_KEYWORD_VALUE=$_AP_STRING
@@ -756,6 +756,11 @@ _set_action_kwargs ()
                     _is_none_value &&
                     AP_ACTION_METAVAR=$_AP_KEYWORD_VALUE || AP_ACTION_METAVAR=
                 ;;
+                version)
+                    _is_none_value &&
+                    AP_ACTION_VERSION=$_AP_KEYWORD_VALUE || AP_ACTION_VERSION=
+                    AP_ACTION_VERSION_IS_SET=true
+                ;;
                 dest_prefix)
                     _is_none_value &&
                     AP_ACTION_DEST_PREFIX=$_AP_KEYWORD_VALUE || AP_ACTION_DEST_PREFIX=
@@ -808,6 +813,8 @@ add_argument ()
     AP_ACTION_CHOICES=
     AP_ACTION_REQUIRED=false
     AP_ACTION_HELP=
+    AP_ACTION_VERSION=
+    AP_ACTION_VERSION_IS_SET=false
     AP_ACTION_METAVAR=
     AP_ACTION_ADD_METAVAR=true
 
@@ -946,8 +953,9 @@ add_argument ()
                             AP_ACTION_DEFAULT=${AP_ACTION_DEFAULT:-false}
                         ;;
                         version)
-                            # TODO: implement
                             $_AP_IS_OPTION || ! $AP_ACTION_REQUIRED
+                            AP_ACTION_HELP="${AP_ACTION_HELP:-"show program's version number and exit"}"
+                            AP_ACTION_DEFAULT=
                         ;;
                     esac || {
                         echo "TypeError: action=$AP_ACTION got an unexpected keyword argument 'required'"
@@ -976,6 +984,8 @@ add_argument ()
          AP_ACTION_CHOICES_$_AP_INDEX=\$AP_ACTION_CHOICES \
          AP_ACTION_REQUIRED_$_AP_INDEX=\$AP_ACTION_REQUIRED \
          AP_ACTION_HELP_$_AP_INDEX=\$AP_ACTION_HELP \
+         AP_ACTION_VERSION_$_AP_INDEX=\$AP_ACTION_VERSION \
+         AP_ACTION_VERSION_IS_SET_$_AP_INDEX=\$AP_ACTION_VERSION_IS_SET \
          AP_ACTION_METAVAR_$_AP_INDEX=\$AP_ACTION_METAVAR \
          AP_ACTION_ADD_METAVAR_$_AP_INDEX=\$AP_ACTION_ADD_METAVAR \
          AP_ACTION_$_AP_INDEX=\$AP_ACTION
@@ -1189,13 +1199,25 @@ print_help ()
 _add_help ()
 {
     _AP_INDEX=0
-    _AP_INDEXES="$_AP_INDEX $_AP_INDEXES"
-    eval AP_ACTION_OPTION_STRINGS_$_AP_INDEX="'-h --help'" \
+    _AP_INDEXES="$_AP_INDEX$_AP_INDEXES"
+    eval AP_ACTION_OPTION_STRINGS_$_AP_INDEX="' -h --help '" \
          AP_ACTION_DEFAULT_$_AP_INDEX= \
          AP_ACTION_REQUIRED_$_AP_INDEX=false \
          AP_ACTION_HELP_$_AP_INDEX="'show this help message and exit'" \
          AP_ACTION_METAVAR_$_AP_INDEX= \
-         AP_ACTION_ADD_METAVAR_$_AP_INDEX=false
+         AP_ACTION_ADD_METAVAR_$_AP_INDEX=false \
+         AP_ACTION_$_AP_INDEX=help
+}
+
+print_version ()
+{
+    eval AP_ACTION_VERSION=\$AP_ACTION_VERSION_$_AP_VERSION_INDEX \
+         AP_ACTION_VERSION_IS_SET=\$AP_ACTION_VERSION_IS_SET_$_AP_VERSION_INDEX
+
+    $AP_ACTION_VERSION_IS_SET && echo "$AP_ACTION_VERSION" || {
+        echo "AttributeError: 'ArgumentParser' object has no attribute 'version'"
+        return 2
+    }
 }
 
 _apply_const ()
@@ -1288,6 +1310,8 @@ _set_action_state ()
          AP_ACTION_CHOICES=\$AP_ACTION_CHOICES_$_AP_INDEX \
          AP_ACTION_REQUIRED=\$AP_ACTION_REQUIRED_$_AP_INDEX \
          AP_ACTION_HELP=\$AP_ACTION_HELP_$_AP_INDEX \
+         AP_ACTION_VERSION=\$AP_ACTION_VERSION_$_AP_INDEX \
+         AP_ACTION_VERSION_IS_SET=\$AP_ACTION_VERSION_IS_SET_$_AP_INDEX \
          AP_ACTION_METAVAR=\$AP_ACTION_METAVAR_$_AP_INDEX \
          AP_ACTION=\$AP_ACTION_$_AP_INDEX
 }
@@ -1384,7 +1408,7 @@ _apply_action ()
             eval $AP_ACTION_DEST=$(($AP_ACTION_DEST + 1))
         ;;
         help)
-            _AP_SKIP_HELP=false
+            _AP_PRINT_INFO="${_AP_PRINT_INFO:-print_help}"
         ;;
         store | append | extend)
             $_AP_ARG_IS_OPTION || _set_dest_value || return
@@ -1400,7 +1424,8 @@ _apply_action ()
             eval $AP_ACTION_DEST=true
         ;;
         version)
-            # TODO: implement
+            _AP_PRINT_INFO="${_AP_PRINT_INFO:-print_version}"
+            _AP_VERSION_INDEX=${_AP_VERSION_INDEX:-$_AP_INDEX}
         ;;
     esac
 }
@@ -1526,7 +1551,8 @@ parse_args ()
     AP_ACTION_NARGS=
     AP_ACTION_NARGS_COUNT=
     _AP_PARSING_OPTIONS=true
-    _AP_SKIP_HELP=true
+    _AP_VERSION_INDEX=
+    _AP_PRINT_INFO=
     $AP_PARSER_ADD_HELP && _add_help || :
     while
         case $# in
@@ -1559,8 +1585,14 @@ parse_args ()
     done
     _prev_has_value &&
     _set_default_value &&
-    _check_required_args || return
-    $_AP_SKIP_HELP || print_help
+    case "$_AP_PRINT_INFO" in
+        "")
+            _check_required_args
+        ;;
+        *)
+            $_AP_PRINT_INFO
+        ;;
+    esac
 }
 
 _say_action_state ()
@@ -1582,7 +1614,9 @@ required: $AP_ACTION_REQUIRED
 help: ${AP_ACTION_HELP:-None}
 metavar: ${AP_ACTION_METAVAR:-None}
 action: $AP_ACTION
-version: ${AP_VERSION:-None}"
+version: ${AP_ACTION_VERSION:-None}
+version is set: ${AP_ACTION_VERSION_IS_SET:-None}
+"
 }
 
 print_action_state ()
