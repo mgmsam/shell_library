@@ -393,9 +393,44 @@ _set_positional_kwargs ()
 _set_parser_kwargs ()
 {
     case "$_AP_KEYWORD" in
-        prog | usage | description | epilog | parents | \
-        formatter_class | prefix_chars | fromfile_prefix_chars | \
-        argument_default | conflict_handler | \
+        formatter_class)
+            _check_unique_kwargs || return
+            IFS=' ,'
+            set -- $_AP_KEYWORD_VALUE
+            IFS=$AP_POSIX_IFS
+            AP_PARSER_FORMATTER_CLASS=
+            for _AP_KEYWORD_VALUE
+            do
+                case "$_AP_KEYWORD_VALUE" in
+                    argparse.HelpFormatter)
+                        _AP_KEYWORD_VALUE=Default
+                    ;;
+                    argparse.RawTextHelpFormatter)
+                        _AP_KEYWORD_VALUE=RawText
+                    ;;
+                    argparse.RawDescriptionHelpFormatter)
+                        _AP_KEYWORD_VALUE=RawDescription
+                    ;;
+                    argparse.ArgumentDefaultsHelpFormatter)
+                        _AP_KEYWORD_VALUE=ArgumentDefaults
+                    ;;
+                    argparse.MetavarTypeHelpFormatter)
+                        _AP_KEYWORD_VALUE=MetavarType
+                    ;;
+                    None)
+                        echo "ValueError: length of metavar tuple does not match nargs"
+                        return 2
+                    ;;
+                    *)
+                        echo "NameError: name '$_AP_KEYWORD_VALUE' is not defined"
+                        return 2
+                    ;;
+                esac
+                AP_PARSER_FORMATTER_CLASS="${AP_PARSER_FORMATTER_CLASS:+$AP_PARSER_FORMATTER_CLASS, }$_AP_KEYWORD_VALUE"
+            done
+        ;;
+        prog | usage | description | epilog | parents | prefix_chars | \
+        fromfile_prefix_chars | argument_default | conflict_handler | \
         add_help | allow_abbrev | exit_on_error | case_style | dest_prefix | func_prefix)
             _check_unique_kwargs || return
             _trim_quotes "$_AP_KEYWORD_VALUE" && {
@@ -425,7 +460,7 @@ _set_parser_kwargs ()
                     _is_none_value &&
                     AP_PARSER_EPILOG=$_AP_KEYWORD_VALUE || AP_PARSER_EPILOG=
                 ;;
-                parents | formatter_class)
+                parents)
                     # TODO: implement
                 ;;
                 prefix_chars)
@@ -555,7 +590,7 @@ ArgumentParser ()
     AP_PARSER_DESCRIPTION=
     AP_PARSER_EPILOG=
     AP_PARSER_PARENTS=
-    AP_PARSER_FORMATTER_CLASS=
+    AP_PARSER_FORMATTER_CLASS=Default
     AP_PARSER_PREFIX_CHARS=-
     AP_PARSER_FROMFILE_PREFIX_CHARS=
     AP_PARSER_ARGUMENT_DEFAULT=
@@ -579,7 +614,6 @@ ArgumentParser ()
     _set_positional_kwargs parser "$@" || return
 
     AP_PARSER_PARENTS=${AP_PARSER_PARENTS:-}
-    AP_PARSER_FORMATTER_CLASS=${AP_PARSER_FORMATTER_CLASS:-argparse.HelpFormatter}
     AP_PARSER_ADD_HELP=${AP_PARSER_ADD_HELP:-}
     AP_PARSER_ALLOW_ABBREV=${AP_PARSER_ALLOW_ABBREV:-}
     AP_PARSER_EXIT_ON_ERROR=${AP_PARSER_EXIT_ON_ERROR:-}
