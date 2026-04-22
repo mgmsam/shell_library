@@ -182,6 +182,24 @@ _unique_chars ()
     _AP_STRING=$_AP_BUFFER
 }
 
+_get_terminal_size ()
+{
+    case "${COLUMNS:+${LINES:+$COLUMNS$LINES}}" in
+        "" | *[!"$AP_DIGITS"]*)
+            type tput >/dev/null 2>&1 && {
+                LINES=$(tput lines) && COLUMNS=$(tput cols)
+            } || {
+                type stty >/dev/null 2>&1 && {
+                    set -- $(stty size 2>/dev/null) && {
+                        LINES=${1:-24}
+                        COLUMNS=${2:-80}
+                    }
+                }
+            } || LINES=24 COLUMNS=80
+        ;;
+    esac
+}
+
 _set_parens ()
 {
     case "$1" in
@@ -1058,7 +1076,7 @@ _get_positional_strings ()
             _AP_USAGE_STR=$_AP_BUFFER
         ;;
     esac
-    _AP_USAGE_POSITION_STR="$_AP_USAGE_POSITION_STR $_AP_USAGE_STR"
+    _AP_USAGE_POSITION_STR="$_AP_USAGE_POSITION_STR '$_AP_USAGE_STR'"
 }
 
 _get_option_strings ()
@@ -1101,7 +1119,7 @@ _get_option_strings ()
     esac && _AP_USAGE_STR="$1 $AP_ACTION_METAVAR" || _AP_USAGE_STR="$1"
 
     $AP_ACTION_REQUIRED || _AP_USAGE_STR="[$_AP_USAGE_STR]"
-    _AP_USAGE_OPTION_STR="$_AP_USAGE_OPTION_STR $_AP_USAGE_STR"
+    _AP_USAGE_OPTION_STR="$_AP_USAGE_OPTION_STR '$_AP_USAGE_STR'"
 }
 
 _get_help_string ()
@@ -1166,7 +1184,7 @@ _format_epilog ()
 
 _format_usage ()
 {
-    AP_USAGE_STRING="Usage:${AP_PARSER_PROG:+ $AP_PARSER_PROG:}"
+    AP_USAGE_STRING="'usage:${AP_PARSER_PROG:+ $AP_PARSER_PROG:}'"
     AP_HELP_STRING=
     _AP_USAGE_OPTION_STR=
     _AP_OPTION_HELP="options:"
@@ -1203,9 +1221,65 @@ _format_usage ()
     AP_USAGE_STRING="$AP_USAGE_STRING$_AP_USAGE_OPTION_STR$_AP_USAGE_POSITION_STR"
 }
 
+_get_indent_string ()
+{
+    _AP_INDENT=${1:-}
+    case "$_AP_INDENT" in
+        "")
+            return
+        ;;
+        *[!"$AP_DIGITS"]*)
+            _AP_INDENT=${#_AP_INDENT}
+        ;;
+    esac
+    _AP_COUNT_1=$_AP_INDENT
+    _AP_COUNT_2=0
+    _AP_INDENT=
+    while
+        case $((_AP_COUNT_1 = _AP_COUNT_2)) in
+            1)
+                false
+            ;;
+        esac
+    do
+        _AP_COUNT_2=$((_AP_COUNT_2 + 1))
+        _AP_INDENT="$_AP_INDENT "
+    done
+}
+
+_fill_text ()
+{
+    _AP_STRING=$1
+    _AP_INDENT=${2:-}
+    _AP_INDENT_LENGHT=${#_AP_INDENT}
+
+    eval set -- "$_AP_STRING"
+    _AP_STRING=$1
+    _AP_REMAIND=$((_AP_COLUMNS - ${#1} - 1))
+    shift
+
+    for _AP_I
+    do
+        case $((_AP_REMAIND >= ${#_AP_I})) in
+            1)
+                _AP_STRING="$_AP_STRING $_AP_I"
+                _AP_REMAIND=$((_AP_REMAIND - ${#_AP_I} - 1))
+            ;;
+            0)
+                _AP_STRING="$_AP_STRING$AP_LF$_AP_INDENT$_AP_I"
+                _AP_REMAIND=$((_AP_COLUMNS - _AP_INDENT_LENGHT - ${#_AP_I} - 1))
+            ;;
+        esac
+    done
+}
+
 print_usage ()
 {
     _format_usage
+    _get_terminal_size && _AP_COLUMNS=$((COLUMNS - 2))
+    _get_indent_string 7
+    _fill_text "$AP_USAGE_STRING" "$_AP_INDENT"
+    AP_USAGE_STRING=$_AP_STRING
     echo "$AP_USAGE_STRING"
 }
 
