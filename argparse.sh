@@ -1122,74 +1122,56 @@ _get_option_strings ()
     _AP_USAGE_OPTION_STR="$_AP_USAGE_OPTION_STR '$_AP_USAGE_STR'"
 }
 
-_get_help_string ()
+_set_max_lenght_indent ()
 {
-    case "${AP_ACTION_HELP:+$AP_ACTION_DEFAULT}" in
-        ?*)
-            AP_ACTION_HELP="$AP_ACTION_HELP (default: '$AP_ACTION_DEFAULT')"
+    _AP_ACTION_LEN=$1
+    case $((AP_MAX_ACTION_LEN >= _AP_ACTION_LEN )) in
+        0)
+            AP_MAX_ACTION_LEN=$_AP_ACTION_LEN
         ;;
     esac
 }
 
-_get_positional_help ()
+_save_metavar_help ()
 {
-    _get_help_string
-    _AP_POSITIONAL_HELP="$_AP_POSITIONAL_HELP$AP_LF  $AP_ACTION_METAVAR${AP_ACTION_HELP:+  $AP_ACTION_HELP}"
+    _set_max_lenght_indent ${#_AP_METAVAR}
+    # see _format_Default
+    # eval _AP_METAVAR_$_AP_INDEX="\\''$_AP_METAVAR'\\'" \
+            # _AP_HELP_$_AP_INDEX='$AP_ACTION_HELP'
+    eval _AP_METAVAR_$_AP_INDEX='$_AP_METAVAR' \
+            _AP_HELP_$_AP_INDEX='$AP_ACTION_HELP'
 }
 
-_get_option_help ()
+_save_positional_help_string ()
 {
-    _get_help_string
-    _AP_OPTION_HELP="$_AP_OPTION_HELP$AP_LF  $_AP_OPTIONS${AP_ACTION_METAVAR:+" $AP_ACTION_METAVAR"}${AP_ACTION_HELP:+  $AP_ACTION_HELP}"
+    _AP_METAVAR="$AP_ACTION_METAVAR"
+    _save_metavar_help
+    _AP_HELP_POSITIONAL_INDEXES="$_AP_HELP_POSITIONAL_INDEXES $_AP_INDEX"
 }
 
-_format_description ()
+_save_option_help_string ()
 {
-    case "$AP_PARSER_DESCRIPTION" in
-        ?*)
-            AP_HELP_STRING="$AP_USAGE_STRING$AP_LF$AP_LF$AP_PARSER_DESCRIPTION"
-        ;;
-        *)
-            AP_HELP_STRING="$AP_USAGE_STRING"
-        ;;
-    esac
+    _AP_METAVAR=
+    $AP_ACTION_ADD_METAVAR && {
+        for _AP_I
+        do
+            _AP_METAVAR="${_AP_METAVAR:+$_AP_METAVAR, }$_AP_I $AP_ACTION_METAVAR"
+        done
+    } || {
+        for _AP_I
+        do
+            _AP_METAVAR="${_AP_METAVAR:+$_AP_METAVAR, }$_AP_I"
+        done
+    }
+    _save_metavar_help
+    _AP_HELP_OPTIONS_INDEXES="$_AP_HELP_OPTIONS_INDEXES $_AP_INDEX"
 }
 
-_format_positional_help ()
+_get_usage_string ()
 {
-    case "$_AP_POSITIONAL_HELP" in
-        ?*)
-            AP_HELP_STRING="$AP_HELP_STRING$AP_LF$AP_LF$_AP_POSITIONAL_HELP"
-        ;;
-    esac
-}
-
-_format_option_help ()
-{
-    case "$_AP_OPTION_HELP" in
-        ?*)
-            AP_HELP_STRING="$AP_HELP_STRING$AP_LF$AP_LF$_AP_OPTION_HELP"
-        ;;
-    esac
-}
-
-_format_epilog ()
-{
-    case "$AP_PARSER_EPILOG" in
-        ?*)
-            AP_HELP_STRING="$AP_HELP_STRING$AP_LF$AP_LF$AP_PARSER_EPILOG"
-        ;;
-    esac
-}
-
-_format_usage ()
-{
-    AP_USAGE_STRING="'usage:${AP_PARSER_PROG:+ $AP_PARSER_PROG:}'"
-    AP_HELP_STRING=
+    AP_ACTION_USAGE="'usage:${AP_PARSER_PROG:+ $AP_PARSER_PROG:}'"
     _AP_USAGE_OPTION_STR=
-    _AP_OPTION_HELP="options:"
     _AP_USAGE_POSITION_STR=
-    _AP_POSITIONAL_HELP="positional arguments:"
     for _AP_INDEX in $_AP_INDEXES
     do
         eval AP_ACTION_OPTION_STRINGS=\$AP_ACTION_OPTION_STRINGS_$_AP_INDEX \
@@ -1205,59 +1187,58 @@ _format_usage ()
              AP_ACTION_ADD_METAVAR=\$AP_ACTION_ADD_METAVAR_$_AP_INDEX
 
         set -- $AP_ACTION_OPTION_STRINGS
-        _str_replace -- "$*" ' ' ", "
-        _AP_OPTIONS=$_AP_STRING
         case "${1:-}" in
             "")
                 _get_positional_strings
-                _get_positional_help
+                case "$_AP_PRINT_INFO" in
+                    print_help)
+                        _save_positional_help_string
+                    ;;
+                esac
             ;;
             *)
                 _get_option_strings "$1"
-                _get_option_help
+                case "$_AP_PRINT_INFO" in
+                    print_help)
+                        _save_option_help_string "$@"
+                    ;;
+                esac
             ;;
         esac
     done
-    AP_USAGE_STRING="$AP_USAGE_STRING$_AP_USAGE_OPTION_STR$_AP_USAGE_POSITION_STR"
+    AP_ACTION_USAGE="$AP_ACTION_USAGE$_AP_USAGE_OPTION_STR$_AP_USAGE_POSITION_STR"
 }
 
 _get_indent_string ()
 {
-    _AP_INDENT=${1:-}
-    case "$_AP_INDENT" in
-        "")
+    _AP_STRING=${1:-}
+    case "$_AP_STRING" in
+        0 | "")
+            _AP_STRING=
+            _AP_STRING_LEN=0
             return
         ;;
         *[!"$AP_DIGITS"]*)
-            _AP_INDENT=${#_AP_INDENT}
+            _AP_STRING=${#_AP_STRING}
         ;;
     esac
-    _AP_COUNT_1=$_AP_INDENT
-    _AP_COUNT_2=0
-    _AP_INDENT=
+    _AP_STRING_LEN=$_AP_STRING
+    _AP_COUNT=0
+    _AP_STRING=
     while
-        case $((_AP_COUNT_1 = _AP_COUNT_2)) in
+        case $((_AP_COUNT == _AP_STRING_LEN)) in
             1)
                 false
             ;;
         esac
     do
-        _AP_COUNT_2=$((_AP_COUNT_2 + 1))
-        _AP_INDENT="$_AP_INDENT "
+        _AP_COUNT=$((_AP_COUNT + 1))
+        _AP_STRING="$_AP_STRING "
     done
 }
 
-_fill_text ()
+_textwrap ()
 {
-    _AP_STRING=$1
-    _AP_INDENT=${2:-}
-    _AP_INDENT_LENGHT=${#_AP_INDENT}
-
-    eval set -- "$_AP_STRING"
-    _AP_STRING=$1
-    _AP_REMAIND=$((_AP_COLUMNS - ${#1} - 1))
-    shift
-
     for _AP_I
     do
         case $((_AP_REMAIND >= ${#_AP_I})) in
@@ -1267,20 +1248,39 @@ _fill_text ()
             ;;
             0)
                 _AP_STRING="$_AP_STRING$AP_LF$_AP_INDENT$_AP_I"
-                _AP_REMAIND=$((_AP_COLUMNS - _AP_INDENT_LENGHT - ${#_AP_I} - 1))
+                _AP_REMAIND=$((_AP_COLUMNS - _AP_INDENT_LEN - ${#_AP_I} - 1))
             ;;
         esac
     done
 }
 
+_format_usage ()
+{
+    _get_terminal_size && _AP_COLUMNS=$((COLUMNS - 2))
+    _get_usage_string
+    eval set -- "$AP_ACTION_USAGE"
+
+    _AP_REMAIND=$((_AP_COLUMNS - ${#1} - 1))
+    case $((_AP_REMAIND >= ${#2})) in
+        1)
+            _get_indent_string $((${#1} + 1))
+        ;;
+        0)
+            _get_indent_string 7
+        ;;
+    esac
+    _AP_INDENT="$_AP_STRING"
+    _AP_INDENT_LEN="$_AP_STRING_LEN"
+    _AP_STRING=$1
+    shift
+    _textwrap "$@"
+    AP_ACTION_USAGE="$_AP_STRING"
+}
+
 print_usage ()
 {
     _format_usage
-    _get_terminal_size && _AP_COLUMNS=$((COLUMNS - 2))
-    _get_indent_string 7
-    _fill_text "$AP_USAGE_STRING" "$_AP_INDENT"
-    AP_USAGE_STRING=$_AP_STRING
-    echo "$AP_USAGE_STRING"
+    echo "$AP_ACTION_USAGE"
 }
 
 _error ()
@@ -1289,19 +1289,199 @@ _error ()
     echo "${AP_PARSER_PROG:+$AP_PARSER_PROG: }${1:-}"
 }
 
+_format_action_indent ()
+{
+    case $((_AP_COLUMNS >= 46)) in
+        1)  _AP_INDENT_LEN=24 ;;
+        *)  case $((_AP_COLUMNS >= 26)) in
+                1)  _AP_INDENT_LEN=$((_AP_COLUMNS - 22)) ;;
+                *)  _AP_INDENT_LEN=4 ;;
+            esac ;;
+    esac
+
+    AP_MAX_ACTION_LEN=$((AP_MAX_ACTION_LEN + 4))
+    case $((AP_MAX_ACTION_LEN >= _AP_INDENT_LEN)) in
+        0)  _AP_INDENT_LEN=$AP_MAX_ACTION_LEN ;;
+    esac
+
+    _get_indent_string "$_AP_INDENT_LEN"
+    _AP_INDENT="$_AP_STRING"
+    _AP_INDENT_LEN="$_AP_STRING_LEN"
+}
+
+_format_description ()
+{
+    case "$AP_PARSER_DESCRIPTION" in
+        ?*)
+            AP_ACTION_HELP="$AP_ACTION_USAGE$AP_LF$AP_LF$AP_PARSER_DESCRIPTION"
+        ;;
+        *)
+            AP_ACTION_HELP="$AP_ACTION_USAGE"
+        ;;
+    esac
+}
+
+_get_metavar_help ()
+{
+    eval _AP_METAVAR=\$_AP_METAVAR_$_AP_INDEX \
+            _AP_HELP=\$_AP_HELP_$_AP_INDEX
+}
+
+_text_strip ()
+{
+    _AP_STRING=${_AP_STRING%${_AP_STRING##*[![:blank:]]}}
+    _AP_STRING=${_AP_STRING#${_AP_STRING%%[![:blank:]]*}}
+}
+
+_fill_text ()
+{
+    _str_replace -l -- "$_AP_HELP" "  " " "
+    _text_strip
+    _AP_HELP=$_AP_STRING
+}
+
+_format_Default ()
+{
+    _fill_text
+    # see _save_metavar_help
+    # _str_replace "$_AP_HELP" "'" "'\''"
+    # eval set -- "'$_AP_STRING'"
+    set -- $_AP_HELP
+
+    case $# in
+        0)
+            AP_ACTION_HELP="$AP_ACTION_HELP$AP_LF  $_AP_METAVAR"
+            return
+        ;;
+    esac
+
+    _AP_REMAIND=$((_AP_COLUMNS - _AP_INDENT_LEN))
+    _AP_METAVAR_LEN=$((${#_AP_METAVAR} + 4))
+
+    case $((_AP_INDENT_LEN >= _AP_METAVAR_LEN)) in
+        1)
+            case $((_AP_REMAIND >= ${#1})) in
+                1)
+                    _get_indent_string $((_AP_INDENT_LEN - _AP_METAVAR_LEN + 1))
+                    _AP_STRING="  $_AP_METAVAR$_AP_STRING"
+                ;;
+                0)
+                    _AP_STRING="  $_AP_METAVAR"
+                ;;
+            esac
+        ;;
+        0)
+            case $((_AP_REMAIND >= ${#1})) in
+                1)
+                    _get_indent_string $((_AP_INDENT_LEN - 1))
+                    _AP_STRING="  $_AP_METAVAR$AP_LF$_AP_STRING"
+                ;;
+                0)
+                    _AP_STRING="  $_AP_METAVAR"
+                ;;
+            esac
+        ;;
+    esac
+
+    _textwrap "$@"
+    AP_ACTION_HELP="$AP_ACTION_HELP$AP_LF$_AP_STRING"
+}
+
+_format_RawText ()
+{
+    echo "TODO: implimente"
+    exit
+}
+
+_format_RawDescription ()
+{
+    echo "TODO: implimente"
+    exit
+}
+
+_format_ArgumentDefaults ()
+{
+    case "${_AP_HELP:-}" in
+        ?*)
+            _AP_HELP="$AP_HELP (default: ${AP_ACTION_DEFAULT:-None})"
+        ;;
+    esac
+    _format_Default
+}
+
+_format_MetavarType ()
+{
+    echo "TODO: implimente"
+    exit
+}
+
+_append_help ()
+{
+    _get_metavar_help
+    _format_$AP_PARSER_FORMATTER_CLASS
+}
+
+_format_action_help ()
+{
+    case "$_AP_HELP_POSITIONAL_INDEXES" in
+        ?*)
+            AP_ACTION_HELP="$AP_ACTION_HELP$AP_LF$AP_LF$_AP_HELP_POSITIONAL_HEADER"
+            for _AP_INDEX in $_AP_HELP_POSITIONAL_INDEXES
+            do
+                _append_help
+            done
+        ;;
+    esac
+    case "$_AP_HELP_OPTIONS_INDEXES" in
+        ?*)
+            AP_ACTION_HELP="$AP_ACTION_HELP$AP_LF$AP_LF$_AP_HELP_OPTIONS_HEADER"
+            for _AP_INDEX in $_AP_HELP_OPTIONS_INDEXES
+            do
+                _append_help
+            done
+        ;;
+    esac
+}
+
+_format_epilog ()
+{
+    case "$AP_PARSER_EPILOG" in
+        ?*)
+            AP_ACTION_HELP="$AP_ACTION_HELP$AP_LF$AP_LF$AP_PARSER_EPILOG"
+        ;;
+    esac
+}
+
 _format_help ()
 {
+    AP_ACTION_HELP=
+    _AP_HELP_POSITIONAL_HEADER="positional arguments:"
+    _AP_HELP_POSITIONAL_INDEXES=
+    _AP_HELP_OPTIONS_HEADER="options:"
+    _AP_HELP_OPTIONS_INDEXES=
+    _AP_MAX_LENGHT_INDENT=0
     _format_usage
+    _format_action_indent
     _format_description
-    _format_positional_help
-    _format_option_help
+    _format_action_help
     _format_epilog
 }
 
 print_help ()
 {
     _format_help
-    echo "$AP_HELP_STRING"
+    echo "$AP_ACTION_HELP"
+}
+
+print_version ()
+{
+    eval AP_ACTION_VERSION=\$AP_ACTION_VERSION_$_AP_VERSION_INDEX \
+         AP_ACTION_VERSION_IS_SET=\$AP_ACTION_VERSION_IS_SET_$_AP_VERSION_INDEX
+
+    $AP_ACTION_VERSION_IS_SET && echo "$AP_ACTION_VERSION" || {
+        echo "AttributeError: 'ArgumentParser' object has no attribute 'version'"
+        return 2
+    }
 }
 
 _add_help ()
@@ -1315,17 +1495,6 @@ _add_help ()
          AP_ACTION_METAVAR_$_AP_INDEX= \
          AP_ACTION_ADD_METAVAR_$_AP_INDEX=false \
          AP_ACTION_$_AP_INDEX=help
-}
-
-print_version ()
-{
-    eval AP_ACTION_VERSION=\$AP_ACTION_VERSION_$_AP_VERSION_INDEX \
-         AP_ACTION_VERSION_IS_SET=\$AP_ACTION_VERSION_IS_SET_$_AP_VERSION_INDEX
-
-    $AP_ACTION_VERSION_IS_SET && echo "$AP_ACTION_VERSION" || {
-        echo "AttributeError: 'ArgumentParser' object has no attribute 'version'"
-        return 2
-    }
 }
 
 _apply_const ()
