@@ -1496,7 +1496,14 @@ print_version ()
     eval AP_ACTION_VERSION=\$AP_ACTION_VERSION_$_AP_VERSION_INDEX \
          AP_ACTION_VERSION_IS_SET=\$AP_ACTION_VERSION_IS_SET_$_AP_VERSION_INDEX
 
-    $AP_ACTION_VERSION_IS_SET && echo "$AP_ACTION_VERSION" || {
+    $AP_ACTION_VERSION_IS_SET && {
+        $AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION ||
+        $AP_PARSER_FORMATTER_CLASS_RAWTEXT || {
+            set -- $AP_ACTION_VERSION
+            AP_ACTION_VERSION="$*"
+        }
+        echo "$AP_ACTION_VERSION"
+    } || {
         echo "AttributeError: 'ArgumentParser' object has no attribute 'version'"
         return 2
     }
