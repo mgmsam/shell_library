@@ -1065,6 +1065,13 @@ add_argument ()
          AP_ACTION_$_AP_INDEX=\$AP_ACTION
 }
 
+_format_choices_metavar ()
+{
+    eval set -- "$AP_ACTION_CHOICES"
+    _str_replace -- "$*" ' ' ","
+    AP_ACTION_METAVAR="{$_AP_STRING}"
+}
+
 _get_positional_strings ()
 {
     $AP_PARSER_FORMATTER_CLASS_METAVARTYPE && {
@@ -1082,9 +1089,7 @@ _get_positional_strings ()
                         AP_ACTION_METAVAR=$AP_ACTION_POSITION_ARG
                     ;;
                     *)
-                        eval set -- "$AP_ACTION_CHOICES"
-                        _str_replace -- "$*" ' ' ","
-                        AP_ACTION_METAVAR="{$_AP_STRING}"
+                        _format_choices_metavar
                     ;;
                 esac
             ;;
@@ -1146,9 +1151,7 @@ _get_option_strings ()
                     AP_ACTION_METAVAR=$_AP_STRING
                 ;;
                 *)
-                    eval set -- "$AP_ACTION_CHOICES"
-                    _str_replace -- "$*" ' ' ","
-                    AP_ACTION_METAVAR="{$_AP_STRING}"
+                    _format_choices_metavar
                 ;;
             esac
         ;;
