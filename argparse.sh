@@ -1072,7 +1072,7 @@ _get_positional_strings ()
                 _AP_BUFFER="$_AP_BUFFER $AP_ACTION_METAVAR"
                 _AP_COUNT=$((_AP_COUNT - 1))
             done
-            _AP_BUFFER="${_AP_BUFFER#"${_AP_BUFFER%%[!$AP_SPACE]*}"}"
+            _AP_BUFFER="${_AP_BUFFER#"${_AP_BUFFER%%[!"$AP_SPACE"]*}"}"
             _AP_USAGE_STR=$_AP_BUFFER
         ;;
     esac
@@ -1113,7 +1113,7 @@ _get_option_strings ()
                 _AP_BUFFER="$_AP_BUFFER $AP_ACTION_METAVAR"
                 _AP_COUNT=$((_AP_COUNT - 1))
             done
-            _AP_BUFFER="${_AP_BUFFER#"${_AP_BUFFER%%[!$AP_SPACE]*}"}"
+            _AP_BUFFER="${_AP_BUFFER#"${_AP_BUFFER%%[!"$AP_SPACE"]*}"}"
             AP_ACTION_METAVAR=$_AP_BUFFER
         ;;
     esac && _AP_USAGE_STR="$1 $AP_ACTION_METAVAR" || _AP_USAGE_STR="$1"
