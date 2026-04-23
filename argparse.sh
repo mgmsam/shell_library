@@ -796,7 +796,7 @@ _set_action_kwargs ()
                         AP_ACTION_CHOICES=
                         for _AP_STRING
                         do
-                            _str_replace "$_AP_STRING" "'" "'\''"
+                            _str_replace -- "$_AP_STRING" "'" "'\''"
                             AP_ACTION_CHOICES="${AP_ACTION_CHOICES:+$AP_ACTION_CHOICES }'$_AP_STRING'"
                         done
                     }
@@ -854,7 +854,7 @@ _set_action_positional_args ()
             case "$AP_ACTION_LONG_OPTION" in
                 "")
                     AP_ACTION_LONG_OPTION=${_AP_ARG#"${_AP_ARG%%[!"$AP_PARSER_PREFIX_CHARS"]*}"}
-                    _str_replace "$AP_ACTION_LONG_OPTION" '-' '_'
+                    _str_replace -- "$AP_ACTION_LONG_OPTION" '-' '_'
                     AP_ACTION_LONG_OPTION="$_AP_STRING"
                 ;;
             esac
@@ -923,7 +923,7 @@ add_argument ()
             return 2
         ;;
         *)
-            _str_replace "$AP_ACTION_DEST" '-' '_'
+            _str_replace -- "$AP_ACTION_DEST" '-' '_'
             _to_$AP_PARSER_CASE_STYLE "$_AP_STRING"
             AP_ACTION_DEST=${AP_ACTION_DEST_PREFIX:+${AP_ACTION_DEST_PREFIX}_}$_AP_STRING
         ;;
@@ -1521,7 +1521,7 @@ _apply_const ()
         *[!\."$AP_DIGITS"]*)
             case "$AP_ACTION_TYPE" in
                 "" | str)
-                    _str_replace "$AP_ACTION_CONST" "'" "'\''"
+                    _str_replace -- "$AP_ACTION_CONST" "'" "'\''"
                     eval $AP_ACTION_DEST="'$_AP_STRING'"
                 ;;
                 *)
@@ -1551,7 +1551,7 @@ _apply_const ()
         ;;
     esac || {
         set -- $AP_ACTION_OPTION_STRINGS
-        _str_replace "$*" ' ' '/'
+        _str_replace -- "$*" ' ' '/'
         _error "error: argument $_AP_STRING: invalid $AP_ACTION_TYPE value: '$AP_ACTION_CONST'"
         return 2
     }
@@ -1572,7 +1572,7 @@ _prev_has_value ()
             esac
 
             set -- $AP_ACTION_OPTION_STRINGS
-            _str_replace "$*" ' ' '/'
+            _str_replace -- "$*" ' ' '/'
             case $AP_ACTION_NARGS in
                 None)
                     AP_ACTION_NARGS='one argument'
@@ -1625,7 +1625,7 @@ _check_choice ()
                 esac
             done
             set -- $AP_ACTION_OPTION_STRINGS
-            _str_replace "$*" ' ' '/'
+            _str_replace -- "$*" ' ' '/'
             _error "error: argument $_AP_STRING: invalid choice: '$_AP_ARG' (choose from $AP_ACTION_CHOICES)"
             return 2
         ;;
@@ -1637,7 +1637,7 @@ _set_dest_value ()
     case "$AP_ACTION_TYPE" in
         "" | str)
             _check_choice || return
-            _str_replace "$_AP_ARG" "'" "'\''"
+            _str_replace -- "$_AP_ARG" "'" "'\''"
             eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST, }'$_AP_STRING'\""
         ;;
         int)
@@ -1673,7 +1673,7 @@ _set_dest_value ()
         ;;
     esac || {
         set -- $AP_ACTION_OPTION_STRINGS
-        _str_replace "$*" ' ' '/'
+        _str_replace -- "$*" ' ' '/'
         _error "error: argument $_AP_STRING: invalid $AP_ACTION_TYPE value: '$_AP_ARG'"
         return 2
     }
@@ -1696,7 +1696,7 @@ _apply_action ()
 {
     case "$AP_ACTION" in
         append_const)
-            _str_replace "$AP_ACTION_CONST" "'" "'\''"
+            _str_replace -- "$AP_ACTION_CONST" "'" "'\''"
             eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST, }'$_AP_STRING'\""
         ;;
         count)
@@ -1709,7 +1709,7 @@ _apply_action ()
             $_AP_ARG_IS_OPTION || _set_dest_value || return
         ;;
         store_const)
-            _str_replace "$AP_ACTION_CONST" "'" "'\''"
+            _str_replace -- "$AP_ACTION_CONST" "'" "'\''"
             eval $AP_ACTION_DEST="\"'$_AP_STRING'\""
         ;;
         store_false)
@@ -1824,7 +1824,7 @@ _check_required_args ()
                     ;;
                     *)
                         set -- $AP_ACTION_OPTION_STRINGS
-                        _str_replace "$*" ' ' '/'
+                        _str_replace -- "$*" ' ' '/'
                         _AP_MISSING_INDEXES="${_AP_MISSING_INDEXES:+$_AP_MISSING_INDEXES, }$_AP_STRING"
                     ;;
                 esac
