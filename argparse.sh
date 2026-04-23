@@ -669,20 +669,20 @@ ArgumentParser ()
 
 print_parser_state ()
 {
-    echo "prog: $AP_PARSER_PROG
-usage: $AP_PARSER_USAGE
-description: $AP_PARSER_DESCRIPTION
-epilog: $AP_PARSER_EPILOG
-parents: $AP_PARSER_PARENTS
-formatter_class: $AP_PARSER_FORMATTER_CLASS
-prefix_chars: $AP_PARSER_PREFIX_CHARS
-fromfile_prefix_chars: $AP_PARSER_FROMFILE_PREFIX_CHARS
-argument_default: $AP_PARSER_ARGUMENT_DEFAULT
-conflict_handler: $AP_PARSER_CONFLICT_HANDLER
-add_help: $AP_PARSER_ADD_HELP
-allow_abbrev: $AP_PARSER_ALLOW_ABBREV
-exit_on_error: $AP_PARSER_EXIT_ON_ERROR
-case_style: $AP_PARSER_CASE_STYLE
+    echo "prog: ${AP_PARSER_PROG:-None}
+usage: ${AP_PARSER_USAGE:-None}
+description: ${AP_PARSER_DESCRIPTION:-None}
+epilog: ${AP_PARSER_EPILOG:-None}
+parents: ${AP_PARSER_PARENTS:-None}
+formatter_class: ${AP_PARSER_FORMATTER_CLASS:-None}
+prefix_chars: ${AP_PARSER_PREFIX_CHARS:-None}
+fromfile_prefix_chars: ${AP_PARSER_FROMFILE_PREFIX_CHARS:-None}
+argument_default: ${AP_PARSER_ARGUMENT_DEFAULT:-None}
+conflict_handler: ${AP_PARSER_CONFLICT_HANDLER:-None}
+add_help: ${AP_PARSER_ADD_HELP:-None}
+allow_abbrev: ${AP_PARSER_ALLOW_ABBREV:-None}
+exit_on_error: ${AP_PARSER_EXIT_ON_ERROR:-None}
+case_style: ${AP_PARSER_CASE_STYLE:-None}
 dest_prefix: ${AP_PARSER_DEFAULT_DEST_PREFIX:-None}"
 }
 
