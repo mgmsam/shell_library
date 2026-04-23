@@ -784,6 +784,7 @@ _set_action_kwargs ()
                     esac
                 ;;
                 choices)
+                    echo "AP_ACTION_CHOICES ($_AP_KEYWORD_VALUE) $_AP_VALUE_IS_STRING"
                     $_AP_VALUE_IS_STRING && {
                         _split_chars "$AP_ACTION_CHOICES" ' '
                         AP_ACTION_CHOICES="$_AP_STRING"
@@ -1073,7 +1074,25 @@ _get_positional_strings ()
                 return 2
             ;;
         esac && AP_ACTION_METAVAR=$AP_ACTION_TYPE
-    } || AP_ACTION_METAVAR="${AP_ACTION_METAVAR:-$AP_ACTION_POSITION_ARG}"
+    } || {
+        case "${AP_ACTION_METAVAR:-}" in
+            "")
+                case "${AP_ACTION_CHOICES:-}" in
+                    "")
+                        AP_ACTION_METAVAR=$AP_ACTION_POSITION_ARG
+                    ;;
+                    *)
+                        eval set -- "$AP_ACTION_CHOICES"
+                        _str_replace -- "$*" ' ' ","
+                        AP_ACTION_METAVAR="{$_AP_STRING}"
+                    ;;
+                esac
+            ;;
+            *)
+                AP_ACTION_METAVAR=$AP_ACTION_METAVAR
+            ;;
+        esac
+    }
 
     case "$AP_ACTION_NARGS" in
         None)
@@ -1121,8 +1140,17 @@ _get_option_strings ()
     } &&
     case "$AP_ACTION_METAVAR" in
         "")
-            _to_upper "${AP_ACTION_LONG_OPTION:-$AP_ACTION_SHORT_OPTION}"
-            AP_ACTION_METAVAR=$_AP_STRING
+            case "${AP_ACTION_CHOICES:-}" in
+                "")
+                    _to_upper "${AP_ACTION_LONG_OPTION:-$AP_ACTION_SHORT_OPTION}"
+                    AP_ACTION_METAVAR=$_AP_STRING
+                ;;
+                *)
+                    eval set -- "$AP_ACTION_CHOICES"
+                    _str_replace -- "$*" ' ' ","
+                    AP_ACTION_METAVAR="{$_AP_STRING}"
+                ;;
+            esac
         ;;
     esac &&
     case "$AP_ACTION_NARGS" in
@@ -1356,7 +1384,7 @@ _format_description ()
             $AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION ||
             $AP_PARSER_FORMATTER_CLASS_RAWTEXT || {
                 set -- $AP_PARSER_DESCRIPTION
-                AP_PARSER_DESCRIPTION="$*"
+                        AP_PARSER_DESCRIPTION="$*"
             }
             AP_ACTION_HELP="$AP_ACTION_USAGE$AP_LF$AP_LF$AP_PARSER_DESCRIPTION"
         ;;
@@ -1371,7 +1399,6 @@ _get_metavar_help ()
     eval _AP_METAVAR=\$_AP_METAVAR_$_AP_INDEX \
          _AP_DEFAULT=\$_AP_DEFAULT_$_AP_INDEX \
             _AP_HELP=\$_AP_HELP_$_AP_INDEX
-         
 }
 
 _format_Default ()
@@ -1463,7 +1490,7 @@ _format_epilog ()
             $AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION ||
             $AP_PARSER_FORMATTER_CLASS_RAWTEXT || {
                 set -- $AP_PARSER_EPILOG
-                AP_PARSER_EPILOG="$*"
+                        AP_PARSER_EPILOG="$*"
             }
             AP_ACTION_HELP="$AP_ACTION_HELP$AP_LF$AP_LF$AP_PARSER_EPILOG"
         ;;
@@ -1500,7 +1527,7 @@ print_version ()
         $AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION ||
         $AP_PARSER_FORMATTER_CLASS_RAWTEXT || {
             set -- $AP_ACTION_VERSION
-            AP_ACTION_VERSION="$*"
+                    AP_ACTION_VERSION="$*"
         }
         echo "$AP_ACTION_VERSION"
     } || {
