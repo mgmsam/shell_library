@@ -360,6 +360,17 @@ _check_unique_kwargs ()
     _AP_SEEN_KEYWORDS="$_AP_SEEN_KEYWORDS $_AP_KEYWORD"
 }
 
+_check_unique_formatter_class ()
+{
+    case "$_AP_SEEN_FORMATTER_CLASS" in
+        *"$_AP_KEYWORD_VALUE"*)
+            echo "TypeError: duplicate base class $_AP_KEYWORD_VALUE"
+            return 2
+        ;;
+    esac
+    _AP_SEEN_FORMATTER_CLASS="$_AP_SEEN_FORMATTER_CLASS $_AP_KEYWORD_VALUE"
+}
+
 _is_none_value ()
 {
     case "$_AP_KEYWORD_VALUE" in
@@ -421,29 +432,30 @@ _set_parser_kwargs ()
             do
                 case "$_AP_KEYWORD_VALUE" in
                     argparse.HelpFormatter)
-                        _AP_KEYWORD_VALUE=Default
+                        AP_PARSER_FORMATTER_CLASS_DEFAULT=true
                     ;;
                     argparse.RawTextHelpFormatter)
-                        _AP_KEYWORD_VALUE=RawText
+                        AP_PARSER_FORMATTER_CLASS_RAWTEXT=true
                     ;;
                     argparse.RawDescriptionHelpFormatter)
-                        _AP_KEYWORD_VALUE=RawDescription
+                        AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION=true
                     ;;
                     argparse.ArgumentDefaultsHelpFormatter)
-                        _AP_KEYWORD_VALUE=ArgumentDefaults
+                        AP_PARSER_FORMATTER_CLASS_ARGUMENTDEFAULTS=true
                     ;;
                     argparse.MetavarTypeHelpFormatter)
-                        _AP_KEYWORD_VALUE=MetavarType
+                        AP_PARSER_FORMATTER_CLASS_METAVARTYPE=true
                     ;;
                     None)
                         echo "ValueError: length of metavar tuple does not match nargs"
                         return 2
                     ;;
                     *)
-                        echo "NameError: name '$_AP_KEYWORD_VALUE' is not defined"
+                        echo "AttributeError: module 'argparse' has no attribute '$_AP_KEYWORD_VALUE'"
                         return 2
                     ;;
                 esac
+                _check_unique_formatter_class || return
                 AP_PARSER_FORMATTER_CLASS="${AP_PARSER_FORMATTER_CLASS:+$AP_PARSER_FORMATTER_CLASS, }$_AP_KEYWORD_VALUE"
             done
         ;;
@@ -608,7 +620,12 @@ ArgumentParser ()
     AP_PARSER_DESCRIPTION=
     AP_PARSER_EPILOG=
     AP_PARSER_PARENTS=
-    AP_PARSER_FORMATTER_CLASS=Default
+    AP_PARSER_FORMATTER_CLASS=
+    AP_PARSER_FORMATTER_CLASS_DEFAULT=true
+    AP_PARSER_FORMATTER_CLASS_RAWTEXT=false
+    AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION=false
+    AP_PARSER_FORMATTER_CLASS_ARGUMENTDEFAULTS=false
+    AP_PARSER_FORMATTER_CLASS_METAVARTYPE=false
     AP_PARSER_PREFIX_CHARS=-
     AP_PARSER_FROMFILE_PREFIX_CHARS=
     AP_PARSER_ARGUMENT_DEFAULT=
@@ -626,6 +643,10 @@ ArgumentParser ()
     _AP_INDEXES=
     _AP_REQUIRED_INDEXES=
 
+    _AP_SEEN_FORMATTER_CLASS=
+    _AP_SEEN_KEYWORDS=
+    _AP_KEYWORD=
+    _AP_KEYWORD_VALUE=
     _AP_VALUE_IS_STRING=false
 
     _parse_arg_sequence "$@" &&
@@ -878,10 +899,10 @@ add_argument ()
     AP_ACTION_POSITION_ARG=
 
     _AP_IS_OPTION=true
+
     _AP_SEEN_KEYWORDS=
     _AP_KEYWORD=
     _AP_KEYWORD_VALUE=
-
     _AP_VALUE_IS_STRING=false
 
     _parse_arg_sequence "$@" &&
@@ -1045,7 +1066,15 @@ add_argument ()
 
 _get_positional_strings ()
 {
-    AP_ACTION_METAVAR="${AP_ACTION_METAVAR:-$AP_ACTION_POSITION_ARG}"
+    $AP_PARSER_FORMATTER_CLASS_METAVARTYPE && {
+        case "$AP_ACTION_TYPE" in
+            "")
+                echo "AttributeError: 'NoneType' object has no attribute '__name__'"
+                return 2
+            ;;
+        esac && AP_ACTION_METAVAR=$AP_ACTION_TYPE
+    } || AP_ACTION_METAVAR="${AP_ACTION_METAVAR:-$AP_ACTION_POSITION_ARG}"
+
     case "$AP_ACTION_NARGS" in
         None)
             _AP_USAGE_STR="$AP_ACTION_METAVAR"
@@ -1081,7 +1110,15 @@ _get_positional_strings ()
 
 _get_option_strings ()
 {
-    $AP_ACTION_ADD_METAVAR &&
+    $AP_ACTION_ADD_METAVAR && {
+        $AP_PARSER_FORMATTER_CLASS_METAVARTYPE &&
+        case "$AP_ACTION_TYPE" in
+            "")
+                echo "AttributeError: 'NoneType' object has no attribute '__name__'"
+                return 2
+            ;;
+        esac && AP_ACTION_METAVAR=$AP_ACTION_TYPE || :
+    } &&
     case "$AP_ACTION_METAVAR" in
         "")
             _to_upper "${AP_ACTION_LONG_OPTION:-$AP_ACTION_SHORT_OPTION}"
@@ -1135,11 +1172,13 @@ _set_max_lenght_indent ()
 _save_metavar_help ()
 {
     _set_max_lenght_indent ${#_AP_METAVAR}
+    eval _AP_METAVAR_$_AP_INDEX='$_AP_METAVAR' \
+         _AP_DEFAULT_$_AP_INDEX='$AP_ACTION_DEFAULT' \
+            _AP_HELP_$_AP_INDEX='$AP_ACTION_HELP'
     # see _format_Default
     # eval _AP_METAVAR_$_AP_INDEX="\\''$_AP_METAVAR'\\'" \
-            # _AP_HELP_$_AP_INDEX='$AP_ACTION_HELP'
-    eval _AP_METAVAR_$_AP_INDEX='$_AP_METAVAR' \
-            _AP_HELP_$_AP_INDEX='$AP_ACTION_HELP'
+    #      _AP_DEFAULT_$_AP_INDEX='$AP_ACTION_DEFAULT' \
+    #         _AP_HELP_$_AP_INDEX='$AP_ACTION_HELP'
 }
 
 _save_positional_help_string ()
@@ -1179,6 +1218,7 @@ _get_usage_string ()
              AP_ACTION_LONG_OPTION=\$AP_ACTION_LONG_OPTION_$_AP_INDEX \
              AP_ACTION_POSITION_ARG=\$AP_ACTION_POSITION_ARG_$_AP_INDEX \
              AP_ACTION_DEFAULT=\$AP_ACTION_DEFAULT_$_AP_INDEX \
+             AP_ACTION_TYPE=\$AP_ACTION_TYPE_$_AP_INDEX \
              AP_ACTION_NARGS=\$AP_ACTION_NARGS_$_AP_INDEX \
              AP_ACTION_CHOICES=\$AP_ACTION_CHOICES_$_AP_INDEX \
              AP_ACTION_REQUIRED=\$AP_ACTION_REQUIRED_$_AP_INDEX \
@@ -1189,7 +1229,7 @@ _get_usage_string ()
         set -- $AP_ACTION_OPTION_STRINGS
         case "${1:-}" in
             "")
-                _get_positional_strings
+                _get_positional_strings &&
                 case "$_AP_PRINT_INFO" in
                     print_help)
                         _save_positional_help_string
@@ -1197,14 +1237,14 @@ _get_usage_string ()
                 esac
             ;;
             *)
-                _get_option_strings "$1"
+                _get_option_strings "$1" &&
                 case "$_AP_PRINT_INFO" in
                     print_help)
                         _save_option_help_string "$@"
                     ;;
                 esac
             ;;
-        esac
+        esac || return
     done
     AP_ACTION_USAGE="$AP_ACTION_USAGE$_AP_USAGE_OPTION_STR$_AP_USAGE_POSITION_STR"
 }
@@ -1257,7 +1297,7 @@ _textwrap ()
 _format_usage ()
 {
     _get_terminal_size && _AP_COLUMNS=$((COLUMNS - 2))
-    _get_usage_string
+    _get_usage_string || return
     eval set -- "$AP_ACTION_USAGE"
 
     _AP_REMAIND=$((_AP_COLUMNS - ${#1} - 1))
@@ -1279,13 +1319,13 @@ _format_usage ()
 
 print_usage ()
 {
-    _format_usage
+    _format_usage || return
     echo "$AP_ACTION_USAGE"
 }
 
 _error ()
 {
-    print_usage
+    print_usage || return
     echo "${AP_PARSER_PROG:+$AP_PARSER_PROG: }${1:-}"
 }
 
@@ -1313,6 +1353,11 @@ _format_description ()
 {
     case "$AP_PARSER_DESCRIPTION" in
         ?*)
+            $AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION ||
+            $AP_PARSER_FORMATTER_CLASS_RAWTEXT || {
+                set -- $AP_PARSER_DESCRIPTION
+                AP_PARSER_DESCRIPTION="$*"
+            }
             AP_ACTION_HELP="$AP_ACTION_USAGE$AP_LF$AP_LF$AP_PARSER_DESCRIPTION"
         ;;
         *)
@@ -1324,29 +1369,19 @@ _format_description ()
 _get_metavar_help ()
 {
     eval _AP_METAVAR=\$_AP_METAVAR_$_AP_INDEX \
+         _AP_DEFAULT=\$_AP_DEFAULT_$_AP_INDEX \
             _AP_HELP=\$_AP_HELP_$_AP_INDEX
-}
-
-_text_strip ()
-{
-    _AP_STRING=${_AP_STRING%${_AP_STRING##*[![:blank:]]}}
-    _AP_STRING=${_AP_STRING#${_AP_STRING%%[![:blank:]]*}}
-}
-
-_fill_text ()
-{
-    _str_replace -l -- "$_AP_HELP" "  " " "
-    _text_strip
-    _AP_HELP=$_AP_STRING
+         
 }
 
 _format_Default ()
 {
-    _fill_text
-    # see _save_metavar_help
-    # _str_replace "$_AP_HELP" "'" "'\''"
-    # eval set -- "'$_AP_STRING'"
-    set -- $_AP_HELP
+    $AP_PARSER_FORMATTER_CLASS_RAWTEXT && set -- ${_AP_HELP:+"$_AP_HELP"} || {
+        set -- $_AP_HELP
+        # see _save_metavar_help
+        # _str_replace -- "$_AP_HELP" "'" "'\''"
+        # eval set -- "'$_AP_STRING'"
+    }
 
     case $# in
         0)
@@ -1387,38 +1422,16 @@ _format_Default ()
     AP_ACTION_HELP="$AP_ACTION_HELP$AP_LF$_AP_STRING"
 }
 
-_format_RawText ()
-{
-    echo "TODO: implimente"
-    exit
-}
-
-_format_RawDescription ()
-{
-    echo "TODO: implimente"
-    exit
-}
-
-_format_ArgumentDefaults ()
-{
-    case "${_AP_HELP:-}" in
-        ?*)
-            _AP_HELP="$AP_HELP (default: ${AP_ACTION_DEFAULT:-None})"
-        ;;
-    esac
-    _format_Default
-}
-
-_format_MetavarType ()
-{
-    echo "TODO: implimente"
-    exit
-}
-
 _append_help ()
 {
     _get_metavar_help
-    _format_$AP_PARSER_FORMATTER_CLASS
+    $AP_PARSER_FORMATTER_CLASS_ARGUMENTDEFAULTS &&
+    case "${_AP_HELP:-}" in
+        ?*)
+            _AP_HELP="$_AP_HELP (default: ${_AP_DEFAULT:-None})"
+        ;;
+    esac || :
+    _format_Default
 }
 
 _format_action_help ()
@@ -1428,7 +1441,7 @@ _format_action_help ()
             AP_ACTION_HELP="$AP_ACTION_HELP$AP_LF$AP_LF$_AP_HELP_POSITIONAL_HEADER"
             for _AP_INDEX in $_AP_HELP_POSITIONAL_INDEXES
             do
-                _append_help
+                _append_help || return
             done
         ;;
     esac
@@ -1437,7 +1450,7 @@ _format_action_help ()
             AP_ACTION_HELP="$AP_ACTION_HELP$AP_LF$AP_LF$_AP_HELP_OPTIONS_HEADER"
             for _AP_INDEX in $_AP_HELP_OPTIONS_INDEXES
             do
-                _append_help
+                _append_help || return
             done
         ;;
     esac
@@ -1447,6 +1460,11 @@ _format_epilog ()
 {
     case "$AP_PARSER_EPILOG" in
         ?*)
+            $AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION ||
+            $AP_PARSER_FORMATTER_CLASS_RAWTEXT || {
+                set -- $AP_PARSER_EPILOG
+                AP_PARSER_EPILOG="$*"
+            }
             AP_ACTION_HELP="$AP_ACTION_HELP$AP_LF$AP_LF$AP_PARSER_EPILOG"
         ;;
     esac
@@ -1459,17 +1477,17 @@ _format_help ()
     _AP_HELP_POSITIONAL_INDEXES=
     _AP_HELP_OPTIONS_HEADER="options:"
     _AP_HELP_OPTIONS_INDEXES=
-    _AP_MAX_LENGHT_INDENT=0
-    _format_usage
-    _format_action_indent
-    _format_description
-    _format_action_help
-    _format_epilog
+    _AP_HELP_MAX_LENGHT_INDENT=0
+    _format_usage &&
+    _format_action_indent &&
+    _format_description &&
+    _format_action_help &&
+    _format_epilog || return
 }
 
 print_help ()
 {
-    _format_help
+    _format_help || return
     echo "$AP_ACTION_HELP"
 }
 
