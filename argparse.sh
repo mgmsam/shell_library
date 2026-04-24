@@ -1401,18 +1401,18 @@ _format_help_description ()
         *)
             $AP_PARSER_FORMATTER_CLASS_RAWTEXT ||
             $AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION &&
-            AP_HELP_DESCRIPTION_TEXT=$AP_PARSER_DESCRIPTION || {
+            AP_HELP_DESCRIPTION=$AP_PARSER_DESCRIPTION || {
                 _normalize_help_text "$AP_PARSER_DESCRIPTION"
                 set -- $_AP_STRING
                 case $# in
                     0) false ;;
                     *) _textwrap "$AP_WIDTH" "" "" "$@"
-                       AP_HELP_DESCRIPTION_TEXT=$AP_TEXT
+                       AP_HELP_DESCRIPTION=$AP_TEXT
                     ;;
                 esac
             }
         ;;
-    esac || AP_HELP_DESCRIPTION_TEXT=
+    esac || AP_HELP_DESCRIPTION=
 }
 
 _get_metavar_help ()
@@ -1480,7 +1480,7 @@ _format_help_actions ()
     done
     case $_AP_TEXT in
         ?*)
-            AP_HELP_POSITIONALS_TEXT=$_AP_HELP_POSITIONALS_HEADER$AP_LF$_AP_TEXT
+            AP_HELP_POSITIONALS=$_AP_HELP_POSITIONALS_HEADER$AP_LF$_AP_TEXT
         ;;
     esac
 
@@ -1492,7 +1492,7 @@ _format_help_actions ()
     done
     case $_AP_TEXT in
         ?*)
-            AP_HELP_OPTIONS_TEXT=$_AP_HELP_OPTIONS_HEADER$AP_LF$_AP_TEXT
+            AP_HELP_OPTIONS=$_AP_HELP_OPTIONS_HEADER$AP_LF$_AP_TEXT
         ;;
     esac
 }
@@ -1506,48 +1506,47 @@ _format_help_epilog ()
         *)
             $AP_PARSER_FORMATTER_CLASS_RAWTEXT ||
             $AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION &&
-            AP_HELP_EPILOG_TEXT=$AP_PARSER_EPILOG || {
+            AP_HELP_EPILOG=$AP_PARSER_EPILOG || {
                 _normalize_help_text "$AP_PARSER_EPILOG"
                 set -- $_AP_STRING
                 case $# in
                     0) false ;;
                     *) _textwrap "$AP_WIDTH" "" "" "$@"
-                       AP_HELP_EPILOG_TEXT=$AP_TEXT
+                       AP_HELP_EPILOG=$AP_TEXT
                     ;;
                 esac
             }
         ;;
-    esac || AP_HELP_EPILOG_TEXT=
+    esac || AP_HELP_EPILOG=
 }
 
 _format_help_text ()
 {
-    AP_HELP_TEXT=${AP_USAGE_TEXT:-}
-    case $AP_HELP_DESCRIPTION_TEXT in
+    AP_HELP=${AP_USAGE_TEXT:-}
+    case $AP_HELP_DESCRIPTION in
         ?*)
-            AP_HELP_TEXT=${AP_HELP_TEXT:+$AP_HELP_TEXT$AP_LF$AP_LF}$AP_HELP_DESCRIPTION_TEXT
+            AP_HELP=${AP_HELP:+$AP_HELP$AP_LF$AP_LF}$AP_HELP_DESCRIPTION
         ;;
     esac
-    case $AP_HELP_POSITIONALS_TEXT in
+    case $AP_HELP_POSITIONALS in
         ?*)
-            AP_HELP_TEXT=${AP_HELP_TEXT:+$AP_HELP_TEXT$AP_LF$AP_LF}$AP_HELP_POSITIONALS_TEXT
+            AP_HELP=${AP_HELP:+$AP_HELP$AP_LF$AP_LF}$AP_HELP_POSITIONALS
         ;;
     esac
-    case $AP_HELP_OPTIONS_TEXT in
+    case $AP_HELP_OPTIONS in
         ?*)
-            AP_HELP_TEXT=${AP_HELP_TEXT:+$AP_HELP_TEXT$AP_LF$AP_LF}$AP_HELP_OPTIONS_TEXT
+            AP_HELP=${AP_HELP:+$AP_HELP$AP_LF$AP_LF}$AP_HELP_OPTIONS
         ;;
     esac
-    case $AP_HELP_EPILOG_TEXT in
+    case $AP_HELP_EPILOG in
         ?*)
-            AP_HELP_TEXT=${AP_HELP_TEXT:+$AP_HELP_TEXT$AP_LF$AP_LF}$AP_HELP_EPILOG_TEXT
+            AP_HELP=${AP_HELP:+$AP_HELP$AP_LF$AP_LF}$AP_HELP_EPILOG
         ;;
     esac
 }
 
 _format_help ()
 {
-    AP_ACTION_HELP=
     _AP_HELP_POSITIONALS_HEADER="positional arguments:"
     _AP_HELP_POSITIONALS_INDEXES=
     _AP_HELP_OPTIONS_HEADER="options:"
@@ -1564,7 +1563,7 @@ _format_help ()
 print_help ()
 {
     _format_help || return
-    echo "$AP_HELP_TEXT"
+    echo "$AP_HELP"
 }
 
 print_version ()
