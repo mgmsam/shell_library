@@ -1216,7 +1216,7 @@ _save_positional_help_string ()
 {
     _AP_METAVAR="$AP_ACTION_METAVAR"
     _save_metavar_help
-    _AP_HELP_POSITIONAL_INDEXES="$_AP_HELP_POSITIONAL_INDEXES $_AP_INDEX"
+    _AP_HELP_POSITIONALS_INDEXES="$_AP_HELP_POSITIONALS_INDEXES $_AP_INDEX"
 }
 
 _save_option_help_string ()
@@ -1239,7 +1239,7 @@ _save_option_help_string ()
 
 _get_usage_string ()
 {
-    AP_ACTION_USAGE="'usage:${AP_PARSER_PROG:+ $AP_PARSER_PROG:}'"
+    AP_USAGE_TEXT="'usage:${AP_PARSER_PROG:+ $AP_PARSER_PROG:}'"
     _AP_USAGE_OPTION_STR=
     _AP_USAGE_POSITION_STR=
     for _AP_INDEX in $_AP_INDEXES
@@ -1277,7 +1277,7 @@ _get_usage_string ()
             ;;
         esac || return
     done
-    AP_ACTION_USAGE="$AP_ACTION_USAGE$_AP_USAGE_OPTION_STR$_AP_USAGE_POSITION_STR"
+    AP_USAGE_TEXT="$AP_USAGE_TEXT$_AP_USAGE_OPTION_STR$_AP_USAGE_POSITION_STR"
 }
 
 _get_indent_string ()
@@ -1310,16 +1310,26 @@ _get_indent_string ()
 
 _textwrap ()
 {
+    _AP_WIDTH=$1
+    _AP_INITIAL_INDENT=$2
+    _AP_SUBSEQUENT_INDENT=$3
+    _AP_SUBSEQUENT_INDENT_LEN="${#3}"
+    shift 3 || return
+
+    AP_TEXT="${_AP_INITIAL_INDENT:-}${1:-}"
+    _AP_REMAIND=$((_AP_WIDTH - ${#AP_TEXT} - 1))
+    shift 1 || return
+
     for _AP_I
     do
         case $((_AP_REMAIND >= ${#_AP_I})) in
             1)
-                _AP_STRING="$_AP_STRING $_AP_I"
+                AP_TEXT="$AP_TEXT $_AP_I"
                 _AP_REMAIND=$((_AP_REMAIND - ${#_AP_I} - 1))
             ;;
             0)
-                _AP_STRING="$_AP_STRING$AP_LF$_AP_INDENT$_AP_I"
-                _AP_REMAIND=$((_AP_COLUMNS - _AP_INDENT_LEN - ${#_AP_I} - 1))
+                AP_TEXT="$AP_TEXT$AP_LF$_AP_SUBSEQUENT_INDENT$_AP_I"
+                _AP_REMAIND=$((_AP_WIDTH - _AP_SUBSEQUENT_INDENT_LEN - ${#_AP_I} - 1))
             ;;
         esac
     done
@@ -1327,12 +1337,11 @@ _textwrap ()
 
 _format_usage ()
 {
-    _get_terminal_size && _AP_COLUMNS=$((COLUMNS - 2))
+    _get_terminal_size && AP_WIDTH=$((COLUMNS - 2))
     _get_usage_string || return
-    eval set -- "$AP_ACTION_USAGE"
+    eval set -- "$AP_USAGE_TEXT"
 
-    _AP_REMAIND=$((_AP_COLUMNS - ${#1} - 1))
-    case $((_AP_REMAIND >= ${#2})) in
+    case $(($((AP_WIDTH - ${#1} - 1)) >= ${#2})) in
         1)
             _get_indent_string $((${#1} + 1))
         ;;
@@ -1340,18 +1349,16 @@ _format_usage ()
             _get_indent_string 7
         ;;
     esac
-    _AP_INDENT="$_AP_STRING"
-    _AP_INDENT_LEN="$_AP_STRING_LEN"
-    _AP_STRING=$1
-    shift
-    _textwrap "$@"
-    AP_ACTION_USAGE="$_AP_STRING"
+    _AP_SUBSEQUENT_INDENT=$_AP_STRING
+
+    _textwrap "$AP_WIDTH" "" "$_AP_SUBSEQUENT_INDENT" "$@"
+    AP_USAGE_TEXT="$AP_TEXT"
 }
 
 print_usage ()
 {
     _format_usage || return
-    echo "$AP_ACTION_USAGE"
+    echo "$AP_USAGE_TEXT"
 }
 
 _error ()
@@ -1362,22 +1369,21 @@ _error ()
 
 _format_action_indent ()
 {
-    case $((_AP_COLUMNS >= 46)) in
-        1)  _AP_INDENT_LEN=24 ;;
-        *)  case $((_AP_COLUMNS >= 26)) in
-                1)  _AP_INDENT_LEN=$((_AP_COLUMNS - 22)) ;;
-                *)  _AP_INDENT_LEN=4 ;;
+    case $((AP_WIDTH >= 46)) in
+        1)  AP_HELP_SUBSEQUENT_INDENT_LEN=24 ;;
+        *)  case $((AP_WIDTH >= 26)) in
+                1)  AP_HELP_SUBSEQUENT_INDENT_LEN=$((AP_WIDTH - 22)) ;;
+                *)  AP_HELP_SUBSEQUENT_INDENT_LEN=4 ;;
             esac ;;
     esac
 
     AP_MAX_ACTION_LEN=$((AP_MAX_ACTION_LEN + 4))
-    case $((AP_MAX_ACTION_LEN >= _AP_INDENT_LEN)) in
-        0)  _AP_INDENT_LEN=$AP_MAX_ACTION_LEN ;;
+    case $((AP_MAX_ACTION_LEN >= AP_HELP_SUBSEQUENT_INDENT_LEN)) in
+        0)  AP_HELP_SUBSEQUENT_INDENT_LEN=$AP_MAX_ACTION_LEN ;;
     esac
 
-    _get_indent_string "$_AP_INDENT_LEN"
-    _AP_INDENT="$_AP_STRING"
-    _AP_INDENT_LEN="$_AP_STRING_LEN"
+    _get_indent_string "$AP_HELP_SUBSEQUENT_INDENT_LEN"
+    AP_HELP_SUBSEQUENT_INDENT="$_AP_STRING"
 }
 
 _normalize_help_text ()
@@ -1389,21 +1395,24 @@ _normalize_help_text ()
 _format_description ()
 {
     case "$AP_PARSER_DESCRIPTION" in
-        ?*)
-            $AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION ||
-            $AP_PARSER_FORMATTER_CLASS_RAWTEXT &&
-            _AP_STRING="$AP_PARSER_DESCRIPTION" || {
-                _normalize_help_text "$AP_PARSER_DESCRIPTION"
-                set -- $_AP_STRING
-                _AP_STRING=$*
-            }
-
-            AP_ACTION_HELP="$AP_ACTION_USAGE$AP_LF$AP_LF$_AP_STRING"
+        "")
+            false
         ;;
         *)
-            AP_ACTION_HELP="$AP_ACTION_USAGE"
+            $AP_PARSER_FORMATTER_CLASS_RAWTEXT ||
+            $AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION &&
+            AP_HELP_DESCRIPTION_TEXT=$AP_PARSER_DESCRIPTION || {
+                _normalize_help_text "$AP_PARSER_DESCRIPTION"
+                set -- $_AP_STRING
+                case $# in
+                    0) false ;;
+                    *) _textwrap "$AP_WIDTH" "" "" "$@"
+                       AP_HELP_DESCRIPTION_TEXT=$AP_TEXT
+                    ;;
+                esac
+            }
         ;;
-    esac
+    esac || AP_HELP_DESCRIPTION_TEXT=
 }
 
 _get_metavar_help ()
@@ -1425,44 +1434,31 @@ _format_Default ()
 
     case $# in
         0)
-            AP_ACTION_HELP="$AP_ACTION_HELP$AP_LF  $_AP_METAVAR"
+            AP_TEXT="  $_AP_METAVAR"
             return
         ;;
     esac
 
-    _AP_REMAIND=$((_AP_COLUMNS - _AP_INDENT_LEN))
-    _AP_METAVAR_LEN=$((${#_AP_METAVAR} + 4))
+    _AP_REMAIND=$((AP_WIDTH - AP_HELP_SUBSEQUENT_INDENT_LEN))
+    _AP_METAVAR_LEN=${#_AP_METAVAR}
 
-    case $((_AP_INDENT_LEN >= _AP_METAVAR_LEN)) in
+    AP_INITIAL_INDENT=
+    case $(( AP_HELP_SUBSEQUENT_INDENT_LEN >= $((_AP_METAVAR_LEN + 4)) )) in
         1)
-            case $((_AP_REMAIND >= ${#1})) in
-                1)
-                    _get_indent_string $((_AP_INDENT_LEN - _AP_METAVAR_LEN + 1))
-                    _AP_STRING="  $_AP_METAVAR$_AP_STRING"
-                ;;
-                0)
-                    _AP_STRING="  $_AP_METAVAR"
-                ;;
-            esac
+            _get_indent_string $((AP_HELP_SUBSEQUENT_INDENT_LEN - _AP_METAVAR_LEN - 2))
+            AP_INITIAL_INDENT="$_AP_STRING"
         ;;
         0)
-            case $((_AP_REMAIND >= ${#1})) in
-                1)
-                    _get_indent_string $((_AP_INDENT_LEN - 1))
-                    _AP_STRING="  $_AP_METAVAR$AP_LF$_AP_STRING"
-                ;;
-                0)
-                    _AP_STRING="  $_AP_METAVAR"
-                ;;
-            esac
+            _AP_METAVAR=$_AP_METAVAR$AP_LF
+            AP_INITIAL_INDENT=$AP_HELP_SUBSEQUENT_INDENT
         ;;
     esac
 
-    _textwrap "$@"
-    AP_ACTION_HELP="$AP_ACTION_HELP$AP_LF$_AP_STRING"
+    _textwrap "$AP_WIDTH" "$AP_INITIAL_INDENT" "$AP_HELP_SUBSEQUENT_INDENT" "$@"
+    AP_TEXT="  $_AP_METAVAR$AP_TEXT"
 }
 
-_append_help ()
+_get_help_text ()
 {
     _get_metavar_help
     $AP_PARSER_FORMATTER_CLASS_ARGUMENTDEFAULTS &&
@@ -1474,24 +1470,29 @@ _append_help ()
     _format_Default
 }
 
-_format_action_help ()
+_format_help_actions ()
 {
-    case "$_AP_HELP_POSITIONAL_INDEXES" in
+    _AP_TEXT=
+    for _AP_INDEX in $_AP_HELP_POSITIONALS_INDEXES
+    do
+        _get_help_text
+        _AP_TEXT=${_AP_TEXT:+$_AP_TEXT$AP_LF}$AP_TEXT
+    done
+    case $_AP_TEXT in
         ?*)
-            AP_ACTION_HELP="$AP_ACTION_HELP$AP_LF$AP_LF$_AP_HELP_POSITIONAL_HEADER"
-            for _AP_INDEX in $_AP_HELP_POSITIONAL_INDEXES
-            do
-                _append_help || return
-            done
+            AP_HELP_POSITIONALS_TEXT=$_AP_HELP_POSITIONALS_HEADER$AP_LF$_AP_TEXT
         ;;
     esac
-    case "$_AP_HELP_OPTIONS_INDEXES" in
+
+    _AP_TEXT=
+    for _AP_INDEX in $_AP_HELP_OPTIONS_INDEXES
+    do
+        _get_help_text
+        _AP_TEXT=${_AP_TEXT:+$_AP_TEXT$AP_LF}$AP_TEXT
+    done
+    case $_AP_TEXT in
         ?*)
-            AP_ACTION_HELP="$AP_ACTION_HELP$AP_LF$AP_LF$_AP_HELP_OPTIONS_HEADER"
-            for _AP_INDEX in $_AP_HELP_OPTIONS_INDEXES
-            do
-                _append_help || return
-            done
+            AP_HELP_OPTIONS_TEXT=$_AP_HELP_OPTIONS_HEADER$AP_LF$_AP_TEXT
         ;;
     esac
 }
@@ -1499,16 +1500,47 @@ _format_action_help ()
 _format_epilog ()
 {
     case "$AP_PARSER_EPILOG" in
-        ?*)
-            $AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION ||
-            $AP_PARSER_FORMATTER_CLASS_RAWTEXT &&
-            _AP_STRING="$AP_PARSER_EPILOG" || {
+        "")
+            false
+        ;;
+        *)
+            $AP_PARSER_FORMATTER_CLASS_RAWTEXT ||
+            $AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION &&
+            AP_HELP_EPILOG_TEXT=$AP_PARSER_EPILOG || {
                 _normalize_help_text "$AP_PARSER_EPILOG"
                 set -- $_AP_STRING
-                _AP_STRING=$*
+                case $# in
+                    0) false ;;
+                    *) _textwrap "$AP_WIDTH" "" "" "$@"
+                       AP_HELP_EPILOG_TEXT=$AP_TEXT
+                    ;;
+                esac
             }
+        ;;
+    esac || AP_HELP_EPILOG_TEXT=
+}
 
-            AP_ACTION_HELP="$AP_ACTION_HELP$AP_LF$AP_LF$_AP_STRING"
+_format_help_text ()
+{
+    AP_HELP_TEXT=${AP_USAGE_TEXT:-}
+    case $AP_HELP_DESCRIPTION_TEXT in
+        ?*)
+            AP_HELP_TEXT=${AP_HELP_TEXT:+$AP_HELP_TEXT$AP_LF$AP_LF}$AP_HELP_DESCRIPTION_TEXT
+        ;;
+    esac
+    case $AP_HELP_POSITIONALS_TEXT in
+        ?*)
+            AP_HELP_TEXT=${AP_HELP_TEXT:+$AP_HELP_TEXT$AP_LF$AP_LF}$AP_HELP_POSITIONALS_TEXT
+        ;;
+    esac
+    case $AP_HELP_OPTIONS_TEXT in
+        ?*)
+            AP_HELP_TEXT=${AP_HELP_TEXT:+$AP_HELP_TEXT$AP_LF$AP_LF}$AP_HELP_OPTIONS_TEXT
+        ;;
+    esac
+    case $AP_HELP_EPILOG_TEXT in
+        ?*)
+            AP_HELP_TEXT=${AP_HELP_TEXT:+$AP_HELP_TEXT$AP_LF$AP_LF}$AP_HELP_EPILOG_TEXT
         ;;
     esac
 }
@@ -1516,22 +1548,23 @@ _format_epilog ()
 _format_help ()
 {
     AP_ACTION_HELP=
-    _AP_HELP_POSITIONAL_HEADER="positional arguments:"
-    _AP_HELP_POSITIONAL_INDEXES=
+    _AP_HELP_POSITIONALS_HEADER="positional arguments:"
+    _AP_HELP_POSITIONALS_INDEXES=
     _AP_HELP_OPTIONS_HEADER="options:"
     _AP_HELP_OPTIONS_INDEXES=
     _AP_HELP_MAX_LENGHT_INDENT=0
     _format_usage &&
-    _format_action_indent &&
     _format_description &&
-    _format_action_help &&
-    _format_epilog || return
+    _format_action_indent &&
+    _format_help_actions &&
+    _format_epilog &&
+    _format_help_text || return
 }
 
 print_help ()
 {
     _format_help || return
-    echo "$AP_ACTION_HELP"
+    echo "$AP_HELP_TEXT"
 }
 
 print_version ()
