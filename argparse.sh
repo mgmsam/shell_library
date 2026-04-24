@@ -1335,7 +1335,7 @@ _textwrap ()
     done
 }
 
-_format_usage ()
+_format_help_usage ()
 {
     _get_terminal_size && AP_WIDTH=$((COLUMNS - 2))
     _get_usage_string || return
@@ -1357,7 +1357,7 @@ _format_usage ()
 
 print_usage ()
 {
-    _format_usage || return
+    _format_help_usage || return
     echo "$AP_USAGE_TEXT"
 }
 
@@ -1367,7 +1367,7 @@ _error ()
     echo "${AP_PARSER_PROG:+$AP_PARSER_PROG: }${1:-}"
 }
 
-_format_action_indent ()
+_format_help_action_indent ()
 {
     case $((AP_WIDTH >= 46)) in
         1)  AP_HELP_SUBSEQUENT_INDENT_LEN=24 ;;
@@ -1392,7 +1392,7 @@ _normalize_help_text ()
     _str_replace -l -- "$_AP_STRING" '  ' " "
 }
 
-_format_description ()
+_format_help_description ()
 {
     case "$AP_PARSER_DESCRIPTION" in
         "")
@@ -1497,7 +1497,7 @@ _format_help_actions ()
     esac
 }
 
-_format_epilog ()
+_format_help_epilog ()
 {
     case "$AP_PARSER_EPILOG" in
         "")
@@ -1553,11 +1553,11 @@ _format_help ()
     _AP_HELP_OPTIONS_HEADER="options:"
     _AP_HELP_OPTIONS_INDEXES=
     _AP_HELP_MAX_LENGHT_INDENT=0
-    _format_usage &&
-    _format_description &&
-    _format_action_indent &&
+    _format_help_usage &&
+    _format_help_description &&
+    _format_help_action_indent &&
     _format_help_actions &&
-    _format_epilog &&
+    _format_help_epilog &&
     _format_help_text || return
 }
 
