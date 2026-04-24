@@ -405,7 +405,8 @@ _set_positional_kwargs ()
             *=*)
                 _AP_KEYWORD=${_AP_ARG%%=*}
                 _AP_KEYWORD_VALUE=${_AP_ARG#*=}
-                _AP_KEYWORD_VALUE=`printf '%b' "$_AP_KEYWORD_VALUE"`
+                _AP_KEYWORD_VALUE=`printf '%b.' "$_AP_KEYWORD_VALUE"`
+                _AP_KEYWORD_VALUE=${_AP_KEYWORD_VALUE%.}
                 _set_${_AP_AP_PARSER_FUNC}_kwargs || return
             ;;
             *)
