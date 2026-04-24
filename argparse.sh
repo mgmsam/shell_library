@@ -141,14 +141,14 @@ _str_replace ()
                 ;;
             esac
         do
-            _AP_LEFT=${_AP_STRING%%"$2"*}
+            _AP_LEFT=${_AP_STRING%%$2*}
             case "$_AP_LEFT" in
                 "$_AP_STRING")
                     break
                 ;;
             esac
             _AP_BUFFER=$_AP_BUFFER$_AP_LEFT${3:-}
-            _AP_STRING=${_AP_STRING#*"$2"}
+            _AP_STRING=${_AP_STRING#*$2}
         done
         _AP_STRING=$_AP_BUFFER$_AP_STRING _AP_BUFFER=
         $_AP_REPEAT || break
@@ -245,34 +245,34 @@ _validate_terminated ()
         esac
     done
 
-    while
-        case "$_AP_STRING" in
-            *[][\(\){}\<\>]*) true  ;;
-                           *) false ;;
-        esac
-    do
-        _AP_LEFT=${_AP_STRING%%[][(){\}\<\>]*}
-        _AP_PAREN=${_AP_STRING#"$_AP_LEFT"}
-        _AP_PAREN=${_AP_PAREN%"${_AP_PAREN#?}"}
-        _set_parens "$_AP_PAREN"
-        case "$_AP_PAREN" in
-            *[]\)}\>]*)
-                echo "SyntaxError: closing parenthesis '$_AP_R_PAREN' does not match opening parenthesis '$_AP_L_PAREN'"
-                return 2
-            ;;
-            *)
-                _AP_BUFFER=${_AP_STRING#*"$_AP_PARENT"}
-                case "$_AP_BUFFER" in
-                    *$_AP_R_PAREN*)
-                        _AP_STRING=${_AP_BUFFER#*"$_AP_R_PAREN"}
-                    ;;
-                    *)
-                        echo "SyntaxError: opening parenthesis '$_AP_L_PAREN' does not match closing parenthesis '$_AP_R_PAREN'"
-                        return 2
-                esac
-            ;;
-        esac
-    done
+    # while
+    #     case "$_AP_STRING" in
+    #         *[][\(\){}\<\>]*) true  ;;
+    #                        *) false ;;
+    #     esac
+    # do
+    #     _AP_LEFT=${_AP_STRING%%[][(){\}\<\>]*}
+    #     _AP_PAREN=${_AP_STRING#"$_AP_LEFT"}
+    #     _AP_PAREN=${_AP_PAREN%"${_AP_PAREN#?}"}
+    #     _set_parens "$_AP_PAREN"
+    #     case "$_AP_PAREN" in
+    #         *[]\)}\>]*)
+    #             echo "SyntaxError: closing parenthesis '$_AP_R_PAREN' does not match opening parenthesis '$_AP_L_PAREN'"
+    #             return 2
+    #         ;;
+    #         *)
+    #             _AP_BUFFER=${_AP_STRING#*"$_AP_PARENT"}
+    #             case "$_AP_BUFFER" in
+    #                 *$_AP_R_PAREN*)
+    #                     _AP_STRING=${_AP_BUFFER#*"$_AP_R_PAREN"}
+    #                 ;;
+    #                 *)
+    #                     echo "SyntaxError: opening parenthesis '$_AP_L_PAREN' does not match closing parenthesis '$_AP_R_PAREN'"
+    #                     return 2
+    #             esac
+    #         ;;
+    #     esac
+    # done
 }
 
 _trim_quotes ()
@@ -405,6 +405,7 @@ _set_positional_kwargs ()
             *=*)
                 _AP_KEYWORD=${_AP_ARG%%=*}
                 _AP_KEYWORD_VALUE=${_AP_ARG#*=}
+                _AP_KEYWORD_VALUE=`printf '%b' "$_AP_KEYWORD_VALUE"`
                 _set_${_AP_AP_PARSER_FUNC}_kwargs || return
             ;;
             *)
@@ -784,7 +785,6 @@ _set_action_kwargs ()
                     esac
                 ;;
                 choices)
-                    echo "AP_ACTION_CHOICES ($_AP_KEYWORD_VALUE) $_AP_VALUE_IS_STRING"
                     $_AP_VALUE_IS_STRING && {
                         _split_chars "$AP_ACTION_CHOICES" ' '
                         AP_ACTION_CHOICES="$_AP_STRING"
@@ -1380,16 +1380,25 @@ _format_action_indent ()
     _AP_INDENT_LEN="$_AP_STRING_LEN"
 }
 
+_normalize_help_text ()
+{
+    _str_replace    -- "$1" '[[:space:]]' " "
+    _str_replace -l -- "$_AP_STRING" '  ' " "
+}
+
 _format_description ()
 {
     case "$AP_PARSER_DESCRIPTION" in
         ?*)
             $AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION ||
-            $AP_PARSER_FORMATTER_CLASS_RAWTEXT || {
-                set -- $AP_PARSER_DESCRIPTION
-                        AP_PARSER_DESCRIPTION="$*"
+            $AP_PARSER_FORMATTER_CLASS_RAWTEXT &&
+            _AP_STRING="$AP_PARSER_DESCRIPTION" || {
+                _normalize_help_text "$AP_PARSER_DESCRIPTION"
+                set -- $_AP_STRING
+                _AP_STRING=$*
             }
-            AP_ACTION_HELP="$AP_ACTION_USAGE$AP_LF$AP_LF$AP_PARSER_DESCRIPTION"
+
+            AP_ACTION_HELP="$AP_ACTION_USAGE$AP_LF$AP_LF$_AP_STRING"
         ;;
         *)
             AP_ACTION_HELP="$AP_ACTION_USAGE"
@@ -1407,7 +1416,8 @@ _get_metavar_help ()
 _format_Default ()
 {
     $AP_PARSER_FORMATTER_CLASS_RAWTEXT && set -- ${_AP_HELP:+"$_AP_HELP"} || {
-        set -- $_AP_HELP
+        _normalize_help_text "$_AP_HELP"
+        set -- $_AP_STRING
         # see _save_metavar_help
         # _str_replace -- "$_AP_HELP" "'" "'\''"
         # eval set -- "'$_AP_STRING'"
@@ -1491,11 +1501,14 @@ _format_epilog ()
     case "$AP_PARSER_EPILOG" in
         ?*)
             $AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION ||
-            $AP_PARSER_FORMATTER_CLASS_RAWTEXT || {
-                set -- $AP_PARSER_EPILOG
-                        AP_PARSER_EPILOG="$*"
+            $AP_PARSER_FORMATTER_CLASS_RAWTEXT &&
+            _AP_STRING="$AP_PARSER_EPILOG" || {
+                _normalize_help_text "$AP_PARSER_EPILOG"
+                set -- $_AP_STRING
+                _AP_STRING=$*
             }
-            AP_ACTION_HELP="$AP_ACTION_HELP$AP_LF$AP_LF$AP_PARSER_EPILOG"
+
+            AP_ACTION_HELP="$AP_ACTION_HELP$AP_LF$AP_LF$_AP_STRING"
         ;;
     esac
 }
