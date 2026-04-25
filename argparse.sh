@@ -1646,23 +1646,24 @@ _check_choice ()
 
 _get_float_values ()
 {
-    case "$_AP_ARG" in
-        *[!$AP_DIGITS.eE+-]* | *+*+*|*-*-*|*+-*|*-+* | *.*.* | *[eE]*[eE]*)
-            false
-        ;;
+    case $_AP_ARG in
         \.*)
             _AP_ARG=0$_AP_ARG
+        ;;
+        [+-]*)
+            case ${_AP_ARG#?} in
+                \.*)
+                    _AP_ARG=${_AP_ARG%${_AP_ARG#?}}0${_AP_ARG#?}
+                ;;
+            esac
+            _AP_ARG=${_AP_ARG#+}
         ;;
         *[!$AP_DIGITS]*)
         ;;
         *)
             _AP_ARG=$_AP_ARG.0
         ;;
-    esac || {
-        _get_target_arg
-        _error "error: argument $_AP_TARGET_ARG: invalid float value: '$_AP_ARG'"
-        return 2
-    }
+    esac
 }
 
 _set_dest_value ()
@@ -1685,11 +1686,12 @@ _set_dest_value ()
         ;;
         float)
             case "$_AP_ARG" in
-                "" | *[!\."$AP_DIGITS"]*)
+                "" | *[!"$AP_DIGITS".eE+-]* | *+*+* | *-*-* | *+-* | *-+* | *.*.* | *[eE]*[eE]*)
                     false
                 ;;
                 *)
-                    _check_choice && _get_float_values || return
+                    _check_choice || return
+                    _get_float_values
                     eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST }$_AP_ARG\""
             esac
         ;;
