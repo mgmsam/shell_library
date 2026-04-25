@@ -1508,12 +1508,12 @@ _add_help ()
     _AP_INDEXES="$_AP_INDEX$_AP_INDEXES"
     eval AP_ACTION_OPTION_STRINGS_$_AP_INDEX="' -h --help '" \
          AP_ACTION_DEFAULT_$_AP_INDEX= \
-         AP_ACTION_DEFAULT_IS_SET_$_AP_INDEX=false \
          AP_ACTION_REQUIRED_$_AP_INDEX=false \
          AP_ACTION_HELP_$_AP_INDEX="'show this help message and exit'" \
          AP_ACTION_METAVAR_$_AP_INDEX= \
          AP_ACTION_ADD_METAVAR_$_AP_INDEX=false \
-         AP_ACTION_$_AP_INDEX=help
+         AP_ACTION_$_AP_INDEX=help \
+         AP_ACTION_FMT_CLASS_ARGUMENTDEFAULTS_$_AP_INDEX=false
 }
 
 _get_target_arg ()
