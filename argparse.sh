@@ -222,72 +222,6 @@ _set_parens ()
     esac
 }
 
-_validate_terminated ()
-{
-    _AP_STRING=$1
-    while
-        case "$_AP_STRING" in
-            *[\'\"]*) true  ;;
-                   *) false ;;
-        esac
-    do
-        _AP_LEFT=${_AP_STRING%%[\'\"]*}
-        _AP_QUOTE=${_AP_STRING#"$_AP_LEFT"}
-        _AP_QUOTE=${_AP_QUOTE%"${_AP_QUOTE#?}"}
-        _AP_BUFFER=${_AP_STRING#*"$_AP_QUOTE"}
-        case "$_AP_BUFFER" in
-            *$_AP_QUOTE*)
-                _AP_STRING=$_AP_LEFT${_AP_BUFFER#*"$_AP_QUOTE"}
-            ;;
-            *)
-                echo "SyntaxError: unterminated string literal (detected at line 1)"
-                return 2
-        esac
-    done
-
-    # while
-    #     case "$_AP_STRING" in
-    #         *[][\(\){}\<\>]*) true  ;;
-    #                        *) false ;;
-    #     esac
-    # do
-    #     _AP_LEFT=${_AP_STRING%%[][(){\}\<\>]*}
-    #     _AP_PAREN=${_AP_STRING#"$_AP_LEFT"}
-    #     _AP_PAREN=${_AP_PAREN%"${_AP_PAREN#?}"}
-    #     _set_parens "$_AP_PAREN"
-    #     case "$_AP_PAREN" in
-    #         *[]\)}\>]*)
-    #             echo "SyntaxError: closing parenthesis '$_AP_R_PAREN' does not match opening parenthesis '$_AP_L_PAREN'"
-    #             return 2
-    #         ;;
-    #         *)
-    #             _AP_BUFFER=${_AP_STRING#*"$_AP_PARENT"}
-    #             case "$_AP_BUFFER" in
-    #                 *$_AP_R_PAREN*)
-    #                     _AP_STRING=${_AP_BUFFER#*"$_AP_R_PAREN"}
-    #                 ;;
-    #                 *)
-    #                     echo "SyntaxError: opening parenthesis '$_AP_L_PAREN' does not match closing parenthesis '$_AP_R_PAREN'"
-    #                     return 2
-    #             esac
-    #         ;;
-    #     esac
-    # done
-}
-
-_trim_quotes ()
-{
-    _AP_STRING=$1
-    case "$_AP_STRING" in
-        [\"\']*)
-            _AP_STRING=${_AP_STRING#?}
-            _AP_STRING=${_AP_STRING%?}
-            return
-        ;;
-    esac
-    false
-}
-
 _parse_arg_sequence ()
 {
     _AP_OPTION_IS_SET=false
@@ -297,9 +231,6 @@ _parse_arg_sequence ()
 
     for _AP_ARG
     do
-        _validate_terminated "$_AP_ARG" || return
-        _trim_quotes "$_AP_ARG" || :
-        _AP_ARG=$_AP_STRING
         case "$_AP_ARG" in
             "")
                 echo "ValueError: invalid option string '$_AP_ARG': must start with a character '$AP_PARSER_PREFIX_CHARS'"
@@ -319,7 +250,6 @@ _parse_arg_sequence ()
             *[!=]*=*)
                 case "$_AP_ARG" in
                     [_"$AP_ALPHA"]*)
-                        _validate_terminated "${_AP_ARG#*=}" || return
                         case "${_AP_ARG#*=}" in
                             "")
                                 echo "SyntaxError: expected argument value expression"
@@ -371,15 +301,6 @@ _check_unique_formatter_class ()
     _AP_SEEN_FORMATTER_CLASS="$_AP_SEEN_FORMATTER_CLASS $_AP_KEYWORD_VALUE"
 }
 
-_is_none_value ()
-{
-    case "$_AP_KEYWORD_VALUE" in
-        None)
-            $_AP_VALUE_IS_STRING
-        ;;
-    esac
-}
-
 _set_bool_var ()
 {
     case "$_AP_KEYWORD" in
@@ -399,22 +320,17 @@ _set_positional_kwargs ()
 {
     _AP_AP_PARSER_FUNC=$1
     shift
-    for _AP_ARG
+    for _AP_RAW_ARG
     do
+        _AP_ARG=`printf '%b.' "$_AP_RAW_ARG"`
+        _AP_ARG=${_AP_ARG%.}
         case "$_AP_ARG" in
             *=*)
                 _AP_KEYWORD=${_AP_ARG%%=*}
                 _AP_KEYWORD_VALUE=${_AP_ARG#*=}
-                _AP_KEYWORD_VALUE=`printf '%b.' "$_AP_KEYWORD_VALUE"`
-                _AP_KEYWORD_VALUE=${_AP_KEYWORD_VALUE%.}
                 _set_${_AP_AP_PARSER_FUNC}_kwargs || return
             ;;
             *)
-                _trim_quotes "$_AP_ARG" && {
-                    _AP_KEYWORD_VALUE=$_AP_STRING
-                    _AP_VALUE_IS_STRING=true
-                } || :
-                _is_none_value || _AP_KEYWORD_VALUE=
                 _set_${_AP_AP_PARSER_FUNC}_positional_args || return
             ;;
         esac
@@ -423,7 +339,7 @@ _set_positional_kwargs ()
 
 _set_parser_kwargs ()
 {
-    case "$_AP_KEYWORD" in
+    case $_AP_KEYWORD in
         formatter_class)
             _check_unique_kwargs || return
             IFS=' ,'
@@ -465,40 +381,34 @@ _set_parser_kwargs ()
         fromfile_prefix_chars | argument_default | conflict_handler | \
         add_help | allow_abbrev | exit_on_error | case_style | dest_prefix | func_prefix)
             _check_unique_kwargs || return
-            _trim_quotes "$_AP_KEYWORD_VALUE" && {
-                _AP_KEYWORD_VALUE=$_AP_STRING
-                _AP_VALUE_IS_STRING=true
-            } || :
-            case "$_AP_KEYWORD_VALUE" in
+            case $_AP_KEYWORD_VALUE in
                 *\`*)
                     echo "SyntaxError: invalid syntax"
                     return 2
                 ;;
             esac
-            case "$_AP_KEYWORD" in
+            case $_AP_KEYWORD in
                 prog)
-                    _is_none_value &&
-                    AP_PARSER_PROG=$_AP_KEYWORD_VALUE || AP_PARSER_PROG=
+                    AP_PARSER_PROG=$_AP_KEYWORD_VALUE
                 ;;
                 usage)
-                    _is_none_value &&
-                    AP_PARSER_USAGE=$_AP_KEYWORD_VALUE || AP_PARSER_USAGE=
+                    AP_PARSER_USAGE=$_AP_KEYWORD_VALUE
                 ;;
                 description)
-                    _is_none_value &&
-                    AP_PARSER_DESCRIPTION=$_AP_KEYWORD_VALUE || AP_PARSER_DESCRIPTION=
+                    AP_PARSER_DESCRIPTION=$_AP_KEYWORD_VALUE
                 ;;
                 epilog)
-                    _is_none_value &&
-                    AP_PARSER_EPILOG=$_AP_KEYWORD_VALUE || AP_PARSER_EPILOG=
+                    AP_PARSER_EPILOG=$_AP_KEYWORD_VALUE
                 ;;
                 parents)
                     # TODO: implement
+                    echo "NameError: name '$_AP_KEYWORD_VALUE' is not implemented"
+                    return 2
                 ;;
                 prefix_chars)
                     _unique_chars "$_AP_KEYWORD_VALUE"
                     _AP_KEYWORD_VALUE=$_AP_STRING
-                    case "$_AP_KEYWORD_VALUE" in
+                    case $_AP_KEYWORD_VALUE in
                         "$AP_PARSER_PREFIX_CHARS")
                         ;;
                         "")
@@ -513,16 +423,17 @@ _set_parser_kwargs ()
                 ;;
                 fromfile_prefix_chars)
                     # TODO: implement
+                    echo "NameError: name '$_AP_KEYWORD_VALUE' is not implemented"
+                    return 2
                 ;;
                 argument_default)
-                    _is_none_value &&
-                    AP_PARSER_ARGUMENT_DEFAULT=$_AP_KEYWORD_VALUE || AP_PARSER_ARGUMENT_DEFAULT=
+                    AP_PARSER_ARGUMENT_DEFAULT=$_AP_KEYWORD_VALUE
                 ;;
                 conflict_handler)
-                    case "$_AP_KEYWORD_VALUE" in
-                        error | [Ff]alse | 0)
+                    case $_AP_KEYWORD_VALUE in
+                        0 | False | error)
                         ;;
-                        resolve | [Tt]rue | 1)
+                        1 | True | resolve)
                             AP_PARSER_CONFLICT_HANDLER=true
                         ;;
                         *)
@@ -532,39 +443,17 @@ _set_parser_kwargs ()
                     esac
                 ;;
                 add_help | allow_abbrev | exit_on_error)
-                    $_AP_VALUE_IS_STRING && {
-                        case "$_AP_KEYWORD_VALUE" in
-                            ?*)
-                                _set_bool_var true
-                            ;;
-                            "")
-                                _set_bool_var false
-                            ;;
-                        esac
-                    } || {
-                        case "$_AP_KEYWORD_VALUE" in
-                            0 | False)
-                                _set_bool_var false
-                            ;;
-                            1 | True)
-                                _set_bool_var true
-                            ;;
-                            *[!"$AP_DIGITS"]*)
-                                echo "NameError: name '$_AP_KEYWORD_VALUE' is not defined."
-                                return 2
-                            ;;
-                            0*[!0]*)
-                                echo "SyntaxError: leading zeros in decimal integer literals are not permitted; use an 0o prefix for octal integers"
-                                return 2
-                            ;;
-                            *)
-                                _set_bool_var true
-                            ;;
-                        esac
-                    }
+                    case $_AP_KEYWORD_VALUE in
+                        "" | 0 | False)
+                            _set_bool_var false
+                        ;;
+                        *)
+                            _set_bool_var true
+                        ;;
+                    esac
                 ;;
                 case_style)
-                    case "$_AP_KEYWORD_VALUE" in
+                    case $_AP_KEYWORD_VALUE in
                         upper | lower)
                             AP_PARSER_CASE_STYLE=$_AP_KEYWORD_VALUE
                         ;;
@@ -575,12 +464,10 @@ _set_parser_kwargs ()
                     esac
                 ;;
                 dest_prefix)
-                    _is_none_value &&
-                    AP_PARSER_DEFAULT_DEST_PREFIX=$_AP_KEYWORD_VALUE || AP_PARSER_DEFAULT_DEST_PREFIX=
+                    AP_PARSER_DEFAULT_DEST_PREFIX=$_AP_KEYWORD_VALUE
                 ;;
                 func_prefix)
-                    _is_none_value &&
-                    AP_PARSER_FUNC_PREFIX=$_AP_KEYWORD_VALUE || AP_PARSER_FUNC_PREFIX=
+                    AP_PARSER_FUNC_PREFIX=$_AP_KEYWORD_VALUE
                 ;;
             esac
         ;;
@@ -595,16 +482,16 @@ _set_parser_positional_args ()
 {
     if case "$AP_PARSER_PROG" in ?*) false ;; esac
     then
-        AP_PARSER_PROG=$_AP_KEYWORD_VALUE
+        AP_PARSER_PROG=$_AP_ARG
     elif case "$AP_PARSER_USAGE" in ?*) false ;; esac
     then
-        AP_PARSER_USAGE=$_AP_KEYWORD_VALUE
+        AP_PARSER_USAGE=$_AP_ARG
     elif case "$AP_PARSER_DESCRIPTION" in ?*) false ;; esac
     then
-        AP_PARSER_DESCRIPTION=$_AP_KEYWORD_VALUE
+        AP_PARSER_DESCRIPTION=$_AP_ARG
     elif case "$AP_PARSER_EPILOG" in ?*) false ;; esac
     then
-        AP_PARSER_EPILOG=$_AP_KEYWORD_VALUE
+        AP_PARSER_EPILOG=$_AP_ARG
     elif case "$AP_PARSER_PARENTS" in ?*) false ;; esac
     then
         # TODO: implement
@@ -688,6 +575,23 @@ case_style: ${AP_PARSER_CASE_STYLE:-None}
 dest_prefix: ${AP_PARSER_DEFAULT_DEST_PREFIX:-None}"
 }
 
+_serialize_list ()
+{
+    _AP_STRING=${1:-}
+    case $_AP_STRING in
+        \[*\])
+            _AP_STRING=${_AP_STRING#?}
+            _AP_STRING=${_AP_STRING%?}
+            _str_replace "$_AP_STRING" '\' '\\'
+            _str_replace "$_AP_STRING" '`' '\`'
+            _str_replace "$_AP_STRING" ';' '\;'
+            _str_replace "$_AP_STRING" '$' '\$'
+            return
+        ;;
+    esac
+    false
+}
+
 _split_chars ()
 {
     _AP_STRING=${1:-}
@@ -710,21 +614,24 @@ _split_chars ()
 
 _set_action_kwargs ()
 {
-    case "$_AP_KEYWORD" in
+    case $_AP_KEYWORD in
         action | nargs | const | default | type | choices | required | \
         help | metavar | version | dest | dest_prefix)
             _check_unique_kwargs || return
-            _trim_quotes "$_AP_KEYWORD_VALUE" && {
-                _AP_KEYWORD_VALUE=$_AP_STRING
-                _AP_VALUE_IS_STRING=true
-            } || :
-            case "$_AP_KEYWORD" in
+            case $_AP_KEYWORD_VALUE in
+                None)
+                    _AP_KEYWORD_VALUE=
+                ;;
+            esac
+            case $_AP_KEYWORD in
                 action)
-                    _is_none_value &&
-                    AP_ACTION=${_AP_KEYWORD_VALUE:-store} || AP_ACTION=store
-                    case "$AP_ACTION" in
+                    AP_ACTION=$_AP_KEYWORD_VALUE
+                    case $AP_ACTION in
                         store | store_const | store_true | store_false | \
                         append | append_const | count | help | version | extend)
+                        ;;
+                        "")
+                            AP_ACTION=store
                         ;;
                         *)
                             echo "ValueError: unknown action \"$AP_ACTION\""
@@ -733,19 +640,16 @@ _set_action_kwargs ()
                     esac
                 ;;
                 dest)
-                    case "$AP_ACTION_POSITION_ARG" in
+                    case $AP_ACTION_POSITION_ARG in
                         ?*)
                             echo "ValueError: dest supplied twice for positional argument"
                             return 2
                         ;;
                     esac
-                    _is_none_value &&
-                    AP_ACTION_DEST=$_AP_KEYWORD_VALUE || AP_ACTION_DEST=
+                    AP_ACTION_DEST=$_AP_KEYWORD_VALUE
                 ;;
                 nargs)
-                    _is_none_value &&
-                    AP_ACTION_NARGS="$_AP_KEYWORD_VALUE" || AP_ACTION_NARGS=
-                    case "$AP_ACTION_NARGS" in
+                    case $_AP_KEYWORD_VALUE in
                         "" | [?*+])
                         ;;
                         *[!"$AP_DIGITS"]*)
@@ -753,21 +657,18 @@ _set_action_kwargs ()
                             return 2
                         ;;
                     esac
+                    AP_ACTION_NARGS=$_AP_KEYWORD_VALUE
                 ;;
                 const)
-                    _is_none_value &&
-                    AP_ACTION_CONST=$_AP_KEYWORD_VALUE || AP_ACTION_CONST=
+                    AP_ACTION_CONST=$_AP_KEYWORD_VALUE
                 ;;
                 default)
-                    _is_none_value &&
-                    AP_ACTION_DEFAULT=$_AP_KEYWORD_VALUE || AP_ACTION_DEFAULT=
+                    AP_ACTION_DEFAULT=$_AP_KEYWORD_VALUE
                 ;;
                 type)
-                    _is_none_value &&
-                    AP_ACTION_TYPE=$_AP_KEYWORD_VALUE || AP_ACTION_TYPE=
-                    case "$AP_ACTION_TYPE" in
+                    case $_AP_KEYWORD_VALUE in
                         "" | int | float | str | bool)
-                            # TODO: implement
+                            AP_ACTION_TYPE=$_AP_KEYWORD_VALUE
                         ;;
                         complex | Path | json.loads | \
                         "argparse.FileType('r')" | \
@@ -775,23 +676,23 @@ _set_action_kwargs ()
                         "argparse.FileType('a')" | \
                         "lambda s: s.upper()" | "lambda s: s.lower()")
                             # TODO: implement
+                            false
                         ;;
                         "lambda s: s.split('"*"')")
                             # TODO: implement
+                            false
                         ;;
                         *)
-                            echo "NameError: name '$AP_ACTION_TYPE' is not defined"
+                            echo "NameError: name '$_AP_KEYWORD_VALUE' is not defined"
                             return 2
                         ;;
-                    esac
+                    esac || {
+                        echo "NameError: name '$_AP_KEYWORD_VALUE' is not implemented"
+                        return 2
+                    }
                 ;;
                 choices)
-                    $_AP_VALUE_IS_STRING && {
-                        _split_chars "$AP_ACTION_CHOICES" ' '
-                        AP_ACTION_CHOICES="$_AP_STRING"
-                    } || {
-                        _AP_KEYWORD_VALUE=${_AP_KEYWORD_VALUE#[}
-                        _AP_KEYWORD_VALUE=${_AP_KEYWORD_VALUE%]}
+                    _serialize_list "$_AP_KEYWORD_VALUE" && {
                         IFS=','
                         eval set -- $_AP_STRING
                         IFS=$AP_POSIX_IFS
@@ -801,12 +702,13 @@ _set_action_kwargs ()
                             _str_replace -- "$_AP_STRING" "'" "'\''"
                             AP_ACTION_CHOICES="${AP_ACTION_CHOICES:+$AP_ACTION_CHOICES }'$_AP_STRING'"
                         done
+                    } || {
+                        _split_chars "$_AP_KEYWORD_VALUE" ' '
+                        AP_ACTION_CHOICES=$_AP_STRING
                     }
                 ;;
                 required)
-                    _is_none_value &&
-                    AP_ACTION_REQUIRED=$_AP_KEYWORD_VALUE || AP_ACTION_REQUIRED=
-                    case "$AP_ACTION_REQUIRED" in
+                    case $_AP_KEYWORD_VALUE in
                         "" | 0 | False)
                             AP_ACTION_REQUIRED=false
                         ;;
@@ -814,7 +716,7 @@ _set_action_kwargs ()
                             AP_ACTION_REQUIRED=true
                         ;;
                         *)
-                            echo "NameError: name '$AP_ACTION_REQUIRED' is not defined"
+                            echo "NameError: name '$_AP_KEYWORD_VALUE' is not defined"
                             return 2
                         ;;
                     esac
@@ -824,21 +726,17 @@ _set_action_kwargs ()
                     }
                 ;;
                 help)
-                    _is_none_value &&
-                    AP_ACTION_HELP=$_AP_KEYWORD_VALUE || AP_ACTION_HELP=
+                    AP_ACTION_HELP=$_AP_KEYWORD_VALUE
                 ;;
                 metavar)
-                    _is_none_value &&
-                    AP_ACTION_METAVAR=$_AP_KEYWORD_VALUE || AP_ACTION_METAVAR=
+                    AP_ACTION_METAVAR=$_AP_KEYWORD_VALUE
                 ;;
                 version)
-                    _is_none_value &&
-                    AP_ACTION_VERSION=$_AP_KEYWORD_VALUE || AP_ACTION_VERSION=
+                    AP_ACTION_VERSION=$_AP_KEYWORD_VALUE
                     AP_ACTION_VERSION_IS_SET=true
                 ;;
                 dest_prefix)
-                    _is_none_value &&
-                    AP_ACTION_DEST_PREFIX=$_AP_KEYWORD_VALUE || AP_ACTION_DEST_PREFIX=
+                    AP_ACTION_DEST_PREFIX=$_AP_KEYWORD_VALUE
                 ;;
             esac
         ;;
@@ -1069,7 +967,11 @@ add_argument ()
 _format_choices_metavar ()
 {
     eval set -- "$AP_ACTION_CHOICES"
-    _str_replace -- "$*" ' ' ","
+    _AP_STRING=
+    for _AP_I
+    do
+        _AP_STRING="${_AP_STRING:+"$_AP_STRING,"}$_AP_I"
+    done
     AP_ACTION_METAVAR="{$_AP_STRING}"
 }
 
@@ -1130,6 +1032,7 @@ _get_positional_strings ()
             _AP_USAGE_STR=$_AP_BUFFER
         ;;
     esac
+    _str_replace -- "$_AP_USAGE_STR" "'" "'\''"
     _AP_USAGE_POSITION_STR="$_AP_USAGE_POSITION_STR '$_AP_USAGE_STR'"
 }
 
@@ -1188,7 +1091,8 @@ _get_option_strings ()
     esac && _AP_USAGE_STR="$1 $AP_ACTION_METAVAR" || _AP_USAGE_STR="$1"
 
     $AP_ACTION_REQUIRED || _AP_USAGE_STR="[$_AP_USAGE_STR]"
-    _AP_USAGE_OPTION_STR="$_AP_USAGE_OPTION_STR '$_AP_USAGE_STR'"
+    _str_replace -- "$_AP_USAGE_STR" "'" "'\''"
+    _AP_USAGE_OPTION_STR="$_AP_USAGE_OPTION_STR '$_AP_STRING'"
 }
 
 _set_max_lenght_indent ()
