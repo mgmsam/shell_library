@@ -25,6 +25,7 @@ AP_DIGITS='0123456789'
 AP_ALNUM=$AP_LOWERS$AP_UPPERS$AP_DIGITS
 AP_ALPHA=$AP_LOWERS$AP_UPPERS
 AP_POSIX_IFS=$IFS
+AP_ESC="$(printf '%b' '\x1b')"
 AP_SPACE=' '
 AP_LF='
 '
@@ -125,17 +126,17 @@ _str_replace ()
     done
     _AP_STRING="$1"
     while
-        case "$_AP_STRING" in
+        case $_AP_STRING in
             *$2*)
             ;;
             *)
-                return
+                false
             ;;
         esac
     do
         _AP_BUFFER=
         while
-            case "${_AP_STRING:+${2:-}}" in
+            case $_AP_STRING in
                 "")
                     false
                 ;;
@@ -1213,6 +1214,16 @@ _get_indent_string ()
     done
 }
 
+_remove_esc ()
+{
+    _AP_STRING=${1:-}
+    case $_AP_STRING in
+        *$AP_ESC*)
+            _str_replace -- "$_AP_STRING" "$AP_ESC\[[!m]*m"
+        ;;
+    esac
+}
+
 _textwrap ()
 {
     _AP_WIDTH=$1
@@ -1222,19 +1233,22 @@ _textwrap ()
     shift 3 || return
 
     AP_TEXT="${_AP_INITIAL_INDENT:-}${1:-}"
-    _AP_REMAIND=$((_AP_WIDTH - ${#AP_TEXT} - 1))
+    _remove_esc "$1"
+    _AP_REMAIND=$((_AP_WIDTH - _AP_SUBSEQUENT_INDENT_LEN - ${#_AP_STRING} - 1))
     shift 1 || return
 
     for _AP_I
     do
-        case $((_AP_REMAIND >= ${#_AP_I})) in
+        _remove_esc "$_AP_I"
+        _AP_I_LEN=${#_AP_STRING}
+        case $((_AP_REMAIND >= _AP_I_LEN)) in
             1)
                 AP_TEXT="$AP_TEXT $_AP_I"
-                _AP_REMAIND=$((_AP_REMAIND - ${#_AP_I} - 1))
+                _AP_REMAIND=$((_AP_REMAIND - _AP_I_LEN - 1))
             ;;
             0)
                 AP_TEXT="$AP_TEXT$AP_LF$_AP_SUBSEQUENT_INDENT$_AP_I"
-                _AP_REMAIND=$((_AP_WIDTH - _AP_SUBSEQUENT_INDENT_LEN - ${#_AP_I} - 1))
+                _AP_REMAIND=$((_AP_WIDTH - _AP_SUBSEQUENT_INDENT_LEN - _AP_I_LEN - 1))
             ;;
         esac
     done
@@ -1246,9 +1260,14 @@ _format_help_usage ()
     _get_usage_string || return
     eval set -- "$AP_USAGE_TEXT"
 
-    case $(($((AP_WIDTH - ${#1} - 1)) >= ${#2})) in
+    _remove_esc "$1"
+    _AP_FIRST_LEN=${#_AP_STRING}
+    _remove_esc "$2"
+    _AP_TWO_LEN=${#_AP_STRING}
+
+    case $(($((AP_WIDTH - _AP_FIRST_LEN - 1)) >= _AP_TWO_LEN)) in
         1)
-            _get_indent_string $((${#1} + 1))
+            _get_indent_string $((_AP_FIRST_LEN + 1))
         ;;
         0)
             _get_indent_string 7
