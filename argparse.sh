@@ -1654,7 +1654,7 @@ _set_dest_value ()
         ;;
         int)
             case "$_AP_ARG" in
-                *[!"$AP_DIGITS"]*)
+                "" | *[!"$AP_DIGITS"]*)
                     false
                 ;;
                 *)
@@ -1664,7 +1664,7 @@ _set_dest_value ()
         ;;
         float)
             case "$_AP_ARG" in
-                *[!\."$AP_DIGITS"]*)
+                "" | *[!\."$AP_DIGITS"]*)
                     false
                 ;;
                 *)
