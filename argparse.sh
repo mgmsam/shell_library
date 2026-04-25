@@ -1093,7 +1093,8 @@ _set_max_lenght_indent ()
 
 _save_metavar_help ()
 {
-    _set_max_lenght_indent ${#_AP_METAVAR}
+    _remove_esc "$_AP_METAVAR"
+    _set_max_lenght_indent ${#_AP_STRING}
     eval _AP_METAVAR_$_AP_INDEX='$_AP_METAVAR'
 
     # see _format_Default
