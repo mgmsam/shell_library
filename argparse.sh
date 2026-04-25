@@ -324,24 +324,24 @@ _set_parser_kwargs ()
             IFS=' ,'
             set -- $_AP_KEYWORD_VALUE
             IFS=$AP_POSIX_IFS
-            AP_PARSER_FORMATTER_CLASS=
+            AP_PARSER_FMT_CLASS=
             for _AP_KEYWORD_VALUE
             do
                 case "$_AP_KEYWORD_VALUE" in
                     argparse.HelpFormatter)
-                        AP_PARSER_FORMATTER_CLASS_DEFAULT=true
+                        AP_PARSER_FMT_CLASS_DEFAULT=true
                     ;;
                     argparse.RawTextHelpFormatter)
-                        AP_PARSER_FORMATTER_CLASS_RAWTEXT=true
+                        AP_PARSER_FMT_CLASS_RAWTEXT=true
                     ;;
                     argparse.RawDescriptionHelpFormatter)
-                        AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION=true
+                        AP_PARSER_FMT_CLASS_RAWDESCRIPTION=true
                     ;;
                     argparse.ArgumentDefaultsHelpFormatter)
-                        AP_PARSER_FORMATTER_CLASS_ARGUMENTDEFAULTS=true
+                        AP_PARSER_FMT_CLASS_ARGUMENTDEFAULTS=true
                     ;;
                     argparse.MetavarTypeHelpFormatter)
-                        AP_PARSER_FORMATTER_CLASS_METAVARTYPE=true
+                        AP_PARSER_FMT_CLASS_METAVARTYPE=true
                     ;;
                     None)
                         echo "ValueError: length of metavar tuple does not match nargs"
@@ -353,7 +353,7 @@ _set_parser_kwargs ()
                     ;;
                 esac
                 _check_unique_formatter_class || return
-                AP_PARSER_FORMATTER_CLASS="${AP_PARSER_FORMATTER_CLASS:+$AP_PARSER_FORMATTER_CLASS, }$_AP_KEYWORD_VALUE"
+                AP_PARSER_FMT_CLASS="${AP_PARSER_FMT_CLASS:+$AP_PARSER_FMT_CLASS, }$_AP_KEYWORD_VALUE"
             done
         ;;
         prog | usage | description | epilog | parents | prefix_chars | \
@@ -488,12 +488,12 @@ ArgumentParser ()
     AP_PARSER_DESCRIPTION=
     AP_PARSER_EPILOG=
     AP_PARSER_PARENTS=
-    AP_PARSER_FORMATTER_CLASS=
-    AP_PARSER_FORMATTER_CLASS_DEFAULT=true
-    AP_PARSER_FORMATTER_CLASS_RAWTEXT=false
-    AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION=false
-    AP_PARSER_FORMATTER_CLASS_ARGUMENTDEFAULTS=false
-    AP_PARSER_FORMATTER_CLASS_METAVARTYPE=false
+    AP_PARSER_FMT_CLASS=
+    AP_PARSER_FMT_CLASS_DEFAULT=true
+    AP_PARSER_FMT_CLASS_RAWTEXT=false
+    AP_PARSER_FMT_CLASS_RAWDESCRIPTION=false
+    AP_PARSER_FMT_CLASS_ARGUMENTDEFAULTS=false
+    AP_PARSER_FMT_CLASS_METAVARTYPE=false
     AP_PARSER_PREFIX_CHARS=-
     AP_PARSER_FROMFILE_PREFIX_CHARS=
     AP_PARSER_ARGUMENT_DEFAULT=
@@ -542,7 +542,7 @@ usage: ${AP_PARSER_USAGE:-None}
 description: ${AP_PARSER_DESCRIPTION:-None}
 epilog: ${AP_PARSER_EPILOG:-None}
 parents: ${AP_PARSER_PARENTS:-None}
-formatter_class: ${AP_PARSER_FORMATTER_CLASS:-None}
+formatter_class: ${AP_PARSER_FMT_CLASS:-None}
 prefix_chars: ${AP_PARSER_PREFIX_CHARS:-None}
 fromfile_prefix_chars: ${AP_PARSER_FROMFILE_PREFIX_CHARS:-None}
 argument_default: ${AP_PARSER_ARGUMENT_DEFAULT:-None}
@@ -643,6 +643,7 @@ _set_action_kwargs ()
                 ;;
                 default)
                     AP_ACTION_DEFAULT=$_AP_KEYWORD_VALUE
+                    AP_ACTION_DEFAULT_IS_SET=true
                 ;;
                 type)
                     case $_AP_KEYWORD_VALUE in
@@ -761,6 +762,7 @@ add_argument ()
     AP_ACTION_NARGS=None
     AP_ACTION_CONST=
     AP_ACTION_DEFAULT=
+    AP_ACTION_DEFAULT_IS_SET=false
     AP_ACTION_TYPE=
     AP_ACTION_CHOICES=
     AP_ACTION_REQUIRED=false
@@ -776,6 +778,7 @@ add_argument ()
     AP_ACTION_LONG_OPTION=
     AP_ACTION_SHORT_OPTION=
     AP_ACTION_POSITION_ARG=
+    AP_ACTION_FMT_CLASS_ARGUMENTDEFAULTS=$AP_PARSER_FMT_CLASS_ARGUMENTDEFAULTS
 
     _AP_IS_OPTION=true
 
@@ -896,6 +899,10 @@ add_argument ()
                         count)
                         ;;
                         help)
+                            $AP_ACTION_FMT_CLASS_ARGUMENTDEFAULTS && {
+                                $AP_ACTION_DEFAULT_IS_SET ||
+                                    AP_ACTION_FMT_CLASS_ARGUMENTDEFAULTS=false
+                            } || :
                             $_AP_IS_OPTION || ! $AP_ACTION_REQUIRED
                         ;;
                         store_false)
@@ -905,9 +912,8 @@ add_argument ()
                             AP_ACTION_DEFAULT=${AP_ACTION_DEFAULT:-false}
                         ;;
                         version)
-                            $_AP_IS_OPTION || ! $AP_ACTION_REQUIRED
                             AP_ACTION_HELP="${AP_ACTION_HELP:-"show program's version number and exit"}"
-                            AP_ACTION_DEFAULT=
+                            $_AP_IS_OPTION || ! $AP_ACTION_REQUIRED
                         ;;
                     esac || {
                         echo "TypeError: action=$AP_ACTION got an unexpected keyword argument 'required'"
@@ -940,7 +946,8 @@ add_argument ()
          AP_ACTION_VERSION_IS_SET_$_AP_INDEX=\$AP_ACTION_VERSION_IS_SET \
          AP_ACTION_METAVAR_$_AP_INDEX=\$AP_ACTION_METAVAR \
          AP_ACTION_ADD_METAVAR_$_AP_INDEX=\$AP_ACTION_ADD_METAVAR \
-         AP_ACTION_$_AP_INDEX=\$AP_ACTION
+         AP_ACTION_$_AP_INDEX=\$AP_ACTION \
+         AP_ACTION_FMT_CLASS_ARGUMENTDEFAULTS_$_AP_INDEX=\$AP_ACTION_FMT_CLASS_ARGUMENTDEFAULTS
 }
 
 _format_choices_metavar ()
@@ -956,7 +963,7 @@ _format_choices_metavar ()
 
 _get_positional_strings ()
 {
-    $AP_PARSER_FORMATTER_CLASS_METAVARTYPE && {
+    $AP_PARSER_FMT_CLASS_METAVARTYPE && {
         case "$AP_ACTION_TYPE" in
             "")
                 echo "AttributeError: 'NoneType' object has no attribute '__name__'"
@@ -1018,7 +1025,7 @@ _get_positional_strings ()
 _get_option_strings ()
 {
     $AP_ACTION_ADD_METAVAR && {
-        $AP_PARSER_FORMATTER_CLASS_METAVARTYPE &&
+        $AP_PARSER_FMT_CLASS_METAVARTYPE &&
         case "$AP_ACTION_TYPE" in
             "")
                 echo "AttributeError: 'NoneType' object has no attribute '__name__'"
@@ -1087,9 +1094,8 @@ _set_max_lenght_indent ()
 _save_metavar_help ()
 {
     _set_max_lenght_indent ${#_AP_METAVAR}
-    eval _AP_METAVAR_$_AP_INDEX='$_AP_METAVAR' \
-         _AP_DEFAULT_$_AP_INDEX='$AP_ACTION_DEFAULT' \
-            _AP_HELP_$_AP_INDEX='$AP_ACTION_HELP'
+    eval _AP_METAVAR_$_AP_INDEX='$_AP_METAVAR'
+
     # see _format_Default
     # eval _AP_METAVAR_$_AP_INDEX="\\''$_AP_METAVAR'\\'" \
     #      _AP_DEFAULT_$_AP_INDEX='$AP_ACTION_DEFAULT' \
@@ -1133,6 +1139,7 @@ _get_usage_string ()
              AP_ACTION_LONG_OPTION=\$AP_ACTION_LONG_OPTION_$_AP_INDEX \
              AP_ACTION_POSITION_ARG=\$AP_ACTION_POSITION_ARG_$_AP_INDEX \
              AP_ACTION_DEFAULT=\$AP_ACTION_DEFAULT_$_AP_INDEX \
+             AP_ACTION_DEFAULT_IS_SET=\$AP_ACTION_DEFAULT_IS_SET_$_AP_INDEX \
              AP_ACTION_TYPE=\$AP_ACTION_TYPE_$_AP_INDEX \
              AP_ACTION_NARGS=\$AP_ACTION_NARGS_$_AP_INDEX \
              AP_ACTION_CHOICES=\$AP_ACTION_CHOICES_$_AP_INDEX \
@@ -1301,8 +1308,8 @@ _format_help_description ()
             false
         ;;
         *)
-            $AP_PARSER_FORMATTER_CLASS_RAWTEXT ||
-            $AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION &&
+            $AP_PARSER_FMT_CLASS_RAWTEXT ||
+            $AP_PARSER_FMT_CLASS_RAWDESCRIPTION &&
             AP_HELP_DESCRIPTION=$AP_PARSER_DESCRIPTION || {
                 _normalize_help_text "$AP_PARSER_DESCRIPTION"
                 set -- $_AP_STRING
@@ -1319,14 +1326,16 @@ _format_help_description ()
 
 _get_metavar_help ()
 {
-    eval _AP_METAVAR=\$_AP_METAVAR_$_AP_INDEX \
-         _AP_DEFAULT=\$_AP_DEFAULT_$_AP_INDEX \
-            _AP_HELP=\$_AP_HELP_$_AP_INDEX
+    eval         _AP_METAVAR=\$_AP_METAVAR_$_AP_INDEX \
+                 _AP_DEFAULT=\$AP_ACTION_DEFAULT_$_AP_INDEX \
+                    _AP_HELP=\$AP_ACTION_HELP_$_AP_INDEX \
+          _AP_OPTION_STRINGS=\$AP_ACTION_OPTION_STRINGS_$_AP_INDEX \
+        _AP_ARGUMENTDEFAULTS=\$AP_ACTION_FMT_CLASS_ARGUMENTDEFAULTS_$_AP_INDEX
 }
 
 _format_Default ()
 {
-    $AP_PARSER_FORMATTER_CLASS_RAWTEXT && set -- ${_AP_HELP:+"$_AP_HELP"} || {
+    $AP_PARSER_FMT_CLASS_RAWTEXT && set -- ${_AP_HELP:+"$_AP_HELP"} || {
         _normalize_help_text "$_AP_HELP"
         set -- $_AP_STRING
         # see _save_metavar_help
@@ -1363,8 +1372,8 @@ _format_Default ()
 _get_help_text ()
 {
     _get_metavar_help
-    $AP_PARSER_FORMATTER_CLASS_ARGUMENTDEFAULTS &&
-    case "${_AP_HELP:-}" in
+    $_AP_ARGUMENTDEFAULTS &&
+    case "${_AP_HELP:+${_AP_OPTION_STRINGS:-}}" in
         ?*)
             _AP_HELP="$_AP_HELP (default: ${_AP_DEFAULT:-None})"
         ;;
@@ -1406,8 +1415,8 @@ _format_help_epilog ()
             false
         ;;
         *)
-            $AP_PARSER_FORMATTER_CLASS_RAWTEXT ||
-            $AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION &&
+            $AP_PARSER_FMT_CLASS_RAWTEXT ||
+            $AP_PARSER_FMT_CLASS_RAWDESCRIPTION &&
             AP_HELP_EPILOG=$AP_PARSER_EPILOG || {
                 _normalize_help_text "$AP_PARSER_EPILOG"
                 set -- $_AP_STRING
@@ -1474,8 +1483,8 @@ print_version ()
          AP_ACTION_VERSION_IS_SET=\$AP_ACTION_VERSION_IS_SET_$_AP_VERSION_INDEX
 
     $AP_ACTION_VERSION_IS_SET && {
-        $AP_PARSER_FORMATTER_CLASS_RAWTEXT ||
-        $AP_PARSER_FORMATTER_CLASS_RAWDESCRIPTION || {
+        $AP_PARSER_FMT_CLASS_RAWTEXT ||
+        $AP_PARSER_FMT_CLASS_RAWDESCRIPTION || {
             set -- $AP_ACTION_VERSION
                     AP_ACTION_VERSION="$*"
         }
@@ -1492,6 +1501,7 @@ _add_help ()
     _AP_INDEXES="$_AP_INDEX$_AP_INDEXES"
     eval AP_ACTION_OPTION_STRINGS_$_AP_INDEX="' -h --help '" \
          AP_ACTION_DEFAULT_$_AP_INDEX= \
+         AP_ACTION_DEFAULT_IS_SET_$_AP_INDEX=false \
          AP_ACTION_REQUIRED_$_AP_INDEX=false \
          AP_ACTION_HELP_$_AP_INDEX="'show this help message and exit'" \
          AP_ACTION_METAVAR_$_AP_INDEX= \
