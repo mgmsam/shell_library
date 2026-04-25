@@ -1302,6 +1302,20 @@ _normalize_help_text ()
     _str_replace -l -- "$_AP_STRING" '  ' " "
 }
 
+_textwrap_fill ()
+{
+    _normalize_help_text "$1"
+    set -- $_AP_STRING
+    case $# in
+        0)
+            false
+        ;;
+        *)
+            _textwrap "$AP_WIDTH" "" "" "$@"
+        ;;
+    esac
+}
+
 _format_help_description ()
 {
     case "$AP_PARSER_DESCRIPTION" in
@@ -1312,14 +1326,8 @@ _format_help_description ()
             $AP_PARSER_FMT_CLASS_RAWTEXT ||
             $AP_PARSER_FMT_CLASS_RAWDESCRIPTION &&
             AP_HELP_DESCRIPTION=$AP_PARSER_DESCRIPTION || {
-                _normalize_help_text "$AP_PARSER_DESCRIPTION"
-                set -- $_AP_STRING
-                case $# in
-                    0) false ;;
-                    *) _textwrap "$AP_WIDTH" "" "" "$@"
-                       AP_HELP_DESCRIPTION=$AP_TEXT
-                    ;;
-                esac
+                _textwrap_fill "$AP_PARSER_DESCRIPTION" &&
+                    AP_HELP_DESCRIPTION=$AP_TEXT
             }
         ;;
     esac || AP_HELP_DESCRIPTION=
@@ -1486,10 +1494,8 @@ print_version ()
     $AP_ACTION_VERSION_IS_SET && {
         $AP_PARSER_FMT_CLASS_RAWTEXT ||
         $AP_PARSER_FMT_CLASS_RAWDESCRIPTION || {
-            set -- $AP_ACTION_VERSION
-                    AP_ACTION_VERSION="$*"
+            _textwrap_fill "$AP_ACTION_VERSION" && echo "$AP_TEXT"
         }
-        echo "$AP_ACTION_VERSION"
     } || {
         echo "AttributeError: 'ArgumentParser' object has no attribute 'version'"
         return 2
