@@ -201,28 +201,6 @@ _get_terminal_size ()
     esac
 }
 
-_set_parens ()
-{
-    case "$1" in
-        [\(\)])
-            _AP_L_PAREN='('
-            _AP_R_PAREN=')'
-        ;;
-        [\]\[])
-            _AP_L_PAREN='['
-            _AP_R_PAREN=']'
-        ;;
-        [\{\}])
-            _AP_L_PAREN='{'
-            _AP_R_PAREN='}'
-        ;;
-        [\<\>])
-            _AP_L_PAREN='<'
-            _AP_R_PAREN='>'
-        ;;
-    esac
-}
-
 _parse_arg_sequence ()
 {
     _AP_OPTION_IS_SET=false
