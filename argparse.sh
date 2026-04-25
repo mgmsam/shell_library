@@ -1639,7 +1639,7 @@ _set_dest_value ()
         "" | str)
             _check_choice || return
             _str_replace -- "$_AP_ARG" "'" "'\''"
-            eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST, }'$_AP_STRING'\""
+            eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST }'$_AP_STRING'\""
         ;;
         int)
             case "$_AP_ARG" in
@@ -1648,7 +1648,7 @@ _set_dest_value ()
                 ;;
                 *)
                     _check_choice || return
-                    eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST, }$_AP_ARG\""
+                    eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST }$_AP_ARG\""
             esac
         ;;
         float)
@@ -1658,7 +1658,7 @@ _set_dest_value ()
                 ;;
                 *)
                     _check_choice || return
-                    eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST, }$_AP_ARG\""
+                    eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST }$_AP_ARG\""
             esac
         ;;
         bool)
@@ -1670,7 +1670,7 @@ _set_dest_value ()
                     _AP_ARG=true
             esac
             _check_choice || return
-            eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST, }$_AP_ARG\""
+            eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST }$_AP_ARG\""
         ;;
     esac || {
         set -- $AP_ACTION_OPTION_STRINGS
