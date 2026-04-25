@@ -1516,6 +1516,20 @@ _add_help ()
          AP_ACTION_$_AP_INDEX=help
 }
 
+_get_target_arg ()
+{
+    case $AP_ACTION_OPTION_STRINGS in
+        "")
+            _AP_TARGET_ARG=${AP_ACTION_METAVAR:-${AP_ACTION_DEST}}
+        ;;
+        *)
+            set -- $AP_ACTION_OPTION_STRINGS
+            _str_replace -- "$*" ' ' '/'
+            _AP_TARGET_ARG=$_AP_STRING
+        ;;
+    esac
+}
+
 _apply_const ()
 {
     case "$AP_ACTION_CONST" in
@@ -1551,9 +1565,8 @@ _apply_const ()
             esac
         ;;
     esac || {
-        set -- $AP_ACTION_OPTION_STRINGS
-        _str_replace -- "$*" ' ' '/'
-        _error "error: argument $_AP_STRING: invalid $AP_ACTION_TYPE value: '$AP_ACTION_CONST'"
+        _get_target_arg
+        _error "error: argument $_AP_TARGET_ARG: invalid $AP_ACTION_TYPE value: '$AP_ACTION_CONST'"
         return 2
     }
 }
@@ -1572,8 +1585,6 @@ _prev_has_value ()
                 ;;
             esac
 
-            set -- $AP_ACTION_OPTION_STRINGS
-            _str_replace -- "$*" ' ' '/'
             case $AP_ACTION_NARGS in
                 None)
                     AP_ACTION_NARGS='one argument'
@@ -1588,7 +1599,8 @@ _prev_has_value ()
                     AP_ACTION_NARGS="$AP_ACTION_NARGS arguments"
                 ;;
             esac
-            _error "error: argument $_AP_STRING: expected $AP_ACTION_NARGS"
+            _get_target_arg
+            _error "error: argument $_AP_TARGET_ARG: expected $AP_ACTION_NARGS"
             return 2
         ;;
     esac
@@ -1625,9 +1637,8 @@ _check_choice ()
                     ;;
                 esac
             done
-            set -- $AP_ACTION_OPTION_STRINGS
-            _str_replace -- "$*" ' ' '/'
-            _error "error: argument $_AP_STRING: invalid choice: '$_AP_ARG' (choose from $AP_ACTION_CHOICES)"
+            _get_target_arg
+            _error "error: argument $_AP_TARGET_ARG: invalid choice: '$_AP_ARG' (choose from $AP_ACTION_CHOICES)"
             return 2
         ;;
     esac
@@ -1673,9 +1684,8 @@ _set_dest_value ()
             eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST }$_AP_ARG\""
         ;;
     esac || {
-        set -- $AP_ACTION_OPTION_STRINGS
-        _str_replace -- "$*" ' ' '/'
-        _error "error: argument $_AP_STRING: invalid $AP_ACTION_TYPE value: '$_AP_ARG'"
+        _get_target_arg
+        _error "error: argument $_AP_TARGET_ARG: invalid $AP_ACTION_TYPE value: '$_AP_ARG'"
         return 2
     }
 
@@ -1824,9 +1834,8 @@ _check_required_args ()
                         _AP_MISSING_INDEXES="${_AP_MISSING_INDEXES:+$_AP_MISSING_INDEXES, }$AP_ACTION_DEST"
                     ;;
                     *)
-                        set -- $AP_ACTION_OPTION_STRINGS
-                        _str_replace -- "$*" ' ' '/'
-                        _AP_MISSING_INDEXES="${_AP_MISSING_INDEXES:+$_AP_MISSING_INDEXES, }$_AP_STRING"
+                        _get_target_arg
+                        _AP_MISSING_INDEXES="${_AP_MISSING_INDEXES:+$_AP_MISSING_INDEXES, }$_AP_TARGET_ARG"
                     ;;
                 esac
 
@@ -1875,7 +1884,7 @@ parse_args ()
                 false
             ;;
         esac || _parse_arg || return
-        _apply_action
+        _apply_action || return
         ACTIONS_RECEIVED_INDEXES="$ACTIONS_RECEIVED_INDEXES $_AP_INDEX "
         shift
     done
