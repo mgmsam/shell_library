@@ -329,7 +329,6 @@ _set_parser_kwargs ()
             do
                 case "$_AP_KEYWORD_VALUE" in
                     argparse.HelpFormatter)
-                        AP_PARSER_FMT_CLASS_DEFAULT=true
                     ;;
                     argparse.RawTextHelpFormatter)
                         AP_PARSER_FMT_CLASS_RAWTEXT=true
@@ -396,7 +395,6 @@ _set_parser_kwargs ()
                         ;;
                         *)
                             AP_PARSER_PREFIX_CHARS=$_AP_KEYWORD_VALUE
-                            AP_PARSER_POSIX_PREFIX_CHARS=false
                         ;;
                     esac
                 ;;
@@ -489,7 +487,6 @@ ArgumentParser ()
     AP_PARSER_EPILOG=
     AP_PARSER_PARENTS=
     AP_PARSER_FMT_CLASS=
-    AP_PARSER_FMT_CLASS_DEFAULT=true
     AP_PARSER_FMT_CLASS_RAWTEXT=false
     AP_PARSER_FMT_CLASS_RAWDESCRIPTION=false
     AP_PARSER_FMT_CLASS_ARGUMENTDEFAULTS=false
@@ -502,7 +499,6 @@ ArgumentParser ()
     AP_PARSER_ALLOW_ABBREV=true
     AP_PARSER_EXIT_ON_ERROR=true
 
-    AP_PARSER_POSIX_PREFIX_CHARS=true
     AP_PARSER_CASE_STYLE='lower'
     AP_PARSER_DEFAULT_DEST_PREFIX=
     AP_PARSER_FUNC_PREFIX=
