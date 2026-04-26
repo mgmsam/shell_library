@@ -1525,47 +1525,6 @@ _get_target_arg ()
     esac
 }
 
-_apply_const ()
-{
-    case "$AP_ACTION_CONST" in
-        *[!\."$AP_DIGITS"]*)
-            case "$AP_ACTION_TYPE" in
-                "" | str)
-                    _str_replace -- "$AP_ACTION_CONST" "'" "'\''"
-                    eval $AP_ACTION_DEST="'$_AP_STRING'"
-                ;;
-                *)
-                    false
-                ;;
-            esac
-        ;;
-        *[!"$AP_DIGITS"]*)
-            case "$AP_ACTION_TYPE" in
-                float)
-                    eval $AP_ACTION_DEST="'$_AP_ARG'"
-                ;;
-                *)
-                    false
-                ;;
-            esac
-        ;;
-        *)
-            case "$AP_ACTION_TYPE" in
-                int)
-                    eval $AP_ACTION_DEST="'$_AP_ARG'"
-                ;;
-                *)
-                    false
-                ;;
-            esac
-        ;;
-    esac || {
-        _get_target_arg
-        _error "error: argument $_AP_TARGET_ARG: invalid $AP_ACTION_TYPE value: '$AP_ACTION_CONST'"
-        return 2
-    }
-}
-
 _prev_has_value ()
 {
     case "$AP_ACTION_NARGS_COUNT" in
@@ -1575,7 +1534,10 @@ _prev_has_value ()
         *)
             case "$AP_ACTION_CONST" in
                 ?*)
-                    _apply_const || return
+                    _AP_SAVE_ARG=$_AP_ARG
+                    _AP_ARG=$AP_ACTION_CONST
+                    _set_dest_value || return
+                    _AP_ARG=$_AP_SAVE_ARG
                     return
                 ;;
             esac
