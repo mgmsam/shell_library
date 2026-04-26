@@ -1481,6 +1481,7 @@ print_help ()
 {
     _format_help || return
     echo "$AP_HELP"
+    exit
 }
 
 print_version ()
@@ -1497,6 +1498,7 @@ print_version ()
         echo "AttributeError: 'ArgumentParser' object has no attribute 'version'"
         return 2
     }
+    exit
 }
 
 _add_help ()
