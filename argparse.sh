@@ -1501,7 +1501,8 @@ _add_help ()
 {
     _AP_INDEX=0
     _AP_OPTIONS_INDEXES="$_AP_INDEX $_AP_OPTIONS_INDEXES"
-    eval AP_ACTION_OPTION_STRINGS_$_AP_INDEX="' -h --help '" \
+    eval AP_ACTION_IS_OPTION_$_AP_INDEX=true \
+         AP_ACTION_OPTION_STRINGS_$_AP_INDEX="' -h --help '" \
          AP_ACTION_DEFAULT_$_AP_INDEX= \
          AP_ACTION_REQUIRED_$_AP_INDEX=false \
          AP_ACTION_HELP_$_AP_INDEX="'show this help message and exit'" \
