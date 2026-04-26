@@ -1678,14 +1678,10 @@ _set_dest_value ()
             eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST }'$_AP_STRING'\""
         ;;
         int)
-            case "$_AP_ARG" in
-                "" | [!"$AP_DIGITS"+-]* | *[!"$AP_DIGITS"+-]* | *[+-]*[+-]*)
-                    false
-                ;;
-                *)
-                    _check_choice || return
-                    eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST }$_AP_ARG\""
-            esac
+            _is_int_number && {
+                _check_choice || return
+                eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST }$_AP_ARG\""
+            }
         ;;
         float)
             _is_number && {
@@ -1865,6 +1861,15 @@ _is_number ()
 {
     case "$_AP_ARG" in
         "" | [!"$AP_DIGITS".+-]* | *[!"$AP_DIGITS".+-]* | *[+-]*[+-]* | *.*.*)
+            false
+        ;;
+    esac
+}
+
+_is_int_number ()
+{
+    case "$_AP_ARG" in
+        "" | [!"$AP_DIGITS"+-]* | *[!"$AP_DIGITS"+-]* | *[+-]*[+-]*)
             false
         ;;
     esac
