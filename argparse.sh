@@ -1540,6 +1540,14 @@ _get_target_arg ()
     esac
 }
 
+_apply_const ()
+{
+    _AP_SAVE_ARG=$_AP_ARG
+    _AP_ARG=$AP_ACTION_CONST
+    _set_dest_value || return
+    _AP_ARG=$_AP_SAVE_ARG
+}
+
 _prev_has_value ()
 {
     case "$AP_ACTION_NARGS_COUNT" in
@@ -1549,10 +1557,7 @@ _prev_has_value ()
         *)
             case "$AP_ACTION_CONST" in
                 ?*)
-                    _AP_SAVE_ARG=$_AP_ARG
-                    _AP_ARG=$AP_ACTION_CONST
-                    _set_dest_value || return
-                    _AP_ARG=$_AP_SAVE_ARG
+                    _apply_const || return
                     return
                 ;;
             esac
@@ -1696,8 +1701,7 @@ _apply_action ()
 {
     case "$AP_ACTION" in
         append_const)
-            _str_replace -- "$AP_ACTION_CONST" "'" "'\''"
-            eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST, }'$_AP_STRING'\""
+            _apply_const || return
         ;;
         count)
             eval $AP_ACTION_DEST=$(($AP_ACTION_DEST + 1))
