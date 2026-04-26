@@ -986,9 +986,6 @@ _get_positional_strings ()
                     ;;
                 esac
             ;;
-            *)
-                AP_ACTION_METAVAR=$AP_ACTION_METAVAR
-            ;;
         esac
     }
 
@@ -1657,7 +1654,7 @@ _get_float_values ()
         [+-]*)
             case ${_AP_ARG#?} in
                 \.*)
-                    _AP_ARG=${_AP_ARG%${_AP_ARG#?}}0${_AP_ARG#?}
+                    _AP_ARG=${_AP_ARG%"${_AP_ARG#?}"}0${_AP_ARG#?}
                 ;;
             esac
             _AP_ARG=${_AP_ARG#+}
