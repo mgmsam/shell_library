@@ -1218,7 +1218,7 @@ _textwrap ()
 
     AP_TEXT="${_AP_INITIAL_INDENT:-}${1:-}"
     _remove_esc "$1"
-    _AP_REMAIND=$((_AP_WIDTH - _AP_SUBSEQUENT_INDENT_LEN - ${#_AP_STRING} - 1))
+    _AP_REMAIND=$((_AP_WIDTH - ${#_AP_STRING} - 1))
     shift 1 || return
 
     for _AP_I
@@ -1258,7 +1258,6 @@ _format_help_usage ()
         ;;
     esac
     _AP_SUBSEQUENT_INDENT=$_AP_STRING
-
     _textwrap "$AP_WIDTH" "" "$_AP_SUBSEQUENT_INDENT" "$@"
     AP_USAGE_TEXT="$AP_TEXT"
 }
@@ -1363,17 +1362,17 @@ _format_Default ()
     AP_INITIAL_INDENT=
     case $(( AP_HELP_SUBSEQUENT_INDENT_LEN >= $((_AP_METAVAR_LEN + 4)) )) in
         1)
-            _get_indent_string $((AP_HELP_SUBSEQUENT_INDENT_LEN - _AP_METAVAR_LEN - 2))
-            AP_INITIAL_INDENT="$_AP_STRING"
+            _get_indent_string $((AP_HELP_SUBSEQUENT_INDENT_LEN - _AP_METAVAR_LEN - 3))
+            set -- "  $_AP_METAVAR$_AP_STRING" "$@"
+            _textwrap "$AP_WIDTH" "$AP_INITIAL_INDENT" "$AP_HELP_SUBSEQUENT_INDENT" "$@"
         ;;
         0)
             _AP_METAVAR=$_AP_METAVAR$AP_LF
             AP_INITIAL_INDENT=$AP_HELP_SUBSEQUENT_INDENT
+            _textwrap "$AP_WIDTH" "$AP_INITIAL_INDENT" "$AP_HELP_SUBSEQUENT_INDENT" "$@"
+            AP_TEXT="  $_AP_METAVAR$AP_TEXT"
         ;;
     esac
-
-    _textwrap "$AP_WIDTH" "$AP_INITIAL_INDENT" "$AP_HELP_SUBSEQUENT_INDENT" "$@"
-    AP_TEXT="  $_AP_METAVAR$AP_TEXT"
 }
 
 _get_help_text ()
