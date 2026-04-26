@@ -301,7 +301,7 @@ _set_positional_kwargs ()
     shift
     for _AP_RAW_ARG
     do
-        _AP_ARG=`printf '%b.' "$_AP_RAW_ARG"`
+        _AP_ARG=$(printf '%b.' "$_AP_RAW_ARG")
         _AP_ARG=${_AP_ARG%.}
         case "$_AP_ARG" in
             *=*)
