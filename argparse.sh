@@ -451,26 +451,27 @@ _set_parser_kwargs ()
 
 _set_parser_positional_args ()
 {
-    if case "$AP_PARSER_PROG" in ?*) false ;; esac
-    then
-        AP_PARSER_PROG=$_AP_ARG
-    elif case "$AP_PARSER_USAGE" in ?*) false ;; esac
-    then
-        AP_PARSER_USAGE=$_AP_ARG
-    elif case "$AP_PARSER_DESCRIPTION" in ?*) false ;; esac
-    then
-        AP_PARSER_DESCRIPTION=$_AP_ARG
-    elif case "$AP_PARSER_EPILOG" in ?*) false ;; esac
-    then
-        AP_PARSER_EPILOG=$_AP_ARG
-    elif case "$AP_PARSER_PARENTS" in ?*) false ;; esac
-    then
-        # TODO: implement
-        AP_PARSER_PARENTS=
-    else
-        echo "ValueError: length of metavar tuple does not match nargs"
-        return 2
-    fi
+    case $AP_PARSER_PROG in
+        "") AP_PARSER_PROG=$_AP_ARG ;;
+         *) false ;;
+    esac ||
+    case $AP_PARSER_USAGE in
+        "") AP_PARSER_USAGE=$_AP_ARG ;;
+         *) false ;;
+    esac ||
+    case $AP_PARSER_DESCRIPTION in
+        "") AP_PARSER_DESCRIPTION=$_AP_ARG ;;
+         *) false ;;
+    esac ||
+    case $AP_PARSER_EPILOG in
+        "") AP_PARSER_EPILOG=$_AP_ARG ;;
+         *) false ;;
+    esac ||
+    case $AP_PARSER_PARENTS in
+        "") AP_PARSER_PARENTS= ;;
+         *) echo "ValueError: length of metavar tuple does not match nargs"
+            return 2 ;;
+    esac
 }
 
 ArgumentParser ()
