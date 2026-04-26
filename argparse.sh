@@ -700,7 +700,7 @@ _set_action_kwargs ()
                             return 2
                         ;;
                     esac
-                    $_AP_IS_OPTION || {
+                    $AP_ACTION_IS_OPTION || {
                         echo "TypeError: 'required' is an invalid argument for positionals"
                         return 2
                     }
@@ -750,13 +750,14 @@ _set_action_positional_args ()
         ;;
         *)
             AP_ACTION_POSITION_ARG=$_AP_ARG
-            _AP_IS_OPTION=false
+            AP_ACTION_IS_OPTION=false
         ;;
     esac
 }
 
 add_argument ()
 {
+    AP_ACTION_IS_OPTION=true
     AP_ACTION_OPTION_STRINGS=
     AP_ACTION_DEST=
     AP_ACTION_NARGS=None
@@ -779,8 +780,6 @@ add_argument ()
     AP_ACTION_SHORT_OPTION=
     AP_ACTION_POSITION_ARG=
     AP_ACTION_FMT_CLASS_ARGUMENTDEFAULTS=$AP_PARSER_FMT_CLASS_ARGUMENTDEFAULTS
-
-    _AP_IS_OPTION=true
 
     _AP_SEEN_KEYWORDS=
     _AP_KEYWORD=
@@ -819,14 +818,14 @@ add_argument ()
                         None | "")
                             AP_ACTION_NARGS=None
                             AP_ACTION_NARGS_COUNT=1
-                            $_AP_IS_OPTION || AP_ACTION_REQUIRED=true
+                            $AP_ACTION_IS_OPTION || AP_ACTION_REQUIRED=true
                         ;;
                         [?*])
                             AP_ACTION_NARGS_COUNT="$AP_ACTION_NARGS"
                         ;;
                         *)
                             AP_ACTION_NARGS_COUNT="$AP_ACTION_NARGS"
-                            $_AP_IS_OPTION || AP_ACTION_REQUIRED=true
+                            $AP_ACTION_IS_OPTION || AP_ACTION_REQUIRED=true
                         ;;
                     esac
                 ;;
@@ -869,7 +868,7 @@ add_argument ()
                 ;;
             esac
 
-            $_AP_IS_OPTION || AP_ACTION_REQUIRED=true
+            $AP_ACTION_IS_OPTION || AP_ACTION_REQUIRED=true
             case "$AP_ACTION" in
                 append_const)
                 ;;
@@ -903,7 +902,7 @@ add_argument ()
                                 $AP_ACTION_DEFAULT_IS_SET ||
                                     AP_ACTION_FMT_CLASS_ARGUMENTDEFAULTS=false
                             } || :
-                            $_AP_IS_OPTION || ! $AP_ACTION_REQUIRED
+                            $AP_ACTION_IS_OPTION || ! $AP_ACTION_REQUIRED
                         ;;
                         store_false)
                             AP_ACTION_DEFAULT=${AP_ACTION_DEFAULT:-true}
@@ -913,7 +912,7 @@ add_argument ()
                         ;;
                         version)
                             AP_ACTION_HELP="${AP_ACTION_HELP:-"show program's version number and exit"}"
-                            $_AP_IS_OPTION || ! $AP_ACTION_REQUIRED
+                            $AP_ACTION_IS_OPTION || ! $AP_ACTION_REQUIRED
                         ;;
                     esac || {
                         echo "TypeError: action=$AP_ACTION got an unexpected keyword argument 'required'"
@@ -925,11 +924,15 @@ add_argument ()
     esac
 
     _AP_INDEX=$((_AP_INDEX + 1))
-    _AP_INDEXES="$_AP_INDEXES $_AP_INDEX"
+    $AP_ACTION_IS_OPTION &&
+        _AP_OPTIONS_INDEXES="$_AP_OPTIONS_INDEXES $_AP_INDEX" ||
+            _AP_POSITIONS_INDEXES="$_AP_POSITIONS_INDEXES $_AP_INDEX"
+
     $AP_ACTION_REQUIRED &&
         _AP_REQUIRED_INDEXES="$_AP_REQUIRED_INDEXES $_AP_INDEX " || :
 
-    eval AP_ACTION_OPTION_STRINGS_$_AP_INDEX=\$AP_ACTION_OPTION_STRINGS \
+    eval AP_ACTION_IS_OPTION_$_AP_INDEX=\$AP_ACTION_IS_OPTION \
+         AP_ACTION_OPTION_STRINGS_$_AP_INDEX=\$AP_ACTION_OPTION_STRINGS \
          AP_ACTION_SHORT_OPTION_$_AP_INDEX=\$AP_ACTION_SHORT_OPTION \
          AP_ACTION_LONG_OPTION_$_AP_INDEX=\$AP_ACTION_LONG_OPTION \
          AP_ACTION_POSITION_ARG_$_AP_INDEX=\$AP_ACTION_POSITION_ARG \
@@ -1133,9 +1136,10 @@ _get_usage_string ()
     AP_USAGE_TEXT="'usage:${AP_PARSER_PROG:+ $AP_PARSER_PROG:}'"
     _AP_USAGE_OPTION_STR=
     _AP_USAGE_POSITION_STR=
-    for _AP_INDEX in $_AP_INDEXES
+    for _AP_INDEX in $_AP_OPTIONS_INDEXES $_AP_POSITIONS_INDEXES
     do
-        eval AP_ACTION_OPTION_STRINGS=\$AP_ACTION_OPTION_STRINGS_$_AP_INDEX \
+        eval AP_ACTION_IS_OPTION=\$AP_ACTION_IS_OPTION_$_AP_INDEX \
+             AP_ACTION_OPTION_STRINGS=\$AP_ACTION_OPTION_STRINGS_$_AP_INDEX \
              AP_ACTION_SHORT_OPTION=\$AP_ACTION_SHORT_OPTION_$_AP_INDEX \
              AP_ACTION_LONG_OPTION=\$AP_ACTION_LONG_OPTION_$_AP_INDEX \
              AP_ACTION_POSITION_ARG=\$AP_ACTION_POSITION_ARG_$_AP_INDEX \
@@ -1149,25 +1153,22 @@ _get_usage_string ()
              AP_ACTION_METAVAR=\$AP_ACTION_METAVAR_$_AP_INDEX \
              AP_ACTION_ADD_METAVAR=\$AP_ACTION_ADD_METAVAR_$_AP_INDEX
 
-        set -- $AP_ACTION_OPTION_STRINGS
-        case "${1:-}" in
-            "")
-                _get_positional_strings &&
-                case "$_AP_PRINT_INFO" in
-                    print_help)
-                        _save_positional_help_string
-                    ;;
-                esac
-            ;;
-            *)
-                _get_option_strings "$1" &&
-                case "$_AP_PRINT_INFO" in
-                    print_help)
-                        _save_option_help_string "$@"
-                    ;;
-                esac
-            ;;
-        esac || return
+        $AP_ACTION_IS_OPTION && {
+            set -- $AP_ACTION_OPTION_STRINGS
+            _get_option_strings "$1" &&
+            case "$_AP_PRINT_INFO" in
+                print_help)
+                    _save_option_help_string "$@"
+                ;;
+            esac || return
+        } || {
+            _get_positional_strings &&
+            case "$_AP_PRINT_INFO" in
+                print_help)
+                    _save_positional_help_string
+                ;;
+            esac || return
+        }
     done
     AP_USAGE_TEXT="$AP_USAGE_TEXT$_AP_USAGE_OPTION_STR$_AP_USAGE_POSITION_STR"
 }
@@ -1505,7 +1506,7 @@ print_version ()
 _add_help ()
 {
     _AP_INDEX=0
-    _AP_INDEXES="$_AP_INDEX$_AP_INDEXES"
+    _AP_OPTIONS_INDEXES="$_AP_INDEX $_AP_OPTIONS_INDEXES"
     eval AP_ACTION_OPTION_STRINGS_$_AP_INDEX="' -h --help '" \
          AP_ACTION_DEFAULT_$_AP_INDEX= \
          AP_ACTION_REQUIRED_$_AP_INDEX=false \
@@ -1608,7 +1609,9 @@ _prev_has_value ()
 
 _set_action_state ()
 {
-    eval AP_ACTION_OPTION_STRINGS=\$AP_ACTION_OPTION_STRINGS_$_AP_INDEX \
+    _AP_INDEX=$_AP_CURRENT_INDEX
+    eval AP_ACTION_IS_OPTION=\$AP_ACTION_IS_OPTION_$_AP_INDEX \
+         AP_ACTION_OPTION_STRINGS=\$AP_ACTION_OPTION_STRINGS_$_AP_INDEX \
          AP_ACTION_DEST=\$AP_ACTION_DEST_$_AP_INDEX \
          AP_ACTION_NARGS=\$AP_ACTION_NARGS_$_AP_INDEX \
          AP_ACTION_NARGS_COUNT=\$AP_ACTION_NARGS_COUNT_$_AP_INDEX \
@@ -1676,7 +1679,7 @@ _set_dest_value ()
         ;;
         int)
             case "$_AP_ARG" in
-                "" | *[!"$AP_DIGITS"]*)
+                "" | [!"$AP_DIGITS"+-]* | *[!"$AP_DIGITS"+-]* | *[+-]*[+-]*)
                     false
                 ;;
                 *)
@@ -1685,15 +1688,11 @@ _set_dest_value ()
             esac
         ;;
         float)
-            case "$_AP_ARG" in
-                "" | *[!"$AP_DIGITS".eE+-]* | *+*+* | *-*-* | *+-* | *-+* | *.*.* | *[eE]*[eE]*)
-                    false
-                ;;
-                *)
-                    _check_choice || return
-                    _get_float_values
-                    eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST }$_AP_ARG\""
-            esac
+            _is_number && {
+                _check_choice || return
+                _get_float_values
+                eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST }$_AP_ARG\""
+            }
         ;;
         bool)
             case "$_AP_ARG" in
@@ -1740,7 +1739,7 @@ _apply_action ()
             _AP_PRINT_INFO="${_AP_PRINT_INFO:-print_help}"
         ;;
         store | append | extend)
-            $_AP_ARG_IS_OPTION || _set_dest_value || return
+            $AP_ACTION_IS_OPTION || _set_dest_value || return
         ;;
         store_const)
             _str_replace -- "$AP_ACTION_CONST" "'" "'\''"
@@ -1756,47 +1755,22 @@ _apply_action ()
             _AP_PRINT_INFO="${_AP_PRINT_INFO:-print_version}"
             _AP_VERSION_INDEX=${_AP_VERSION_INDEX:-$_AP_INDEX}
         ;;
-    esac
-}
-
-_parse_option ()
-{
-    for _AP_INDEX in $_AP_INDEXES
-    do
-        _set_action_state
-        case "$AP_ACTION_OPTION_STRINGS" in
-            "")
-            ;;
-            *" $_AP_ARG "*)
-                return
-            ;;
-        esac
-    done
-    case ${#_AP_ARG} in
-        2)
-            _error "invalid option -- '${_AP_ARG#?}'"
-        ;;
-        *)
-            _error "unrecognized option '$_AP_ARG'"
+        "")
+            return 2
         ;;
     esac
-    return 2
 }
 
 _parse_arg ()
 {
     case "$AP_ACTION_NARGS_COUNT" in
         0 | "")
-            for _AP_INDEX in $_AP_INDEXES
+            for _AP_CURRENT_INDEX in $_AP_POSITIONS_INDEXES
             do
-                _set_action_state
-                case "$AP_ACTION_OPTION_STRINGS" in
-                    ?*)
-                        continue
-                    ;;
-                esac
-                case "$AP_ACTION_NARGS_COUNT" in
+                eval _AP_ACTION_NARGS_COUNT=\$AP_ACTION_NARGS_COUNT_$_AP_CURRENT_INDEX
+                case "$_AP_ACTION_NARGS_COUNT" in
                     [!0]*)
+                        _set_action_state
                         return
                     ;;
                 esac
@@ -1873,9 +1847,33 @@ _check_required_args ()
     esac
 }
 
+_is_option ()
+{
+    for _AP_CURRENT_INDEX in $_AP_OPTIONS_INDEXES
+    do
+        eval _AP_ACTION_OPTION_STRINGS=\$AP_ACTION_OPTION_STRINGS_$_AP_CURRENT_INDEX
+        case "$_AP_ACTION_OPTION_STRINGS" in
+            *" $_AP_ARG "*)
+                return
+            ;;
+        esac
+    done
+    false
+}
+
+_is_number ()
+{
+    case "$_AP_ARG" in
+        "" | [!"$AP_DIGITS".+-]* | *[!"$AP_DIGITS".+-]* | *[+-]*[+-]* | *.*.*)
+            false
+        ;;
+    esac
+}
+
 parse_args ()
 {
     ACTIONS_RECEIVED_INDEXES=
+    AP_ACTION=
     AP_ACTION_NARGS=
     AP_ACTION_NARGS_COUNT=
     _AP_PARSING_OPTIONS=true
@@ -1890,18 +1888,38 @@ parse_args ()
         esac
     do
         _AP_ARG=$1
-        _AP_ARG_IS_OPTION=false
+        AP_ACTION_IS_OPTION=false
         $_AP_PARSING_OPTIONS &&
-        case "$_AP_ARG" in
+        case $_AP_ARG in
             '--')
                 _AP_PARSING_OPTIONS=false
                 shift
                 continue
             ;;
             ["$AP_PARSER_PREFIX_CHARS"]*)
-                _prev_has_value &&
-                _parse_option || return
-                _AP_ARG_IS_OPTION=true
+                _is_option && {
+                    _prev_has_value || return
+                    _set_action_state
+                } || {
+                    case $AP_ACTION_NARGS_COUNT in
+                        0 | "")
+                            false
+                        ;;
+                        *)
+                            _is_number
+                        ;;
+                    esac || {
+                        case ${#_AP_ARG} in
+                            2)
+                                _error "invalid option -- '${_AP_ARG#?}'"
+                            ;;
+                            *)
+                                _error "unrecognized option '$_AP_ARG'"
+                            ;;
+                        esac
+                        return 2
+                    }
+                }
             ;;
             *)
                 false
