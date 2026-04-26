@@ -778,6 +778,8 @@ add_argument ()
     AP_ACTION_POSITION_ARG=
     AP_ACTION_FMT_CLASS_ARGUMENTDEFAULTS=$AP_PARSER_FMT_CLASS_ARGUMENTDEFAULTS
 
+    AP_MAX_ACTION_LEN=0
+
     _AP_SEEN_KEYWORDS=
     _AP_KEYWORD=
     _AP_KEYWORD_VALUE=
@@ -938,6 +940,7 @@ add_argument ()
          AP_ACTION_NARGS_COUNT_$_AP_INDEX=\$AP_ACTION_NARGS_COUNT \
          AP_ACTION_CONST_$_AP_INDEX=\$AP_ACTION_CONST \
          AP_ACTION_DEFAULT_$_AP_INDEX=\$AP_ACTION_DEFAULT \
+         AP_ACTION_DEFAULT_IS_SET_$_AP_INDEX=\$AP_ACTION_DEFAULT_IS_SET \
          AP_ACTION_TYPE_$_AP_INDEX=\$AP_ACTION_TYPE \
          AP_ACTION_CHOICES_$_AP_INDEX=\$AP_ACTION_CHOICES \
          AP_ACTION_REQUIRED_$_AP_INDEX=\$AP_ACTION_REQUIRED \
@@ -1503,9 +1506,21 @@ _add_help ()
     _AP_OPTIONS_INDEXES="$_AP_INDEX $_AP_OPTIONS_INDEXES"
     eval AP_ACTION_IS_OPTION_$_AP_INDEX=true \
          AP_ACTION_OPTION_STRINGS_$_AP_INDEX="' -h --help '" \
+         AP_ACTION_SHORT_OPTION_$_AP_INDEX='-h' \
+         AP_ACTION_LONG_OPTION_$_AP_INDEX='--help' \
+         AP_ACTION_POSITION_ARG_$_AP_INDEX= \
+         AP_ACTION_DEST_$_AP_INDEX=help \
+         AP_ACTION_NARGS_$_AP_INDEX= \
+         AP_ACTION_NARGS_COUNT_$_AP_INDEX=0 \
+         AP_ACTION_CONST_$_AP_INDEX= \
          AP_ACTION_DEFAULT_$_AP_INDEX= \
+         AP_ACTION_DEFAULT_IS_SET_$_AP_INDEX=false \
+         AP_ACTION_TYPE_$_AP_INDEX= \
+         AP_ACTION_CHOICES_$_AP_INDEX= \
          AP_ACTION_REQUIRED_$_AP_INDEX=false \
          AP_ACTION_HELP_$_AP_INDEX="'show this help message and exit'" \
+         AP_ACTION_VERSION_$_AP_INDEX= \
+         AP_ACTION_VERSION_IS_SET_$_AP_INDEX=false \
          AP_ACTION_METAVAR_$_AP_INDEX= \
          AP_ACTION_ADD_METAVAR_$_AP_INDEX=false \
          AP_ACTION_$_AP_INDEX=help \
@@ -1750,7 +1765,7 @@ _set_default_value ()
                      AP_ACTION_TYPE=\$AP_ACTION_TYPE_$_AP_INDEX \
                      _AP_ARG=\$AP_ACTION_DEFAULT_$_AP_INDEX
 
-                eval _AP_DEST_VALUE=\$$AP_ACTION_DEST
+                eval _AP_DEST_VALUE=\${$AP_ACTION_DEST:-}
                 case "$_AP_DEST_VALUE" in
                     "")
                         case "$_AP_ARG" in
