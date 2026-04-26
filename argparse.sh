@@ -359,12 +359,6 @@ _set_parser_kwargs ()
         fromfile_prefix_chars | argument_default | conflict_handler | \
         add_help | allow_abbrev | exit_on_error | case_style | dest_prefix | func_prefix)
             _check_unique_kwargs || return
-            case $_AP_KEYWORD_VALUE in
-                *\`*)
-                    echo "SyntaxError: invalid syntax"
-                    return 2
-                ;;
-            esac
             case $_AP_KEYWORD in
                 prog)
                     AP_PARSER_PROG=$_AP_KEYWORD_VALUE
