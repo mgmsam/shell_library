@@ -1968,16 +1968,16 @@ print_action_state ()
 {
     case "${1:-}" in
         "")
-            for _AP_INDEX in $_AP_OPTIONS_INDEXES $_AP_POSITIONS_INDEXES
+            for _AP_CURRENT_INDEX in $_AP_OPTIONS_INDEXES $_AP_POSITIONS_INDEXES
             do
                 _set_action_state
                 _say_action_state
             done
         ;;
         *[!"$AP_DIGITS"]*)
-            for _AP_INDEX in $_AP_OPTIONS_INDEXES $_AP_POSITIONS_INDEXES
+            for _AP_CURRENT_INDEX in $_AP_OPTIONS_INDEXES $_AP_POSITIONS_INDEXES
             do
-                eval AP_ACTION_DEST=\$AP_ACTION_DEST_$_AP_INDEX
+                eval AP_ACTION_DEST=\$AP_ACTION_DEST_$_AP_CURRENT_INDEX
                 case "$AP_ACTION_DEST" in
                     "$1")
                         _set_action_state
@@ -1987,9 +1987,9 @@ print_action_state ()
             done
         ;;
         *)
-            for _AP_INDEX in $_AP_OPTIONS_INDEXES $_AP_POSITIONS_INDEXES
+            for _AP_CURRENT_INDEX in $_AP_OPTIONS_INDEXES $_AP_POSITIONS_INDEXES
             do
-                case "$_AP_INDEX" in
+                case "$_AP_CURRENT_INDEX" in
                     "$1")
                         _set_action_state
                         _say_action_state
