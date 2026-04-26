@@ -1446,12 +1446,12 @@ _format_help_text ()
             AP_HELP=${AP_HELP:+$AP_HELP$AP_LF$AP_LF}$AP_HELP_DESCRIPTION
         ;;
     esac
-    case $AP_HELP_POSITIONALS in
+    case ${AP_HELP_POSITIONALS:-} in
         ?*)
             AP_HELP=${AP_HELP:+$AP_HELP$AP_LF$AP_LF}$AP_HELP_POSITIONALS
         ;;
     esac
-    case $AP_HELP_OPTIONS in
+    case ${AP_HELP_OPTIONS:-} in
         ?*)
             AP_HELP=${AP_HELP:+$AP_HELP$AP_LF$AP_LF}$AP_HELP_OPTIONS
         ;;
