@@ -508,7 +508,8 @@ ArgumentParser ()
     AP_PARSER_FUNC_PREFIX=
 
     _AP_INDEX=0
-    _AP_INDEXES=
+    _AP_OPTIONS_INDEXES=
+    _AP_POSITIONS_INDEXES=
     _AP_REQUIRED_INDEXES=
 
     _AP_SEEN_FORMATTER_CLASS=
@@ -1781,7 +1782,7 @@ _parse_arg ()
 
 _set_default_value ()
 {
-    for _AP_INDEX in $_AP_INDEXES
+    for _AP_INDEX in $_AP_OPTIONS_INDEXES $_AP_POSITIONS_INDEXES
     do
         case "$ACTIONS_RECEIVED_INDEXES" in
             *" $_AP_INDEX "*)
