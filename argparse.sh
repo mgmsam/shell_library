@@ -1544,7 +1544,7 @@ _apply_const ()
 {
     _AP_SAVE_ARG=$_AP_ARG
     _AP_ARG=$AP_ACTION_CONST
-    _set_dest_value || return
+    _process_value || return
     _AP_ARG=$_AP_SAVE_ARG
 }
 
@@ -1645,25 +1645,39 @@ _get_float_values ()
     esac
 }
 
-_set_dest_value ()
+_store_value ()
+{
+    eval AP_ACTION_DEST_VALUE=\${$AP_ACTION_DEST:-}
+    case $AP_ACTION_DEST_VALUE in
+        "")
+            eval $AP_ACTION_DEST='$_AP_ARG'
+        ;;
+        *)
+            eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST }'\$_AP_ARG'\""
+        ;;
+    esac
+}
+
+_process_value ()
 {
     case "$AP_ACTION_TYPE" in
         "" | str)
             _check_choice || return
             _str_replace -- "$_AP_ARG" "'" "'\''"
-            eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST }'$_AP_STRING'\""
+            _AP_ARG=$_AP_STRING
+            _store_value
         ;;
         int)
             _is_int_number && {
                 _check_choice || return
-                eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST }$_AP_ARG\""
+                _store_value
             }
         ;;
         float)
             _is_number && {
                 _check_choice || return
                 _get_float_values
-                eval $AP_ACTION_DEST="\"\${$AP_ACTION_DEST:+\$$AP_ACTION_DEST }$_AP_ARG\""
+                _store_value
             }
         ;;
         bool)
@@ -1710,7 +1724,7 @@ _apply_action ()
             _AP_PRINT_INFO="${_AP_PRINT_INFO:-print_help}"
         ;;
         store | append | extend)
-            $AP_ACTION_IS_OPTION || _set_dest_value || return
+            $AP_ACTION_IS_OPTION || _process_value || return
         ;;
         store_const)
             _str_replace -- "$AP_ACTION_CONST" "'" "'\''"
@@ -1776,7 +1790,7 @@ _set_default_value ()
                                 eval $AP_ACTION_DEST=
                             ;;
                             *)
-                                _set_dest_value
+                                _process_value
                             ;;
                         esac
                     ;;
