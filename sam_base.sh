@@ -46,7 +46,7 @@ case ${TERM:-} in
     *)
         type tput &&
         case $(tput colors) in
-            '' | [01])
+            '' | [01] | -*)
                 false
             ;;
             *)
