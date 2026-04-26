@@ -39,6 +39,23 @@ eval 'ERROR=${ERROR#*:}' 2>/dev/null || {
     exit 1
 }
 
+case ${TERM:-} in
+    xterm* | rxvt* | screen* | linux* | vt100* | vt220* | putty* | Eterm* | alacritty* | tmux* | kitty*)
+        COLOR_PROMPT=true
+    ;;
+    *)
+        type tput &&
+        case $(tput colors) in
+            '' | [01])
+                false
+            ;;
+            *)
+                COLOR_PROMPT=true
+            ;;
+        esac || COLOR_PROMPT=false
+    ;;
+esac >/dev/null 2>&1
+
 PUTS_LENGHT_PREFIX=
 SAY_DIVIDER=
 SAY_ESCAPE=
