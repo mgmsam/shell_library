@@ -237,7 +237,8 @@ say ()
     SAY_ESCAPE=$PUTS_ESCAPE
     SAY_LIST=false
     SAY_NEWLINE=true
-    SAY_PREFIX="${LOG_PREFIX:-$0: }"
+    SAY_PREFIX="${AP_PARSER_PROG:-${LOG_PREFIX:-$0}}"
+    SAY_PREFIX="$SAY_PREFIX: "
     SAY_PREFIX_INDENT=false
     SAY_SUFFIX="$LF"
 
