@@ -512,11 +512,6 @@ ArgumentParser ()
     _parse_arg_sequence "$@" &&
     _set_positional_kwargs parser "$@" || return
 
-    AP_PARSER_PARENTS=${AP_PARSER_PARENTS:-}
-    AP_PARSER_ADD_HELP=${AP_PARSER_ADD_HELP:-}
-    AP_PARSER_ALLOW_ABBREV=${AP_PARSER_ALLOW_ABBREV:-}
-    AP_PARSER_EXIT_ON_ERROR=${AP_PARSER_EXIT_ON_ERROR:-}
-
     case "$AP_PARSER_FUNC_PREFIX" in
         ?*)
             eval "${AP_PARSER_FUNC_PREFIX}_add_argument () { add_argument \"\$@\"; }"
