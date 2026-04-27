@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# sam_base.sh. A collection of primitives for developing portable shell scripts.
+# core.sh. A collection of primitives for developing portable shell scripts.
 #
 # Copyright (c) 2026 Semyon A Mironov
 #
