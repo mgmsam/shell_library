@@ -48,45 +48,60 @@ case ${TERM:-} in
         type tput &&
         case $(tput colors) in
             '' | [01] | -*)
+                false
             ;;
             *)
                 COLOR_PROMPT=true
             ;;
-        esac
+        esac || COLOR_PROMPT=false
     ;;
 esac >/dev/null 2>&1
 
-RESET_ALL=${COLOR_PROMPT:+'\033[0m'}
-# text color
-R_TEXT=${COLOR_PROMPT:+'\033[39m'}
-T_BLACK=${COLOR_PROMPT:+'\033[30m'}
-T_BLUE=${COLOR_PROMPT:+'\033[34m'}
-T_CYAN=${COLOR_PROMPT:+'\033[36m'}
-T_GREEN=${COLOR_PROMPT:+'\033[32m'}
-T_MAGENTA=${COLOR_PROMPT:+'\033[35m'}
-T_RED=${COLOR_PROMPT:+'\033[31m'}
-T_WHITE=${COLOR_PROMPT:+'\033[37m'}
-T_YELLOW=${COLOR_PROMPT:+'\033[33m'}
-# text attributes
-R_ATTR=${COLOR_PROMPT:+'\033[22;24;25;26;27;28m'}
-A_BOLD=${COLOR_PROMPT:+'\033[1m'}              R_BOLD=${COLOR_PROMPT:+'\033[22m'}
-A_HALF_BRIGHT=${COLOR_PROMPT:+'\033[2m'}       R_HALF_BRIGHT=${COLOR_PROMPT:+'\033[22m'}
-A_UNDERLINE=${COLOR_PROMPT:+'\033[4m'}         R_UNDERLINE=${COLOR_PROMPT:+'\033[24m'}
-A_DOUBLE_UNDERLINE=${COLOR_PROMPT:+'\033[21m'} R_DOUBLE_UNDERLINE=${COLOR_PROMPT:+'\033[24m'}
-A_BLINK=${COLOR_PROMPT:+'\033[5m'}             R_BLINK=${COLOR_PROMPT:+'\033[25m'}
-A_INVERSION=${COLOR_PROMPT:+'\033[7m'}         R_INVERSION=${COLOR_PROMPT:+'\033[27m'}
-A_INVISIBLE=${COLOR_PROMPT:+'\033[8m'}         R_INVISIBLE=${COLOR_PROMPT:+'\033[28m'}
-# background color
-R_BG=${COLOR_PROMPT:+'\033[49m'}
-B_BLACK=${COLOR_PROMPT:+'\033[40m'}
-B_BLUE=${COLOR_PROMPT:+'\033[44m'}
-B_CYAN=${COLOR_PROMPT:+'\033[46m'}
-B_GREEN=${COLOR_PROMPT:+'\033[42m'}
-B_MAGENTA=${COLOR_PROMPT:+'\033[45m'}
-B_RED=${COLOR_PROMPT:+'\033[41m'}
-B_WHITE=${COLOR_PROMPT:+'\033[47m'}
-B_YELLOW=${COLOR_PROMPT:+'\033[43m'}
-COLOR_PROMPT=${COLOR_PROMPT:-false}
+_set_color_var ()
+{
+    RESET_ALL=${_SET_COLOR:+'\033[0m'}
+    # text color
+    R_TEXT=${_SET_COLOR:+'\033[39m'}
+    T_BLACK=${_SET_COLOR:+'\033[30m'}
+    T_BLUE=${_SET_COLOR:+'\033[34m'}
+    T_CYAN=${_SET_COLOR:+'\033[36m'}
+    T_GREEN=${_SET_COLOR:+'\033[32m'}
+    T_MAGENTA=${_SET_COLOR:+'\033[35m'}
+    T_RED=${_SET_COLOR:+'\033[31m'}
+    T_WHITE=${_SET_COLOR:+'\033[37m'}
+    T_YELLOW=${_SET_COLOR:+'\033[33m'}
+    # text attributes
+    R_ATTR=${_SET_COLOR:+'\033[22;24;25;26;27;28m'}
+    A_BOLD=${_SET_COLOR:+'\033[1m'}              R_BOLD=${_SET_COLOR:+'\033[22m'}
+    A_HALF_BRIGHT=${_SET_COLOR:+'\033[2m'}       R_HALF_BRIGHT=${_SET_COLOR:+'\033[22m'}
+    A_UNDERLINE=${_SET_COLOR:+'\033[4m'}         R_UNDERLINE=${_SET_COLOR:+'\033[24m'}
+    A_DOUBLE_UNDERLINE=${_SET_COLOR:+'\033[21m'} R_DOUBLE_UNDERLINE=${_SET_COLOR:+'\033[24m'}
+    A_BLINK=${_SET_COLOR:+'\033[5m'}             R_BLINK=${_SET_COLOR:+'\033[25m'}
+    A_INVERSION=${_SET_COLOR:+'\033[7m'}         R_INVERSION=${_SET_COLOR:+'\033[27m'}
+    A_INVISIBLE=${_SET_COLOR:+'\033[8m'}         R_INVISIBLE=${_SET_COLOR:+'\033[28m'}
+    # background color
+    R_BG=${_SET_COLOR:+'\033[49m'}
+    B_BLACK=${_SET_COLOR:+'\033[40m'}
+    B_BLUE=${_SET_COLOR:+'\033[44m'}
+    B_CYAN=${_SET_COLOR:+'\033[46m'}
+    B_GREEN=${_SET_COLOR:+'\033[42m'}
+    B_MAGENTA=${_SET_COLOR:+'\033[45m'}
+    B_RED=${_SET_COLOR:+'\033[41m'}
+    B_WHITE=${_SET_COLOR:+'\033[47m'}
+    B_YELLOW=${_SET_COLOR:+'\033[43m'}
+}
+
+reset_color ()
+{
+    _SET_COLOR= _set_color_var
+}
+
+init_color ()
+{
+    $COLOR_PROMPT && {
+        _SET_COLOR=1 _set_color_var
+    } || reset_color
+}
 
 PUTS_LENGHT_PREFIX=
 SAY_DIVIDER=
