@@ -651,14 +651,14 @@ _import ()
 _module_not_found ()
 {
     case ${1:-} in
-        '')
-            return 1
-        ;;
         "$SYS_LIB_DIR"*)
             str_replace "${1#${SYS_LIB_DIR%/}/}" '/' '.'
         ;;
-        ?*)
+        "$PKG_DIR"*)
             str_replace "${1#${PKG_DIR%/}/}" '/' '.'
+        ;;
+        *)
+            _CORE_STRING=${1:-}
         ;;
     esac
     say "ModuleNotFoundError: No module named '$_CORE_STRING'"
