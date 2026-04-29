@@ -103,15 +103,6 @@ init_color ()
     } || reset_color
 }
 
-PUTS_LENGHT_PREFIX=
-SAY_DIVIDER=
-SAY_ESCAPE=
-SAY_INDENT=
-SAY_NEWLINE=
-
-LF='
-'
-
 case "${KSH_VERSION:-}" in
     ?*)
         PUTS_TYPE=print PUTS_ESCAPE=true
@@ -204,6 +195,16 @@ then
 else
     exit 1
 fi >/dev/null 2>&1
+
+PUTS_LENGHT_PREFIX=
+SAY_DIVIDER=
+SAY_ESCAPE=
+SAY_INDENT=
+SAY_NEWLINE=
+SAY_BATCH=true
+SAY_ESCAPE=$PUTS_ESCAPE
+LF='
+'
 
 if type sleep
 then
@@ -405,6 +406,24 @@ die ()
     exit $EXIT_CODE
 }
 
+PWD=$(pwd)
+CR=$(puts '\r')
+TAB=$(puts '\t')
+SPACE=' '
+BLANK=$SPACE$TAB
+POSIX_IFS=$SPACE$TAB$LF
+IFS=$POSIX_IFS
+SYS_LIB_DIR='/usr/lib/shell'
+PKG_DIR=$(2>&1
+    _PATH="${0%/*}"
+    case $0 in
+        "$_PATH")
+            _PATH=$PWD
+        ;;
+    esac
+    cd -- "${_PATH:-/}" && 2>&1 pwd -P
+)
+
 is_diff ()
 {
     case "${1:-}" in
@@ -512,15 +531,221 @@ loop ()
     :
 }
 
-set_env ()
+str_replace ()
 {
-    PWD=$(pwd)
-    CR=$(puts '\r')
-    TAB=$(puts '\t')
-    SPACE=' '
-    BLANK=$SPACE$TAB
-    POSIX_IFS=$SPACE$TAB$LF
+########################################################################
+    # replace sub string in string
+    # $1 - pattern
+    # $2 - replace
+########################################################################
+    _CORE_REPEAT=false
+    while true
+    do
+        case "$1" in
+            --)
+                shift
+                break
+            ;;
+            -l)
+                _CORE_REPEAT=true
+                shift
+            ;;
+            *)
+                break
+            ;;
+        esac
+    done
+    _CORE_STRING="$1"
+    while
+        case $_CORE_STRING in
+            *$2*)
+            ;;
+            *)
+                false
+            ;;
+        esac
+    do
+        _CORE_BUFFER=
+        while
+            case $_CORE_STRING in
+                "")
+                    false
+                ;;
+            esac
+        do
+            _CORE_LEFT=${_CORE_STRING%%$2*}
+            case "$_CORE_LEFT" in
+                "$_CORE_STRING")
+                    break
+                ;;
+            esac
+            _CORE_BUFFER=$_CORE_BUFFER$_CORE_LEFT${3:-}
+            _CORE_STRING=${_CORE_STRING#*$2}
+        done
+        _CORE_STRING=$_CORE_BUFFER$_CORE_STRING _CORE_BUFFER=
+        $_CORE_REPEAT || break
+    done
+}
+
+_resolve_module ()
+{
+    case "${1:-}" in
+        *. | '')
+            echo "SyntaxError: invalid syntax: '$1'"
+            return 1
+        ;;
+    esac
+    _LIB_PATH=${2:-}
+    IFS=.
+    set -- $1
     IFS=$POSIX_IFS
+    case ${1:-} in
+        '')
+            case $_LIB_PATH in
+                ?*)
+                    shift
+                ;;
+            esac
+        ;;
+        *)
+            _LIB_PATH=
+        ;;
+    esac
+    for i
+    do
+        case $i in
+            '')
+                case $_LIB_PATH in
+                    '')
+                        _LIB_PATH=${PKG_DIR%/}
+                    ;;
+                    *)
+                        _LIB_PATH=${_LIB_PATH%/*}
+                    ;;
+                esac
+            ;;
+            *)
+                case $_LIB_PATH in
+                    '')
+                        _LIB_PATH=${SYS_LIB_DIR%/}/$i
+                    ;;
+                    *)
+                        _LIB_PATH=$_LIB_PATH/$i
+                    ;;
+                esac
+            ;;
+        esac
+    done
+    echo "$_LIB_PATH"
+}
+
+_import ()
+{
+    ERROR=$(2>&1 . "${1:-}") || {
+        say "$ERROR"
+        return ${SAY_RESULT:-1}
+    }
+    . "$1"
+}
+
+_module_not_found ()
+{
+    case ${1:-} in
+        '')
+            return 1
+        ;;
+        "$SYS_LIB_DIR"*)
+            str_replace "${1#${SYS_LIB_DIR%/}/}" '/' '.'
+        ;;
+        ?*)
+            str_replace "${1#${PKG_DIR%/}/}" '/' '.'
+        ;;
+    esac
+    say "ModuleNotFoundError: No module named '$_CORE_STRING'"
+    return 1
+}
+
+_import_module ()
+{
+    if is_dir "${1:-}"
+    then
+        is_file "$1/__init__.sh" || return 0
+        str_replace "$1" "'" "'\''"
+        _SUB_MODULE="${_SUB_MODULE:+$_SUB_MODULE }'$_CORE_STRING'"
+    else
+        is_file "${1%.sh}.sh" || _module_not_found "$1" &&
+        _import "${1%.sh}.sh" || return
+    fi
+}
+
+_import_package ()
+{
+    while IFS=$POSIX_IFS read -r _LINE || is_not_empty "$_LINE"
+    do
+        case $_LINE in
+            "from "*)
+            ;;
+            "import "*)
+                set -- $_LINE
+                shift
+                for j
+                do
+                    j=$(2>&1 _resolve_module "$j" "$i") || {
+                        say 1 "$j"
+                        return 1
+                    }
+                    _import_module "$j" || return
+                done
+                _IMPORT_EXEC=true
+            ;;
+        esac
+    done < "$i/__init__.sh"
+
+    $_IMPORT_EXEC ||
+    for j in "$i"/*.sh
+    do
+        case $j in
+            */__init__.sh)
+            ;;
+            *)
+                _import "$j" || return
+            ;;
+        esac
+    done
+}
+
+import ()
+{
+    _SUB_MODULE=
+    for i
+    do
+        case $i in
+            */*)
+                if is_dir "$i"
+                then
+                    is_file "$i/__init__.sh" || continue
+                    _import_package || return
+                else
+                    is_file "$i" || _module_not_found "$i" &&
+                    _import "$i" || return
+                fi
+            ;;
+            *)
+                i=$(2>&1 _resolve_module "$i") || return
+                _import_module "$i" || return
+            ;;
+        esac
+    done
+
+    case $_SUB_MODULE in
+        ?*)
+            eval set -- "$_SUB_MODULE"
+            for i
+            do
+                import "$i" || return
+            done
+        ;;
+    esac
 }
 
 include ()
