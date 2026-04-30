@@ -587,11 +587,28 @@ str_replace ()
     done
 }
 
+_module_not_found ()
+{
+    case ${1:-} in
+        "$SYS_LIB_DIR"*)
+            str_replace "${1#${SYS_LIB_DIR%/}/}" '/' '.'
+        ;;
+        "$PKG_DIR"*)
+            str_replace "${1#${PKG_DIR%/}/}" '/' '.'
+        ;;
+        *)
+            _CORE_STRING=${1:-}
+        ;;
+    esac
+    say 1 "ModuleNotFoundError: No module named '$_CORE_STRING'"
+    return 1
+}
+
 _resolve_module ()
 {
     case "${1:-}" in
         *. | '')
-            echo "SyntaxError: invalid syntax: '$1'"
+            say 1 "SyntaxError: invalid syntax: '$1'"
             return 1
         ;;
     esac
@@ -633,6 +650,8 @@ _resolve_module ()
                         _LIB_PATH=$_LIB_PATH/$i
                     ;;
                 esac
+                is_dir "$_LIB_PATH" || is_file "$_LIB_PATH" ||
+                    _module_not_found "$_LIB_PATH" || return
             ;;
         esac
     done
@@ -646,23 +665,6 @@ _import ()
         return ${SAY_RESULT:-1}
     }
     . "$1"
-}
-
-_module_not_found ()
-{
-    case ${1:-} in
-        "$SYS_LIB_DIR"*)
-            str_replace "${1#${SYS_LIB_DIR%/}/}" '/' '.'
-        ;;
-        "$PKG_DIR"*)
-            str_replace "${1#${PKG_DIR%/}/}" '/' '.'
-        ;;
-        *)
-            _CORE_STRING=${1:-}
-        ;;
-    esac
-    say "ModuleNotFoundError: No module named '$_CORE_STRING'"
-    return 1
 }
 
 _import_module ()
@@ -680,6 +682,7 @@ _import_module ()
 
 _import_package ()
 {
+    _IMPORT_EXEC=false
     while IFS=$POSIX_IFS read -r _LINE || is_not_empty "$_LINE"
     do
         case $_LINE in
@@ -691,7 +694,7 @@ _import_package ()
                 for j
                 do
                     j=$(2>&1 _resolve_module "$j" "$i") || {
-                        say 1 "$j"
+                        echo "$j"
                         return 1
                     }
                     _import_module "$j" || return
@@ -724,15 +727,18 @@ import ()
                 if is_dir "$i"
                 then
                     is_file "$i/__init__.sh" || continue
-                    _import_package || return
+                    _import_package || die 1
                 else
                     is_file "$i" || _module_not_found "$i" &&
-                    _import "$i" || return
+                    _import "$i" || die 1
                 fi
             ;;
             *)
-                i=$(2>&1 _resolve_module "$i") || return
-                _import_module "$i" || return
+                i=$(2>&1 _resolve_module "$i") || {
+                    echo "$i"
+                    die 1
+                }
+                _import_module "$i" || die 1
             ;;
         esac
     done
@@ -742,7 +748,7 @@ import ()
             eval set -- "$_SUB_MODULE"
             for i
             do
-                import "$i" || return
+                import "$i" || die 1
             done
         ;;
     esac
