@@ -782,7 +782,8 @@ from ()
     }
     is_dir "$_LIB_PATH" || {
         is_file "$_LIB_PATH" &&
-            die 1 "ModuleError: loading from module not implemented: '$_LIB_PATH'"
+            die 1 "ModuleError: loading from module not implemented: '$_LIB_PATH'" ||
+            die 1 "ModuleError: not a directory: '$_LIB_PATH'"
     }
     shift
     case ${1:-} in
