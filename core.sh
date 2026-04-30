@@ -607,27 +607,39 @@ _module_not_found ()
 _resolve_module ()
 {
     case "${1:-}" in
-        *. | '')
-            say 1 "SyntaxError: invalid syntax: '$1'"
-            return 1
+        */*)
+            _LIB_PATH=${2:-}
+            set -- "${1#/}"
         ;;
-    esac
-    _LIB_PATH=${2:-}
-    IFS=.
-    set -- $1
-    IFS=$POSIX_IFS
-    case ${1:-} in
-        '')
-            case $_LIB_PATH in
-                ?*)
-                    shift
+        *. | '')
+            false
+        ;;
+        *[!"$SPACE"]*)
+            _LIB_PATH=${2:-}
+            IFS=.
+            set -- $1
+            IFS=$POSIX_IFS
+            case ${1:-} in
+                '')
+                    case $_LIB_PATH in
+                        ?*)
+                            shift
+                        ;;
+                    esac
+                ;;
+                *)
+                    _LIB_PATH=
                 ;;
             esac
         ;;
         *)
-            _LIB_PATH=
+            false
         ;;
-    esac
+    esac || {
+        say 1 "SyntaxError: invalid syntax: '${1:-}'"
+        return 1
+    }
+
     for i
     do
         case $i in
@@ -640,6 +652,11 @@ _resolve_module ()
                         _LIB_PATH=${_LIB_PATH%/*}
                     ;;
                 esac
+            ;;
+            */*)
+                _LIB_PATH=${_LIB_PATH%/}/$i
+                is_dir "$_LIB_PATH" || is_file "$_LIB_PATH" ||
+                    _module_not_found "$_LIB_PATH" || return
             ;;
             *)
                 case $_LIB_PATH in
@@ -687,6 +704,9 @@ _import_package ()
     do
         case $_LINE in
             "from "*)
+                set -- $_LINE
+                shift
+                from "$@"
             ;;
             "import "*)
                 set -- $_LINE
@@ -752,6 +772,48 @@ import ()
             done
         ;;
     esac
+}
+
+from ()
+{
+    _LIB_PATH=$(_resolve_module "${1:-}") || {
+        echo "$_LIB_PATH"
+        die 1
+    }
+    is_dir "$_LIB_PATH" || {
+        is_file "$_LIB_PATH" &&
+            die 1 "ModuleError: loading from module not implemented: '$_LIB_PATH'"
+    }
+    shift
+    case ${1:-} in
+        import)
+            shift
+            _IMPORT_EXEC=false
+            _SUB_MODULE=
+            for j
+            do
+                j=$(2>&1 _resolve_module "$j" "$_LIB_PATH") || {
+                    echo "$j"
+                    die 1
+                }
+                _import_module "$j" || die 1
+                _IMPORT_EXEC=true
+            done
+            case $_SUB_MODULE in
+                ?*)
+                    eval set -- "$_SUB_MODULE"
+                    for i
+                    do
+                        _import_package || die 1
+                    done
+                ;;
+            esac
+            $_IMPORT_EXEC
+        ;;
+        *)
+            false
+        ;;
+    esac || die 1 "SyntaxError: invalid syntax"
 }
 
 include ()
