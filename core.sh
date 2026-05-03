@@ -587,7 +587,7 @@ str_replace ()
     done
 }
 
-_module_not_found ()
+_modulenotfounderror ()
 {
     case ${1:-} in
         "$SYS_LIB_DIR"*)
@@ -604,31 +604,38 @@ _module_not_found ()
     return 1
 }
 
+_validate_module_path ()
+{
+    is_dir "$_MODULE_PATH" ||
+        is_file "${_MODULE_PATH%.sh}.sh" ||
+            is_file "$_MODULE_PATH" ||
+                _modulenotfounderror "$_MODULE_PATH"
+}
+
 _resolve_module ()
 {
     case "${1:-}" in
         */*)
-            _LIB_PATH=${2:-}
-            set -- "${1#/}"
+            _MODULE_PATH=${2:+"${2%/}/"}$1
+            _validate_module_path || return
+            echo "$_MODULE_PATH"
+            return
         ;;
         *. | '')
             false
         ;;
         *[!"$SPACE"]*)
-            _LIB_PATH=${2:-}
+            _MODULE_PATH=${2:-}
             IFS=.
             set -- $1
             IFS=$POSIX_IFS
             case ${1:-} in
                 '')
-                    case $_LIB_PATH in
+                    case $_MODULE_PATH in
                         ?*)
                             shift
                         ;;
                     esac
-                ;;
-                *)
-                    _LIB_PATH=
                 ;;
             esac
         ;;
@@ -639,49 +646,150 @@ _resolve_module ()
         say 1 "SyntaxError: invalid syntax: '${1:-}'"
         return 1
     }
-
     for i
     do
         case $i in
             '')
-                case $_LIB_PATH in
+                case $_MODULE_PATH in
                     '')
-                        _LIB_PATH=${PKG_DIR%/}
+                        _MODULE_PATH=${PKG_DIR%/}
                     ;;
                     *)
-                        _LIB_PATH=${_LIB_PATH%/*}
+                        _MODULE_PATH=${_MODULE_PATH%/*}
                     ;;
                 esac
             ;;
             */*)
-                _LIB_PATH=${_LIB_PATH%/}/$i
-                is_dir "$_LIB_PATH" || is_file "$_LIB_PATH" ||
-                    _module_not_found "$_LIB_PATH" || return
+                _MODULE_PATH=${_MODULE_PATH:+${_MODULE_PATH%/}/}$i
+                _validate_module_path || return
             ;;
             *)
-                case $_LIB_PATH in
+                case $_MODULE_PATH in
                     '')
-                        _LIB_PATH=${SYS_LIB_DIR%/}/$i
+                        _MODULE_PATH=${SYS_LIB_DIR%/}/$i
                     ;;
                     *)
-                        _LIB_PATH=$_LIB_PATH/$i
+                        _MODULE_PATH=$_MODULE_PATH/$i
                     ;;
                 esac
-                is_dir "$_LIB_PATH" || is_file "$_LIB_PATH" ||
-                    _module_not_found "$_LIB_PATH" || return
+                _validate_module_path || return
             ;;
         esac
     done
-    echo "$_LIB_PATH"
+    echo "$_MODULE_PATH"
 }
 
-_import ()
+_append_list_modules ()
+{
+    _MODULES=
+    for _MODULE
+    do
+        _MODULE=$(_resolve_module "$_MODULE" "$_MODULE_PATH") || {
+            echo "$_MODULE"
+            die 1
+        }
+        str_replace "$_MODULE" "'" "'\''"
+        _MODULES="${_MODULES:+$_MODULES }'$_CORE_STRING'"
+    done
+    _LIST_MODULES=$_LIST_MODULES$LF$_MODULES
+}
+
+_resolve_from ()
+{
+    _MODULE_PATH=$(_resolve_module "${1:-}" ${_PACKAGE:+"$_PACKAGE"}) || {
+        echo "$_MODULE_PATH"
+        die 1
+    }
+    is_dir "$_MODULE_PATH" || {
+        is_file "$_MODULE_PATH" &&
+            die 1 "ModuleError: loading from module not implemented: '$_MODULE_PATH'" ||
+            die 1 "ModuleError: not a directory: '$_MODULE_PATH'"
+    }
+    shift
+    case ${1:-} in
+        import)
+            shift
+            _append_list_modules "$@"
+        ;;
+        *)
+            false
+        ;;
+    esac || die 1 "SyntaxError: invalid syntax"
+}
+
+_exec_module ()
 {
     ERROR=$(2>&1 . "${1:-}") || {
         say "$ERROR"
         return ${SAY_RESULT:-1}
     }
-    . "$1"
+    . "$1" && _LOADED=true
+}
+
+_load_module_list ()
+{
+    while
+        read -r _MODULE ||
+        case $_MODULE in
+            '')
+                false
+            ;;
+        esac
+    do
+        case $_MODULE in
+            ?*)
+                eval set -- "$_MODULE"
+                import "$@"
+            ;;
+        esac
+    done <<EOF
+$_LIST_MODULES
+EOF
+}
+
+_load_package_context ()
+{
+    _LIST_MODULES=
+    while
+        read -r _LINE ||
+        case $_LINE in
+            '')
+                false
+            ;;
+        esac
+    do
+        case $_LINE in
+            "import "*)
+                set -- $_LINE
+                shift
+                _MODULE_PATH=$_PACKAGE
+                _append_list_modules "$@"
+            ;;
+            "from "*)
+                set -- $_LINE
+                shift
+                _resolve_from "$@"
+            ;;
+        esac
+    done < "$_PACKAGE/__init__.sh"
+
+    case $_LIST_MODULES in
+        '')
+            for _MODULE in "$_PACKAGE"/*.sh
+            do
+                case $_MODULE in
+                    */__init__.sh)
+                    ;;
+                    *)
+                        _exec_module "$_MODULE" || return
+                    ;;
+                esac
+            done
+        ;;
+        *)
+            _load_module_list
+        ;;
+    esac
 }
 
 _import_module ()
@@ -689,132 +797,37 @@ _import_module ()
     if is_dir "${1:-}"
     then
         is_file "$1/__init__.sh" || return 0
-        str_replace "$1" "'" "'\''"
-        _SUB_MODULE="${_SUB_MODULE:+$_SUB_MODULE }'$_CORE_STRING'"
+        _PACKAGE="$1"
+        _load_package_context
     else
-        is_file "${1%.sh}.sh" || _module_not_found "$1" &&
-        _import "${1%.sh}.sh" || return
+        _MODULE="${1%.sh}.sh"
+        is_file "$_MODULE" || {
+            _MODULE="$1"
+            is_file "$_MODULE"
+        } || _modulenotfounderror "$1" && _exec_module "$_MODULE" || return
     fi
-}
-
-_import_package ()
-{
-    _IMPORT_EXEC=false
-    while IFS=$POSIX_IFS read -r _LINE || is_not_empty "$_LINE"
-    do
-        case $_LINE in
-            "from "*)
-                set -- $_LINE
-                shift
-                from "$@"
-            ;;
-            "import "*)
-                set -- $_LINE
-                shift
-                for j
-                do
-                    j=$(2>&1 _resolve_module "$j" "$i") || {
-                        echo "$j"
-                        return 1
-                    }
-                    _import_module "$j" || return
-                done
-                _IMPORT_EXEC=true
-            ;;
-        esac
-    done < "$i/__init__.sh"
-
-    $_IMPORT_EXEC ||
-    for j in "$i"/*.sh
-    do
-        case $j in
-            */__init__.sh)
-            ;;
-            *)
-                _import "$j" || return
-            ;;
-        esac
-    done
 }
 
 import ()
 {
+    _LOADED=false
     _SUB_MODULE=
-    for i
+    for _MODULE
     do
-        case $i in
-            */*)
-                if is_dir "$i"
-                then
-                    is_file "$i/__init__.sh" || continue
-                    _import_package || die 1
-                else
-                    is_file "$i" || _module_not_found "$i" &&
-                    _import "$i" || die 1
-                fi
-            ;;
-            *)
-                i=$(2>&1 _resolve_module "$i") || {
-                    echo "$i"
-                    die 1
-                }
-                _import_module "$i" || die 1
-            ;;
-        esac
+        _MODULE=$(2>&1 _resolve_module "$_MODULE") || {
+            echo "$_MODULE"
+            die 1
+        }
+        _import_module "$_MODULE" || die 1
     done
-
-    case $_SUB_MODULE in
-        ?*)
-            eval set -- "$_SUB_MODULE"
-            for i
-            do
-                import "$i" || die 1
-            done
-        ;;
-    esac
+    $_LOADED
 }
 
 from ()
 {
-    _LIB_PATH=$(_resolve_module "${1:-}") || {
-        echo "$_LIB_PATH"
-        die 1
-    }
-    is_dir "$_LIB_PATH" || {
-        is_file "$_LIB_PATH" &&
-            die 1 "ModuleError: loading from module not implemented: '$_LIB_PATH'" ||
-            die 1 "ModuleError: not a directory: '$_LIB_PATH'"
-    }
-    shift
-    case ${1:-} in
-        import)
-            shift
-            _IMPORT_EXEC=false
-            _SUB_MODULE=
-            for j
-            do
-                j=$(2>&1 _resolve_module "$j" "$_LIB_PATH") || {
-                    echo "$j"
-                    die 1
-                }
-                _import_module "$j" || die 1
-                _IMPORT_EXEC=true
-            done
-            case $_SUB_MODULE in
-                ?*)
-                    eval set -- "$_SUB_MODULE"
-                    for i
-                    do
-                        _import_package || die 1
-                    done
-                ;;
-            esac
-            $_IMPORT_EXEC
-        ;;
-        *)
-            false
-        ;;
-    esac || die 1 "SyntaxError: invalid syntax"
+    _LIST_MODULES=
+    _resolve_from "$@"
+    _load_module_list
 }
 
 include ()
