@@ -798,18 +798,17 @@ _load_package_context ()
 
 _import_module ()
 {
-    if is_dir "${1:-}"
-    then
+    is_dir "${1:-}" && {
         is_file "$1/__init__.sh" || return 0
         _PACKAGE="$1"
-        _load_package_context
-    else
+        _load_package_context || return
+    } || {
         _MODULE="${1%.sh}.sh"
         is_file "$_MODULE" || {
             _MODULE="$1"
             is_file "$_MODULE"
-        } || _modulenotfounderror "$1" && _exec_module "$_MODULE" || return
-    fi
+        } || _modulenotfounderror "$1" && _exec_module "$_MODULE"
+    }
 }
 
 import ()
