@@ -830,8 +830,7 @@ import ()
 from ()
 {
     _LIST_MODULES=
-    _resolve_from "$@" || return
-    _load_module_list
+    _resolve_from "$@" && _load_module_list || return
 }
 
 include ()
