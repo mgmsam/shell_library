@@ -538,7 +538,7 @@ str_replace ()
     # $1 - pattern
     # $2 - replace
 ########################################################################
-    _CORE_REPEAT=false
+    _CORE_REPLACE_ALL=false
     while true
     do
         case "$1" in
@@ -547,7 +547,7 @@ str_replace ()
                 break
             ;;
             -l)
-                _CORE_REPEAT=true
+                _CORE_REPLACE_ALL=true
                 shift
             ;;
             *)
@@ -555,9 +555,9 @@ str_replace ()
             ;;
         esac
     done
-    _CORE_STRING="$1"
+    CORE_RESULT="$1"
     while
-        case $_CORE_STRING in
+        case $CORE_RESULT in
             *$2*)
             ;;
             *)
@@ -565,25 +565,25 @@ str_replace ()
             ;;
         esac
     do
-        _CORE_BUFFER=
+        _CORE_ACCUMULATOR=
         while
-            case $_CORE_STRING in
+            case $CORE_RESULT in
                 "")
                     false
                 ;;
             esac
         do
-            _CORE_LEFT=${_CORE_STRING%%$2*}
+            _CORE_LEFT=${CORE_RESULT%%$2*}
             case "$_CORE_LEFT" in
-                "$_CORE_STRING")
+                "$CORE_RESULT")
                     break
                 ;;
             esac
-            _CORE_BUFFER=$_CORE_BUFFER$_CORE_LEFT${3:-}
-            _CORE_STRING=${_CORE_STRING#*$2}
+            _CORE_ACCUMULATOR=$_CORE_ACCUMULATOR$_CORE_LEFT${3:-}
+            CORE_RESULT=${CORE_RESULT#*$2}
         done
-        _CORE_STRING=$_CORE_BUFFER$_CORE_STRING _CORE_BUFFER=
-        $_CORE_REPEAT || break
+        CORE_RESULT=$_CORE_ACCUMULATOR$CORE_RESULT _CORE_ACCUMULATOR=
+        $_CORE_REPLACE_ALL || break
     done
 }
 
@@ -597,10 +597,10 @@ _modulenotfounderror ()
             str_replace "${1#${PKG_DIR%/}/}" '/' '.'
         ;;
         *)
-            _CORE_STRING=${1:-}
+            CORE_RESULT=${1:-}
         ;;
     esac
-    say 1 "ModuleNotFoundError: No module named '$_CORE_STRING'"
+    say 1 "ModuleNotFoundError: No module named '$CORE_RESULT'"
     return 1
 }
 
@@ -689,7 +689,7 @@ _append_list_modules ()
             die 1
         }
         str_replace "$_MODULE" "'" "'\''"
-        _MODULES="${_MODULES:+$_MODULES }'$_CORE_STRING'"
+        _MODULES="${_MODULES:+$_MODULES }'$CORE_RESULT'"
     done
     _LIST_MODULES=$_LIST_MODULES$LF$_MODULES
 }
