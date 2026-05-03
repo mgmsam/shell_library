@@ -646,9 +646,9 @@ _resolve_module ()
         say 1 "SyntaxError: invalid syntax: '${1:-}'"
         return 1
     }
-    for i
+    for _CORE_PART
     do
-        case $i in
+        case $_CORE_PART in
             '')
                 case $_MODULE_PATH in
                     '')
@@ -660,16 +660,16 @@ _resolve_module ()
                 esac
             ;;
             */*)
-                _MODULE_PATH=${_MODULE_PATH:+${_MODULE_PATH%/}/}$i
+                _MODULE_PATH=${_MODULE_PATH:+${_MODULE_PATH%/}/}$_CORE_PART
                 _validate_module_path || return
             ;;
             *)
                 case $_MODULE_PATH in
                     '')
-                        _MODULE_PATH=${SYS_LIB_DIR%/}/$i
+                        _MODULE_PATH=${SYS_LIB_DIR%/}/$_CORE_PART
                     ;;
                     *)
-                        _MODULE_PATH=$_MODULE_PATH/$i
+                        _MODULE_PATH=$_MODULE_PATH/$_CORE_PART
                     ;;
                 esac
                 _validate_module_path || return
@@ -682,9 +682,9 @@ _resolve_module ()
 _append_list_modules ()
 {
     _MODULES=
-    for _MODULE
+    for _MODULE_NAME
     do
-        _MODULE=$(_resolve_module "$_MODULE" "$_MODULE_PATH") || {
+        _MODULE=$(_resolve_module "$_MODULE_NAME" "$_MODULE_PATH") || {
             echo "$_MODULE"
             return 1
         }
@@ -814,10 +814,9 @@ _import_module ()
 import ()
 {
     _LOADED=false
-    _SUB_MODULE=
-    for _MODULE
+    for _MODULE_NAME
     do
-        _MODULE=$(2>&1 _resolve_module "$_MODULE") || {
+        _MODULE=$(2>&1 _resolve_module "$_MODULE_NAME") || {
             echo "$_MODULE"
             return 1
         }
