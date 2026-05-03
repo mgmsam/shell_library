@@ -413,8 +413,8 @@ SPACE=' '
 BLANK=$SPACE$TAB
 POSIX_IFS=$SPACE$TAB$LF
 IFS=$POSIX_IFS
-SYS_LIB_DIR='/usr/lib/shell'
-PKG_DIR=$(2>&1
+SYS_LIBDIR='/usr/lib/shell'
+SCRIPT_DIR=$(2>&1
     _PATH="${0%/*}"
     case $0 in
         "$_PATH")
@@ -423,6 +423,7 @@ PKG_DIR=$(2>&1
     esac
     cd -- "${_PATH:-/}" && 2>&1 pwd -P
 )
+SCRIPT_FILE="${SCRIPT_DIR%/}/${0##*/}"
 
 is_diff ()
 {
@@ -590,11 +591,11 @@ str_replace ()
 _modulenotfounderror ()
 {
     case ${1:-} in
-        "$SYS_LIB_DIR"*)
-            str_replace "${1#${SYS_LIB_DIR%/}/}" '/' '.'
+        "$SYS_LIBDIR"*)
+            str_replace "${1#${SYS_LIBDIR%/}/}" '/' '.'
         ;;
-        "$PKG_DIR"*)
-            str_replace "${1#${PKG_DIR%/}/}" '/' '.'
+        "$SCRIPT_DIR"*)
+            str_replace "${1#${SCRIPT_DIR%/}/}" '/' '.'
         ;;
         *)
             CORE_RESULT=${1:-}
@@ -652,7 +653,7 @@ _resolve_module ()
             '')
                 case $_MODULE_PATH in
                     '')
-                        _MODULE_PATH=${PKG_DIR%/}
+                        _MODULE_PATH=${SCRIPT_DIR%/}
                     ;;
                     *)
                         _MODULE_PATH=${_MODULE_PATH%/*}
@@ -666,7 +667,7 @@ _resolve_module ()
             *)
                 case $_MODULE_PATH in
                     '')
-                        _MODULE_PATH=${SYS_LIB_DIR%/}/$_CORE_PART
+                        _MODULE_PATH=${SYS_LIBDIR%/}/$_CORE_PART
                     ;;
                     *)
                         _MODULE_PATH=$_MODULE_PATH/$_CORE_PART
