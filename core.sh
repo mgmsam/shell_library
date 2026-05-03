@@ -821,7 +821,7 @@ import ()
             echo "$_MODULE"
             return 1
         }
-        _import_module "$_MODULE" || return 1
+        _import_module "$_MODULE" || return
     done
     $_LOADED
 }
