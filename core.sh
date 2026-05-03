@@ -686,7 +686,7 @@ _append_list_modules ()
     do
         _MODULE=$(_resolve_module "$_MODULE" "$_MODULE_PATH") || {
             echo "$_MODULE"
-            die 1
+            return 1
         }
         str_replace "$_MODULE" "'" "'\''"
         _MODULES="${_MODULES:+$_MODULES }'$CORE_RESULT'"
@@ -698,23 +698,27 @@ _resolve_from ()
 {
     _MODULE_PATH=$(_resolve_module "${1:-}" ${_PACKAGE:+"$_PACKAGE"}) || {
         echo "$_MODULE_PATH"
-        die 1
+        return 1
     }
     is_dir "$_MODULE_PATH" || {
         is_file "$_MODULE_PATH" &&
-            die 1 "ModuleError: loading from module not implemented: '$_MODULE_PATH'" ||
-            die 1 "ModuleError: not a directory: '$_MODULE_PATH'"
+            say 1 "ModuleError: loading from module not implemented: '$_MODULE_PATH'" ||
+            say 1 "ModuleError: not a directory: '$_MODULE_PATH'"
+        return 1
     }
     shift
     case ${1:-} in
         import)
             shift
-            _append_list_modules "$@"
+            _append_list_modules "$@" || return
         ;;
         *)
             false
         ;;
-    esac || die 1 "SyntaxError: invalid syntax"
+    esac || {
+        say 1 "SyntaxError: invalid syntax"
+        return 1
+    }
 }
 
 _exec_module ()
@@ -739,7 +743,7 @@ _load_module_list ()
         case $_MODULE in
             ?*)
                 eval set -- "$_MODULE"
-                import "$@"
+                import "$@" || return
             ;;
         esac
     done <<EOF
@@ -763,12 +767,12 @@ _load_package_context ()
                 set -- $_LINE
                 shift
                 _MODULE_PATH=$_PACKAGE
-                _append_list_modules "$@"
+                _append_list_modules "$@" || return
             ;;
             "from "*)
                 set -- $_LINE
                 shift
-                _resolve_from "$@"
+                _resolve_from "$@" || return
             ;;
         esac
     done < "$_PACKAGE/__init__.sh"
@@ -787,7 +791,7 @@ _load_package_context ()
             done
         ;;
         *)
-            _load_module_list
+            _load_module_list || return
         ;;
     esac
 }
@@ -816,9 +820,9 @@ import ()
     do
         _MODULE=$(2>&1 _resolve_module "$_MODULE") || {
             echo "$_MODULE"
-            die 1
+            return 1
         }
-        _import_module "$_MODULE" || die 1
+        _import_module "$_MODULE" || return 1
     done
     $_LOADED
 }
@@ -826,7 +830,7 @@ import ()
 from ()
 {
     _LIST_MODULES=
-    _resolve_from "$@"
+    _resolve_from "$@" || return
     _load_module_list
 }
 
