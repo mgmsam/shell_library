@@ -413,7 +413,6 @@ SPACE=' '
 BLANK=$SPACE$TAB
 POSIX_IFS=$SPACE$TAB$LF
 IFS=$POSIX_IFS
-SYS_LIBDIR='/usr/lib/shell'
 SCRIPT_DIR=$(2>&1
     _PATH="${0%/*}"
     case $0 in
@@ -424,6 +423,7 @@ SCRIPT_DIR=$(2>&1
     cd -- "${_PATH:-/}" && 2>&1 pwd -P
 )
 SCRIPT_FILE="${SCRIPT_DIR%/}/${0##*/}"
+SYS_LIBDIR='/usr/lib/shell'
 
 is_diff ()
 {
@@ -605,12 +605,31 @@ _modulenotfounderror ()
     return 1
 }
 
-_validate_module_path ()
+_module_path_is_exists ()
 {
     is_dir "$_MODULE_PATH" ||
         is_file "${_MODULE_PATH%.sh}.sh" ||
-            is_file "$_MODULE_PATH" ||
-                _modulenotfounderror "$_MODULE_PATH"
+            is_file "$_MODULE_PATH"
+}
+
+_validate_module_path ()
+{
+    _module_path_is_exists || _modulenotfounderror "$_MODULE_PATH"
+}
+
+_resolve_module_path ()
+{
+    IFS=:
+    set -- $SCRIPT_DIR $SYS_LIBDIR
+    IFS=$POSIX_IFS
+
+    for _MODULE_PATH
+    do
+        _MODULE_PATH=$_MODULE_PATH/$_MODULE_NAME
+        _module_path_is_exists || continue
+        return
+    done
+    _modulenotfounderror "$_MODULE_NAME"
 }
 
 _resolve_module ()
@@ -647,9 +666,9 @@ _resolve_module ()
         say 1 "SyntaxError: invalid syntax: '${1:-}'"
         return 1
     }
-    for _CORE_PART
+    for _MODULE_NAME
     do
-        case $_CORE_PART in
+        case $_MODULE_NAME in
             '')
                 case $_MODULE_PATH in
                     '')
@@ -661,19 +680,19 @@ _resolve_module ()
                 esac
             ;;
             */*)
-                _MODULE_PATH=${_MODULE_PATH:+${_MODULE_PATH%/}/}$_CORE_PART
+                _MODULE_PATH=${_MODULE_PATH:+${_MODULE_PATH%/}/}$_MODULE_NAME
                 _validate_module_path || return
             ;;
             *)
                 case $_MODULE_PATH in
                     '')
-                        _MODULE_PATH=${SYS_LIBDIR%/}/$_CORE_PART
+                        _resolve_module_path
                     ;;
                     *)
-                        _MODULE_PATH=$_MODULE_PATH/$_CORE_PART
+                        _MODULE_PATH=$_MODULE_PATH/$_MODULE_NAME
+                        _validate_module_path || return
                     ;;
                 esac
-                _validate_module_path || return
             ;;
         esac
     done
