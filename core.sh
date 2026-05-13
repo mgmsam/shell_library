@@ -19,6 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+set -e
+
 eval 'ERROR=$(:)' 2>/dev/null || {
     echo "error: POSIX command substitution \$(...) is not supported by this shell."
     exit 1
@@ -425,6 +427,15 @@ SCRIPT_DIR=$(2>&1
 SCRIPT_FILE="${SCRIPT_DIR%/}/${0##*/}"
 SYS_LIBDIR='/usr/lib/shell'
 
+case ${BASH_VERSION:-} in
+    '')
+        _CORE_IMPORT_AS=false
+    ;;
+    *)
+        _CORE_IMPORT_AS=true
+    ;;
+esac
+
 is_diff ()
 {
     case "${1:-}" in
@@ -588,157 +599,396 @@ str_replace ()
     done
 }
 
-_modulenotfounderror ()
+get_indent ()
 {
-    case ${1:-} in
-        "$SYS_LIBDIR"*)
-            str_replace "${1#${SYS_LIBDIR%/}/}" '/' '.'
+    CORE_INDENT_LEN=
+    CORE_INDENT=${1:-}
+    _CORE_INDENT_CHAR=${2:-" "}
+    case "$CORE_INDENT" in
+        0 | "")
+            CORE_INDENT=
+            CORE_INDENT_LEN=0
+            return
         ;;
-        "$SCRIPT_DIR"*)
-            str_replace "${1#${SCRIPT_DIR%/}/}" '/' '.'
-        ;;
-        *)
-            CORE_RESULT=${1:-}
+        *[!0123456789]*)
+            CORE_INDENT=${#CORE_INDENT}
         ;;
     esac
-    say 1 "ModuleNotFoundError: No module named '$CORE_RESULT'"
+    CORE_INDENT_LEN=$CORE_INDENT
+    CORE_INDENT=
+    _CORE_COUNT=0
+    while
+        case $((_CORE_COUNT == CORE_INDENT_LEN)) in
+            1)
+                false
+            ;;
+        esac
+    do
+        CORE_INDENT="$CORE_INDENT$_CORE_INDENT_CHAR"
+        _CORE_COUNT=$((_CORE_COUNT + 1))
+    done
+}
+
+_get_error ()
+{
+    case $1 in
+        '')
+            _CORE_ERROR_INDENT=
+        ;;
+        *)
+            get_indent ${#1}
+            _CORE_ERROR_INDENT=$CORE_INDENT
+        ;;
+    esac
+    get_indent ${#2} '^'
+    _CORE_ERROR=$_CORE_ERROR_INDENT$CORE_INDENT
+}
+
+_syntax_error ()
+{
+    $_MERGE &&
+        _get_error "    $_IMPORT_COMMAND $_IMPORT_SPECS${_MODULE_NAME%%[[:blank:]]*}" "${2:-.}" ||
+        _get_error "    $_IMPORT_COMMAND${_IMPORT_SPECS:+ $_IMPORT_SPECS}${_MODULE_NAME:+ ${_MODULE_NAME%%[[:blank:]]*}}" "${2:-.}"
+
+    echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\""
+    echo "    $_IMPORT_STATEMENT"
+    _IMPORT_COMMAND=
+    case $1 in
+        1)
+            echo "$_CORE_ERROR
+SyntaxError: invalid syntax"
+        ;;
+        2)
+            echo "$_CORE_ERROR
+SyntaxError: leading zeros in decimal integer literals are not permitted"
+        ;;
+        3)
+            echo "$_CORE_ERROR
+SyntaxError: invalid decimal literal"
+        ;;
+        4)
+            echo "$_CORE_ERROR
+SyntaxError: trailing comma not allowed without surrounding parentheses"
+        ;;
+    esac
     return 1
 }
 
-_module_path_is_exists ()
+is_valid_identifier ()
 {
-    is_dir "$_MODULE_PATH" ||
-        is_file "${_MODULE_PATH%.sh}.sh" ||
-            is_file "$_MODULE_PATH"
-}
+    _IDENTIFIER=$1
 
-_validate_module_path ()
-{
-    _module_path_is_exists || _modulenotfounderror "$_MODULE_PATH"
-}
-
-_resolve_module_path ()
-{
-    IFS=:
-    set -- $SCRIPT_DIR $SYS_LIBDIR
+    IFS=.
+    set -- $1
     IFS=$POSIX_IFS
 
-    for _MODULE_PATH
+    _MODULE_NAME=
+    _ONE_MODULE_PART_NAME=true
+    for _MODULE_PART_NAME
     do
-        _MODULE_PATH=$_MODULE_PATH/$_MODULE_NAME
-        _module_path_is_exists || continue
-        return
-    done
-    _modulenotfounderror "$_MODULE_NAME"
-}
-
-_resolve_module ()
-{
-    case "${1:-}" in
-        */*)
-            _MODULE_PATH=${2:+"${2%/}/"}$1
-            _validate_module_path || return
-            echo "$_MODULE_PATH"
-            return
-        ;;
-        *. | '')
-            false
-        ;;
-        *[!"$SPACE"]*)
-            _MODULE_PATH=${2:-}
-            IFS=.
-            set -- $1
-            IFS=$POSIX_IFS
-            case ${1:-} in
-                '')
-                    case $_MODULE_PATH in
-                        ?*)
-                            shift
-                        ;;
-                    esac
-                ;;
-            esac
-        ;;
-        *)
-            false
-        ;;
-    esac || {
-        say 1 "SyntaxError: invalid syntax: '${1:-}'"
-        return 1
-    }
-    for _MODULE_NAME
-    do
-        case $_MODULE_NAME in
-            '')
-                case $_MODULE_PATH in
-                    '')
-                        _MODULE_PATH=${SCRIPT_DIR%/}
-                    ;;
-                    *)
-                        _MODULE_PATH=${_MODULE_PATH%/*}
-                    ;;
-                esac
-            ;;
-            */*)
-                _MODULE_PATH=${_MODULE_PATH:+${_MODULE_PATH%/}/}$_MODULE_NAME
-                _validate_module_path || return
+        case $_IMPORT_COMMAND in
+            from | import)
             ;;
             *)
-                case $_MODULE_PATH in
-                    '')
-                        _resolve_module_path
+                $_ONE_MODULE_PART_NAME &&
+                 _ONE_MODULE_PART_NAME=false || _syntax_error 1
+            ;;
+        esac || return
+
+        case $_MODULE_PART_NAME in
+            '')
+                _MODULE_NAME="${_MODULE_NAME:- }"
+                case ${_IDENTIFIER#${_IDENTIFIER%%.*}} in
+                    ...*)
+                        _syntax_error 1 '...'
+                    ;;
+                    .*)
+                        _syntax_error 1
                     ;;
                     *)
-                        _MODULE_PATH=$_MODULE_PATH/$_MODULE_NAME
-                        _validate_module_path || return
+                        _syntax_error 1 "${_IDENTIFIER%%.*}"
                     ;;
                 esac
             ;;
+            0*)
+                case $_MODULE_NAME in
+                    '')
+                        _MODULE_PART_NAME=${_MODULE_PART_NAME%%[![:digit:]]*}
+                        case $_MODULE_PART_NAME in
+                            *[!0]*)
+                                _MODULE_PART_NAME=${_MODULE_PART_NAME%%[!0]*}
+                                _MODULE_NAME=' '
+                                _syntax_error 2 "$_MODULE_PART_NAME"
+                            ;;
+                            *)
+                                _MODULE_NAME=${_MODULE_PART_NAME%?}
+                                _syntax_error 2
+                            ;;
+                        esac
+                    ;;
+                    *)
+                        _MODULE_PART_NAME=${_MODULE_PART_NAME%%[![:digit:]]*}
+                        _MODULE_NAME=${_MODULE_NAME:+$_MODULE_NAME.}${_MODULE_PART_NAME%?}
+                        _syntax_error 3
+                    ;;
+                esac
+            ;;
+            [123456789]*)
+                _MODULE_PART_NAME=${_MODULE_PART_NAME%%[![:digit:]]*}
+                _MODULE_NAME=${_MODULE_NAME:+$_MODULE_NAME.}${_MODULE_PART_NAME%?}
+                _MODULE_NAME=${_MODULE_NAME:- }
+                _syntax_error 3
+            ;;
+            [!_[:alpha:]]*)
+                _MODULE_PART_NAME=${_MODULE_PART_NAME%%[!_[:alpha:]]*}
+                _MODULE_NAME=${_MODULE_NAME:+$_MODULE_NAME.}
+                _syntax_error 1 "$_MODULE_PART_NAME"
+            ;;
+            alias   | as        | \
+            bg      | bind      | break    | builtin | \
+            caller  | case      | cd       | command | compgen | complete | compopt  | continue | coproc | \
+            declare | dirs      | disown   | do      | done    | \
+            echo    | elif      | else     | enable  | 'esac'  | eval     | exec     | exit     | export | \
+            false   | fc        | fg       | fi      | for     | from     | function | \
+            getopts | \
+            hash    | help      | history  | \
+            if      | import    | in       | \
+            jobs    | \
+            kill    | \
+            let     | local     | logout   | \
+            mapfile | \
+            popd    | printf    | pushd    | pwd    | \
+            read    | readarray | readonly | return | \
+            select  | set       | shift    | shopt  | source | suspend | \
+            test    | then      | time     | times  | trap   | true    | type | typeset | \
+            ulimit  | umask     | unalias  | unset  | until  | \
+            wait    | while)
+                case $_MODULE_NAME in
+                    '')
+                        _MODULE_NAME=' '
+                    ;;
+                    *)
+                        _MODULE_NAME="$_MODULE_NAME."
+                    ;;
+                esac
+                _syntax_error 1 "$_MODULE_PART_NAME"
+            ;;
+            *[!_[:alnum:]]*)
+                _MODULE_PART_NAME=${_MODULE_PART_NAME%%[!_[:alnum:]]*}
+                _MODULE_NAME=${_MODULE_NAME:+$_MODULE_NAME.}$_MODULE_PART_NAME
+                _syntax_error 1
+            ;;
+        esac || return
+        _MODULE_NAME=${_MODULE_NAME:+$_MODULE_NAME.}$_MODULE_PART_NAME
+    done
+
+    case $_IDENTIFIER in
+        *.)
+            _MODULE_NAME=${_IDENTIFIER%"${_IDENTIFIER##*[!.]}"}
+            _syntax_error 1
+        ;;
+    esac || return
+    _MODULE_NAME=
+}
+
+_check_import_syntax ()
+{
+    _IMPORT_BUFFER=
+    _IMPORT_SPEC=
+
+    case $# in
+        0)
+            _syntax_error 1 || return
+        ;;
+    esac
+
+    _COUNT=0
+    while
+        case $# in
+            0)
+                false
+            ;;
         esac
-    done
-    echo "$_MODULE_PATH"
-}
-
-_append_list_modules ()
-{
-    _MODULES=
-    for _MODULE_NAME
     do
-        _MODULE=$(_resolve_module "$_MODULE_NAME" "$_MODULE_PATH") || {
-            echo "$_MODULE"
-            return 1
-        }
-        str_replace "$_MODULE" "'" "'\''"
-        _MODULES="${_MODULES:+$_MODULES }'$CORE_RESULT'"
-    done
-    _LIST_MODULES=$_LIST_MODULES$LF$_MODULES
-}
+        _MODULE=$1
+        shift
 
-_resolve_from ()
-{
-    _MODULE_PATH=$(_resolve_module "${1:-}" ${_PACKAGE:+"$_PACKAGE"}) || {
-        echo "$_MODULE_PATH"
-        return 1
-    }
-    is_dir "$_MODULE_PATH" || {
-        is_file "$_MODULE_PATH" &&
-            say 1 "ModuleError: loading from module not implemented: '$_MODULE_PATH'" ||
-            say 1 "ModuleError: not a directory: '$_MODULE_PATH'"
-        return 1
-    }
-    shift
-    case ${1:-} in
-        import)
-            shift
-            _append_list_modules "$@" || return
+        _COUNT=$((_COUNT + 1))
+        case $_COUNT in
+            1)
+                case $_MODULE in
+                    ,*)
+                        _MODULE_NAME=' '
+                        _syntax_error 1 || return
+                    ;;
+                    *,?*)
+                        set -- "${_MODULE#*,}" "$@"
+                        _MODULE="${_MODULE%%,*}"
+                        is_valid_identifier "$_MODULE" || return
+                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_MODULE'"
+                        _COUNT=0
+                        $_MERGE &&
+                            _IMPORT_SPECS="$_IMPORT_SPECS$_MODULE," ||
+                            _IMPORT_SPECS="${_IMPORT_SPECS:+$_IMPORT_SPECS }$_MODULE,"
+                        _MERGE=true
+                    ;;
+                    *,)
+                        _MODULE="${_MODULE%,}"
+                        is_valid_identifier "$_MODULE" || return
+                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_MODULE'"
+                        _COUNT=0
+                        $_MERGE &&
+                            _IMPORT_SPECS="$_IMPORT_SPECS$_MODULE," ||
+                            _IMPORT_SPECS="${_IMPORT_SPECS:+$_IMPORT_SPECS }$_MODULE,"
+                        _MERGE=false
+                    ;;
+                    *)
+                        is_valid_identifier "$_MODULE" || return
+                        _IMPORT_SPEC="${_IMPORT_SPEC:+$_IMPORT_SPEC }$_MODULE"
+                        $_MERGE &&
+                            _IMPORT_SPECS="$_IMPORT_SPECS$_MODULE" ||
+                            _IMPORT_SPECS="${_IMPORT_SPECS:+$_IMPORT_SPECS }$_MODULE"
+                        _MERGE=false
+                    ;;
+                esac
+            ;;
+            2)
+                case $_MODULE in
+                    ,?*)
+                        case $_MODULE in
+                            *?,?*)
+                                _MODULE=${_MODULE#,}
+                                set -- "${_MODULE#*,}" "$@"
+                                _MODULE=${_MODULE%%,*}
+                                is_valid_identifier "$_MODULE" || return
+                                _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}${_IMPORT_SPEC:+"'$_IMPORT_SPEC' "}'$_MODULE'"
+                                _IMPORT_SPEC=
+                                _IMPORT_SPECS="${_IMPORT_SPECS:+$_IMPORT_SPECS },$_MODULE,"
+                                _COUNT=0
+                                _MERGE=true
+                            ;;
+                            *,)
+                                _MODULE=${_MODULE#,}
+                                _MODULE=${_MODULE%,}
+                                is_valid_identifier "$_MODULE" || return
+                                _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}${_IMPORT_SPEC:+"'$_IMPORT_SPEC' "}'$_MODULE'"
+                                _IMPORT_SPEC=
+                                _IMPORT_SPECS="$_IMPORT_SPECS ,$_MODULE,"
+                                _COUNT=0
+                            ;;
+                            *)
+                                _MODULE_NAME=,
+                                is_valid_identifier "${_MODULE#,}" || return
+                                _IMPORT_SPEC="${_IMPORT_SPEC:+$_IMPORT_SPEC }$_MODULE"
+                                _IMPORT_SPECS="${_IMPORT_SPECS:+$_IMPORT_SPECS }$_MODULE"
+                                _COUNT=1
+                            ;;
+                        esac
+                    ;;
+                    ,)
+                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC'"
+                        _IMPORT_SPEC=
+                        _IMPORT_SPECS="$_IMPORT_SPECS ,"
+                        _COUNT=0
+                    ;;
+                    as)
+                        case $# in
+                            0)
+                                _MODULE_NAME=as
+                                _syntax_error 1 || return
+                            ;;
+                            *)
+                                _IMPORT_SPEC="$_IMPORT_SPEC as"
+                                _IMPORT_SPECS="$_IMPORT_SPECS as"
+                            ;;
+                        esac
+                    ;;
+                    *)
+                        false
+                    ;;
+                esac
+            ;;
+            3)
+                case $_MODULE in
+                    ,*)
+                        _MODULE_NAME=' '
+                        _syntax_error 1 || return
+                    ;;
+                    *,?*)
+                        set -- "${_MODULE#*,}" "$@"
+                        _MODULE="${_MODULE%%,*}"
+                        is_valid_identifier "$_MODULE" || return
+                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC' '$_MODULE'"
+                        _IMPORT_SPEC=
+                        _IMPORT_SPECS="$_IMPORT_SPECS $_MODULE,"
+                        _MERGE=true
+                        _COUNT=0
+                    ;;
+                    *,)
+                        _MODULE="${_MODULE%,}"
+                        is_valid_identifier "$_MODULE" || return
+                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC' '$_MODULE'"
+                        _IMPORT_SPEC=
+                        _IMPORT_SPECS="$_IMPORT_SPECS $_MODULE,"
+                        _COUNT=0
+                        case $# in
+                            0)
+                                _MODULE_NAME=' '
+                                _syntax_error 4 || return
+                            ;;
+                        esac
+                    ;;
+                    *)
+                        is_valid_identifier "$_MODULE" || return
+                        _IMPORT_SPEC="${_IMPORT_SPEC:+$_IMPORT_SPEC }$_MODULE"
+                        _IMPORT_SPECS="$_IMPORT_SPECS $_MODULE"
+                    ;;
+                esac
+            ;;
+            *)
+                case $_MODULE in
+                    ,)
+                        case $# in
+                            0)
+                                _MODULE_NAME=,
+                                _syntax_error 4 || return
+                            ;;
+                        esac
+                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC'"
+                        _IMPORT_SPEC=
+                        _COUNT=0
+                    ;;
+                    ,*)
+                        set -- "${_MODULE#,}" "$@"
+                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC'"
+                        _IMPORT_SPEC=
+                        _COUNT=0
+                    ;;
+                    *)
+                        false
+                    ;;
+                esac
+            ;;
+        esac || {
+            _MODULE_NAME=' '
+            case $_MODULE in
+                ...*)
+                    _syntax_error 1 '...'
+                ;;
+                .*)
+                    _syntax_error 1
+                ;;
+                *)
+                    _syntax_error 1 "${_MODULE%%[,.]*}"
+                ;;
+            esac || return
+        }
+    done
+    case $_IMPORT_SPEC in
+        ?*)
+            _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC'"
         ;;
-        *)
-            false
-        ;;
-    esac || {
-        say 1 "SyntaxError: invalid syntax"
-        return 1
-    }
+    esac
 }
 
 _exec_module ()
@@ -750,105 +1000,216 @@ _exec_module ()
     . "$1" && _LOADED=true
 }
 
-_load_module_list ()
+_change_module_path ()
 {
-    while
-        read -r _MODULE ||
-        case $_MODULE in
-            '')
-                false
-            ;;
-        esac
-    do
-        case $_MODULE in
-            ?*)
-                eval set -- "$_MODULE"
-                import "$@" || return
-            ;;
-        esac
-    done <<EOF
-$_LIST_MODULES
-EOF
+    _MODULE_PATH=$_MODULE_PATH/$1
+    _SUFIX_MODULE_PATH=$_SUFIX_MODULE_PATH/$1
 }
 
-_load_package_context ()
+_return_module_path ()
 {
-    _LIST_MODULES=
-    while
-        read -r _LINE ||
-        case $_LINE in
-            '')
-                false
-            ;;
-        esac
-    do
-        case $_LINE in
-            "import "*)
-                set -- $_LINE
-                shift
-                _MODULE_PATH=$_PACKAGE
-                _append_list_modules "$@" || return
-            ;;
-            "from "*)
-                set -- $_LINE
-                shift
-                _resolve_from "$@" || return
-            ;;
-        esac
-    done < "$_PACKAGE/__init__.sh"
+    _MODULE_PATH=${_MODULE_PATH%$1}
+}
 
-    case $_LIST_MODULES in
+_resolve_module_path ()
+{
+    IFS=.
+    set -- $1
+    IFS=$POSIX_IFS
+    _SUFIX_MODULE_PATH=
+
+    case ${1:-} in
         '')
-            for _MODULE in "$_PACKAGE"/*.sh
-            do
-                case $_MODULE in
-                    */__init__.sh)
-                    ;;
-                    *)
-                        _exec_module "$_MODULE" || return
-                    ;;
-                esac
-            done
-        ;;
-        *)
-            _load_module_list || return
+            shift
         ;;
     esac
+
+    for _MODULE_PART_PATH
+    do
+        if is_dir "$_MODULE_PATH/${_MODULE_PART_PATH:=..}"
+        then
+            _change_module_path "$_MODULE_PART_PATH"
+        elif is_file "$_MODULE_PATH/$_MODULE_PART_PATH.sh"
+        then
+            _change_module_path "$_MODULE_PART_PATH.sh"
+        else
+            echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\""
+            echo "    $_IMPORT_STATEMENT"
+            echo "ImportError: attempted relative import with no known parent package"
+            return 1
+        fi
+    done
+}
+
+_exec_module ()
+{
+    set -- "$1" "${_FILE_PATH:-}"
+    _FILE_PATH=$1
+    . "$1"
+    _FILE_PATH=$2
+}
+
+_modulenotfounderror ()
+{
+    echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\""
+    echo "    $_IMPORT_STATEMENT"
+    str_replace "${1#$PWD}" '/' '.'
+    echo "ModuleNotFoundError: No module named '$CORE_RESULT'"
+    return 1
+}
+
+_import_function ()
+{
+    _MODULE_PATH=$1
+    _FUNCTION_NAME=$2
+    _NEW_FUNCTION_NAME=${3:-$2}
+
+    $_CORE_IMPORT_AS || {
+        echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\""
+        echo "    $_IMPORT_STATEMENT"
+        echo "ModuleError: [import ... as ...] not implemented"
+        return 1
+    }
+
+    _FUNCTION=$(
+        2>&1 bash -c ". '$_MODULE_PATH' && type '$_FUNCTION_NAME'"
+    ) && {
+        str_replace "$_FUNCTION" "$_FUNCTION_NAME is a function
+$_FUNCTION_NAME" "$_NEW_FUNCTION_NAME"
+        eval "$CORE_RESULT"
+    } || _modulenotfounderror "$_FUNCTION_NAME"
+}
+
+_import_package ()
+{
+    if is_file "$1/__init__.sh"
+    then
+        _exec_module "$1/__init__.sh"
+    else
+        for _MODULE in "$1"/*.sh
+        do
+            _exec_module "$_MODULE"
+        done
+    fi
 }
 
 _import_module ()
 {
-    is_dir "${1:-}" && {
-        is_file "$1/__init__.sh" || return 0
-        _PACKAGE="$1"
-        _load_package_context || return
-    } || {
-        _MODULE="${1%.sh}.sh"
-        is_file "$_MODULE" || {
-            _MODULE="$1"
-            is_file "$_MODULE"
-        } || _modulenotfounderror "$1" && _exec_module "$_MODULE"
-    }
+    case $# in
+        1)
+            if is_file "$_MODULE_PATH"
+            then
+                _import_function "$_MODULE_PATH" "$1"
+            else
+                _resolve_module_path "$1" || return
+                set -- "$_SUFIX_MODULE_PATH"
+                if is_dir "$_MODULE_PATH"
+                then
+                    _import_package "$_MODULE_PATH"
+                    _return_module_path "$1"
+                elif is_file "$_MODULE_PATH"
+                then
+                    _exec_module "$_MODULE_PATH"
+                    _return_module_path "$1"
+                else
+                    _modulenotfounderror "$_MODULE_PATH/$1"
+                fi
+            fi
+            return
+        ;;
+        3)
+            _import_function "$_MODULE_PATH" "$1" "$3"
+            return
+        ;;
+    esac
+    false
+}
+
+_import_buffer ()
+{
+    eval set -- "$_IMPORT_BUFFER"
+    _IMPORT_BUFFER=
+    for _MODULE
+    do
+        _import_module $_MODULE
+    done
 }
 
 import ()
 {
-    _LOADED=false
-    for _MODULE_NAME
-    do
-        _MODULE=$(2>&1 _resolve_module "$_MODULE_NAME") || {
-            echo "$_MODULE"
-            return 1
-        }
-        _import_module "$_MODULE" || return
-    done
-    $_LOADED
+    _IMPORT_STATEMENT=import${*:+ $*}
+    _IMPORT_COMMAND=import
+    _IMPORT_SPECS=
+    _MERGE=false
+    _check_import_syntax "$@"
+    _import_buffer
 }
 
 from ()
 {
-    _LIST_MODULES=
-    _resolve_from "$@" && _load_module_list || return
+    _IMPORT_STATEMENT=from${*:+ $*}
+    _IMPORT_COMMAND=from
+    _IMPORT_SPECS=
+    _MERGE=false
+    _PATH_FROM=${1:-}
+
+    case $# in
+        [!0]*)
+            shift
+        ;;
+    esac
+
+    case $_PATH_FROM in
+        '')
+            _MODULE_NAME=' '
+            false
+        ;;
+        .)
+            case ${1:-} in
+                import)
+                    shift
+                    _IMPORT_COMMAND='from . import'
+                    _MODULE_NAME=
+                    _check_import_syntax "$@" &&
+                    _import_buffer || return
+                ;;
+                *)
+                    _MODULE_NAME='. '
+                    false
+                ;;
+            esac
+        ;;
+        *)
+            _MODULE_NAME=
+            case $_PATH_FROM in
+                *[!.]*)
+                    case $_PATH_FROM in
+                        .*)
+                            is_valid_identifier "${_PATH_FROM#?}"
+                        ;;
+                        *)
+                            is_valid_identifier "$_PATH_FROM"
+                        ;;
+                    esac || return
+                ;;
+            esac
+
+            case ${1:-} in
+                import)
+                    shift
+                    _IMPORT_COMMAND="from $_PATH_FROM import"
+                    _check_import_syntax "$@" &&
+                    _resolve_module_path "$_PATH_FROM" && {
+                        set -- "$_SUFIX_MODULE_PATH"
+                        _import_buffer && _return_module_path "$1"
+                    } || return
+                ;;
+                *)
+                    false
+                ;;
+            esac
+        ;;
+    esac || _syntax_error 1 "${1:-}"
 }
 
 include ()
