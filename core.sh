@@ -1110,7 +1110,7 @@ _import_function ()
     $_CORE_IMPORT_AS || {
         echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\""
         echo "    $_IMPORT_STATEMENT"
-        echo "ModuleError: [import ... as ...] not implemented"
+        echo "ModuleError: 'import ... as ...' not supported in POSIX shell (requires Bash)"
         return 1
     }
 
@@ -1166,7 +1166,11 @@ _import_module ()
             return
         ;;
         3)
-            _resolve_module_path "$1"
+            case ${_MODULE_PATH:-} in
+                '')
+                    _resolve_module_path "$1" || return
+                ;;
+            esac
             _import_function "$_MODULE_PATH" "$1" "$3"
             return
         ;;
