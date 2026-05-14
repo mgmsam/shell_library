@@ -1178,10 +1178,21 @@ _import_module ()
                 _import_function "$_MODULE_PATH" "$1" "$3"
             elif is_dir "$_MODULE_PATH"
             then
-                echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\""
-                echo "    $_IMPORT_STATEMENT"
-                echo "ModuleError: 'import ... as ...' not supported for package"
-                return 1
+                _resolve_module_path "$1" || return
+                set -- "$@" "$_SUFIX_MODULE_PATH"
+                if is_file "$_MODULE_PATH"
+                then
+                    _import_function "$_MODULE_PATH" "$1" "$3"
+                    _return_module_path "$4"
+                elif is_dir "$_MODULE_PATH"
+                then
+                    echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\""
+                    echo "    $_IMPORT_STATEMENT"
+                    echo "ModuleError: 'import ... as ...' not supported for package"
+                    return 1
+                else
+                    _modulenotfounderror 3 "$_MODULE_PATH/$1"
+                fi
             else
                 _modulenotfounderror 3 "$_MODULE_PATH/$1"
             fi || return
