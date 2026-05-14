@@ -705,6 +705,7 @@ is_valid_identifier ()
                         _syntax_error 1 '...'
                     ;;
                     .*)
+                        _MODULE_NAME="$_MODULE_NAME."
                         _syntax_error 1
                     ;;
                     *)
