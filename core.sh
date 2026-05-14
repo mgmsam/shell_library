@@ -1076,17 +1076,20 @@ _resolve_module_path ()
     for _MODULE_PART_PATH
     do
         is_dir $_MODULE_PATH || _modulenotfounderror 2 || return
-
         _IDENTIFIER_PART=${_IDENTIFIER_PART:+$_IDENTIFIER_PART.}$_MODULE_PART_PATH
-        if is_dir "$_MODULE_PATH/${_MODULE_PART_PATH:=..}"
-        then
-            _change_module_path "$_MODULE_PART_PATH"
-        elif is_file "$_MODULE_PATH/$_MODULE_PART_PATH.sh"
-        then
-            _change_module_path "$_MODULE_PART_PATH.sh"
-        else
-            _modulenotfounderror 1 || return
-        fi
+        case $_MODULE_PART_PATH in
+            '')
+                is_dir "$_MODULE_PATH/.." &&
+                _change_module_path '..'
+            ;;
+            *)
+                is_file "$_MODULE_PATH/$_MODULE_PART_PATH.sh" &&
+                _change_module_path "$_MODULE_PART_PATH.sh" || {
+                    is_dir "$_MODULE_PATH/$_MODULE_PART_PATH" &&
+                    _change_module_path "$_MODULE_PART_PATH"
+                }
+            ;;
+        esac || _modulenotfounderror 1 || return
     done
 }
 
