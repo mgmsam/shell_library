@@ -1145,8 +1145,9 @@ _import_module ()
                     false
                 ;;
                 *)
-                    is_file "$_MODULE_PATH" &&
-                    _import_function "$_MODULE_PATH" "$1"
+                    is_file "$_MODULE_PATH" && {
+                        _import_function "$_MODULE_PATH" "$1" || return
+                    }
                 ;;
             esac || {
                 _resolve_module_path "$1" || return
@@ -1171,8 +1172,19 @@ _import_module ()
                     _resolve_module_path "$1" || return
                 ;;
             esac
-            _import_function "$_MODULE_PATH" "$1" "$3"
-            return
+
+            if is_file "$_MODULE_PATH"
+            then
+                _import_function "$_MODULE_PATH" "$1" "$3"
+            elif is_dir "$_MODULE_PATH"
+            then
+                echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\""
+                echo "    $_IMPORT_STATEMENT"
+                echo "ModuleError: 'import ... as ...' not supported for package"
+                return 1
+            else
+                _modulenotfounderror 3 "$_MODULE_PATH/$1"
+            fi || return
         ;;
     esac
 }
