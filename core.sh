@@ -425,7 +425,9 @@ SCRIPT_DIR=$(2>&1
     cd -- "${_PATH:-/}" && 2>&1 pwd -P
 )
 SCRIPT_FILE="${SCRIPT_DIR%/}/${0##*/}"
+
 SYS_LIBDIR='/usr/lib/shell'
+SYS_PATH="'' '$SYS_LIBDIR'"
 
 case ${BASH_VERSION:-} in
     '')
@@ -798,6 +800,7 @@ _check_import_syntax ()
 
     case $# in
         0)
+            _MODULE_NAME=' '
             _syntax_error 1 || return
         ;;
     esac
@@ -1011,8 +1014,50 @@ _return_module_path ()
     _MODULE_PATH=${_MODULE_PATH%$1}
 }
 
+_modulenotfounderror ()
+{
+    echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\""
+    echo "    $_IMPORT_STATEMENT"
+    case $1 in
+        1)
+            echo "ImportError: attempted relative import with no known parent package"
+        ;;
+        2)
+            echo "ModuleNotFoundError: No module named '$_IDENTIFIER'; '$_IDENTIFIER_PART' is not a package"
+        ;;
+        3)
+            str_replace "${2#$PWD}" '/' '.'
+            echo "ModuleNotFoundError: No module named '$CORE_RESULT'"
+        ;;
+    esac
+    return 1
+}
+
+_locate_module ()
+{
+    _IDENTIFIER_PART=$1
+    eval set -- "$SYS_PATH"
+    for SYS_PART_PATH
+    do
+        _MODULE_PATH="${SYS_PART_PATH:-${_MODULE_PATH:-$SCRIPT_DIR}}"
+
+        is_dir "$_MODULE_PATH/$_IDENTIFIER_PART" &&
+        _change_module_path "$_IDENTIFIER_PART" || {
+            is_file "$_MODULE_PATH/$_IDENTIFIER_PART.sh" &&
+            _change_module_path "$_IDENTIFIER_PART.sh"
+        } && break || _MODULE_PATH=
+
+    done
+    case $_MODULE_PATH in
+        '')
+            _modulenotfounderror 1 || return
+        ;;
+    esac
+}
+
 _resolve_module_path ()
 {
+    _IDENTIFIER=$1
     IFS=.
     set -- $1
     IFS=$POSIX_IFS
@@ -1021,11 +1066,20 @@ _resolve_module_path ()
     case ${1:-} in
         '')
             shift
+            _MODULE_PATH=${_MODULE_PATH:-$SCRIPT_DIR}
+            _IDENTIFIER_PART=
+        ;;
+        *)
+            _locate_module "$1" || return
+            shift
         ;;
     esac
 
     for _MODULE_PART_PATH
     do
+        is_dir $_MODULE_PATH || _modulenotfounderror 2 || return
+
+        _IDENTIFIER_PART=${_IDENTIFIER_PART:+$_IDENTIFIER_PART.}$_MODULE_PART_PATH
         if is_dir "$_MODULE_PATH/${_MODULE_PART_PATH:=..}"
         then
             _change_module_path "$_MODULE_PART_PATH"
@@ -1033,10 +1087,7 @@ _resolve_module_path ()
         then
             _change_module_path "$_MODULE_PART_PATH.sh"
         else
-            echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\""
-            echo "    $_IMPORT_STATEMENT"
-            echo "ImportError: attempted relative import with no known parent package"
-            return 1
+            _modulenotfounderror 1 || return
         fi
     done
 }
@@ -1047,15 +1098,6 @@ _exec_module ()
     _FILE_PATH=$1
     . "$1"
     _FILE_PATH=$2
-}
-
-_modulenotfounderror ()
-{
-    echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\""
-    echo "    $_IMPORT_STATEMENT"
-    str_replace "${1#$PWD}" '/' '.'
-    echo "ModuleNotFoundError: No module named '$CORE_RESULT'"
-    return 1
 }
 
 _import_function ()
@@ -1077,7 +1119,7 @@ _import_function ()
         str_replace "$_FUNCTION" "$_FUNCTION_NAME is a function
 $_FUNCTION_NAME" "$_NEW_FUNCTION_NAME"
         eval "$CORE_RESULT"
-    } || _modulenotfounderror "$_FUNCTION_NAME"
+    } || _modulenotfounderror 3 "$_FUNCTION_NAME"
 }
 
 _import_package ()
@@ -1097,10 +1139,15 @@ _import_module ()
 {
     case $# in
         1)
-            if is_file "$_MODULE_PATH"
-            then
-                _import_function "$_MODULE_PATH" "$1"
-            else
+            case ${_MODULE_PATH:-} in
+                '')
+                    false
+                ;;
+                *)
+                    is_file "$_MODULE_PATH" &&
+                    _import_function "$_MODULE_PATH" "$1"
+                ;;
+            esac || {
                 _resolve_module_path "$1" || return
                 set -- "$_SUFIX_MODULE_PATH"
                 if is_dir "$_MODULE_PATH"
@@ -1112,17 +1159,17 @@ _import_module ()
                     _exec_module "$_MODULE_PATH"
                     _return_module_path "$1"
                 else
-                    _modulenotfounderror "$_MODULE_PATH/$1"
+                    _modulenotfounderror 3 "$_MODULE_PATH/$1"
                 fi
-            fi
+            }
             return
         ;;
         3)
+            _resolve_module_path "$1"
             _import_function "$_MODULE_PATH" "$1" "$3"
             return
         ;;
     esac
-    false
 }
 
 _import_buffer ()
@@ -1193,7 +1240,6 @@ from ()
                     esac || return
                 ;;
             esac
-
             case ${1:-} in
                 import)
                     shift
