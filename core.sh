@@ -1040,13 +1040,11 @@ _locate_module ()
     for SYS_PART_PATH
     do
         _MODULE_PATH="${SYS_PART_PATH:-${_MODULE_PATH:-$SCRIPT_DIR}}"
-
-        is_dir "$_MODULE_PATH/$_IDENTIFIER_PART" &&
-        _change_module_path "$_IDENTIFIER_PART" || {
-            is_file "$_MODULE_PATH/$_IDENTIFIER_PART.sh" &&
-            _change_module_path "$_IDENTIFIER_PART.sh"
+        is_file "$_MODULE_PATH/$_IDENTIFIER_PART.sh" &&
+        _change_module_path "$_IDENTIFIER_PART.sh" || {
+            is_dir "$_MODULE_PATH/$_IDENTIFIER_PART" &&
+            _change_module_path "$_IDENTIFIER_PART"
         } && break || _MODULE_PATH=
-
     done
     case $_MODULE_PATH in
         '')
@@ -1150,13 +1148,13 @@ _import_module ()
             esac || {
                 _resolve_module_path "$1" || return
                 set -- "$_SUFIX_MODULE_PATH"
-                if is_dir "$_MODULE_PATH"
-                then
-                    _import_package "$_MODULE_PATH"
-                    _return_module_path "$1"
-                elif is_file "$_MODULE_PATH"
+                if is_file "$_MODULE_PATH"
                 then
                     _exec_module "$_MODULE_PATH"
+                    _return_module_path "$1"
+                elif is_dir "$_MODULE_PATH"
+                then
+                    _import_package "$_MODULE_PATH"
                     _return_module_path "$1"
                 else
                     _modulenotfounderror 3 "$_MODULE_PATH/$1"
