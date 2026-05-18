@@ -438,6 +438,10 @@ case ${BASH_VERSION:-} in
     ;;
 esac
 
+type awk >/dev/null && {
+    _TYPE_IMPORT=awk
+} || _TYPE_IMPORT=shell
+
 is_diff ()
 {
     case "${1:-}" in
@@ -1092,6 +1096,598 @@ _resolve_module_path ()
             ;;
         esac || _modulenotfounderror 1 || return
     done
+}
+
+_import_module_awk()
+{
+    _TARGET_FILE="$1"
+    _PREFIX="zzz.zzz"
+    _SOH=$(printf '\001')
+
+    if [ -z "$_TARGET_FILE" ] || [ ! -f "$_TARGET_FILE" ]; then
+        echo "Error: File '$_TARGET_FILE' not found." >&2
+        return 1
+    fi
+
+    _MODULE_FUNCS=$(
+        2>&1 awk '
+            BEGIN {
+                in_heredoc = 0
+                hd_token = ""
+                soh = "'"${_SOH:-}"'"
+                bash_env_list = "'"${_BASH_ENV_LIST:-}"'"
+                split(bash_env_list, bash_env, " ")
+                for (x in bash_env) env_vars[bash_env[x]] = 1
+            }
+            {
+                lines[NR] = $0
+                _SKIP_PARSING = 0
+
+                if (in_heredoc) {
+                    _SKIP_PARSING = 1
+                    trimmed = $0; sub(/^[ \t]+/, "", trimmed)
+                    if ($0 == hd_token || trimmed == hd_token) { in_heredoc = 0; hd_token = "" }
+                    next
+                } else if (match($0, /<<-?[ \t]*[\047"\042\\]?[a-zA-Z0-9_]+[\047"\042]?/)) {
+                    # Добавлен \\ в регулярку выше для детекции <<\FILE
+                    _SKIP_PARSING = 1; in_heredoc = 1
+                    chunk = substr($0, RSTART, RLENGTH)
+                    sub(/^<<-?/, "", chunk)
+                    # Очищаем токен от кавычек и бэкслеша
+                    gsub(/[ \t\047"\042\\]/, "", chunk)
+                    hd_token = chunk
+                }
+                if (_SKIP_PARSING) next
+
+                clean = $0; gsub(/(^|[ \t;])#.*/, "\\1", clean)
+                if (clean_total == "") clean_total = clean
+                else clean_total = clean_total soh clean
+            }
+            END {
+                prefix = "'"${_PREFIX}"'."
+                v_prefix = "'"${_PREFIX}"'_"
+                gsub(/\./, "_", v_prefix)
+
+                # --- PASS 1: ПОСИМВОЛЬНЫЙ СБОР ФУНКЦИЙ MODULE ---
+                t_len = length(clean_total)
+                expect_func = 0
+                for (pos = 1; pos <= t_len; pos++) {
+                    ch = substr(clean_total, pos, 1)
+                    if (ch ~ /[a-zA-Z_]/) {
+                        word = ""
+                        w_start = pos
+                        while (pos <= t_len && substr(clean_total, pos, 1) ~ /[a-zA-Z0-9_.]/) {
+                            word = word substr(clean_total, pos, 1)
+                            pos++
+                        }
+                        pos--
+
+                        if (word == "function") { expect_func = 1; continue }
+                        if (env_vars[word]) { expect_func = 0; continue }
+
+                        prev_ch = (w_start > 1) ? substr(clean_total, w_start - 1, 1) : ""
+                        if (prev_ch == "/") { expect_func = 0; continue }
+
+                        # Строгий Lookahead пустых скобок на Pass 1
+                        t_ptr = pos + 1
+                        while (t_ptr <= t_len) {
+                            next_ch = substr(clean_total, t_ptr, 1)
+                            if (next_ch == " " || next_ch == "\t" || next_ch == soh) t_ptr++
+                            else break
+                        }
+
+                        is_a_func = 0
+                        next_ch = substr(clean_total, t_ptr, 1)
+                        if (next_ch == "(") {
+                            t_ptr++
+                            while (t_ptr <= t_len) {
+                                nt_ch = substr(clean_total, t_ptr, 1)
+                                if (nt_ch == " " || nt_ch == "\t" || nt_ch == soh) t_ptr++
+                                else break
+                            }
+                            if (substr(clean_total, t_ptr, 1) == ")") is_a_func = 1
+                        } else if (next_ch == "{" && expect_func == 1) {
+                            is_a_func = 1
+                        } else if (expect_func == 1) {
+                            # Посимвольный Lookahead тела функции (Защита от cat, grep, ls)
+                            tail_ptr = pos + 1
+                            while (tail_ptr <= t_len) {
+                                nt_ch = substr(clean_total, tail_ptr, 1)
+                                if (nt_ch == " " || nt_ch == "\t" || nt_ch == soh || nt_ch == ";") { tail_ptr++; continue }
+                                if (nt_ch == "{") { is_a_func = 1; break }
+                                break
+                            }
+                        }
+
+                        if (is_a_func) names[word] = 1
+                        expect_func = 0
+                    }
+                }
+
+                # --- PASS 2: GENERATE OUTPUT ---
+                for (i = 1; i <= NR; i++) {
+                    line = lines[i]
+                    if (in_heredoc) {
+                        print line; trimmed = line; sub(/^[ \t]+/, "", trimmed)
+                        if (line == hd_token || trimmed == hd_token) { in_heredoc = 0; hd_token = "" }
+                        continue
+                    }
+                    if (match(line, /<<-?[ \t]*[\047"\042\\]?[a-zA-Z0-9_]+[\047"\042]?/)) {
+                        in_heredoc = 1; chunk = substr(line, RSTART, RLENGTH)
+                        sub(/^<<-?/, "", chunk); gsub(/[ \t\047"\042\\]/, "", chunk); hd_token = chunk
+                        print line; continue
+                    }
+                    code_part = line; comment_part = ""
+                    if (match(line, /(^|[ \t;])#.*/)) {
+                        match_pos = RSTART; if (substr(line, RSTART, 1) != "#") match_pos++
+                        code_part = substr(line, 1, match_pos - 1); comment_part = substr(line, match_pos)
+                    }
+
+                    new_code = ""; c_len = length(code_part); s_quotes = 0; d_quotes = 0; expect_var = 0; unset_mode = ""
+
+                    for (c_pos = 1; c_pos <= c_len; c_pos++) {
+                        curr_ch = substr(code_part, c_pos, 1)
+
+                        if (curr_ch == "\047" && d_quotes == 0) { s_quotes = (s_quotes == 0) ? 1 : 0; new_code = new_code curr_ch; continue }
+                        if (curr_ch == "\042" && s_quotes == 0) { d_quotes = (d_quotes == 0) ? 1 : 0; new_code = new_code curr_ch; continue }
+
+                        if (s_quotes == 1) {
+                            if (curr_ch ~ /[a-zA-Z_]/ && unset_mode != "") {
+                                word = ""
+                                while (c_pos <= c_len && substr(code_part, c_pos, 1) ~ /[a-zA-Z0-9_]/) { word = word substr(code_part, c_pos, 1); c_pos++ }
+                                remain_tail = substr(code_part, c_pos)
+                                full_word = word
+                                if (remain_tail ~ /^\.[a-zA-Z_]/) {
+                                    sub(/^\./, "", remain_tail); match(remain_tail, /^[a-zA-Z0-9_]/)
+                                    full_word = word "." substr(remain_tail, RSTART, RLENGTH)
+                                    c_pos += (RLENGTH + 1)
+                                }
+                                c_pos--
+                                if (unset_mode == "f") new_code = new_code prefix full_word
+                                else new_code = new_code v_prefix full_word
+                            } else {
+                                new_code = new_code curr_ch
+                            }
+                            continue
+                        }
+
+                        if (curr_ch == "$") { expect_var = 1; new_code = new_code curr_ch; continue }
+
+                        if (curr_ch ~ /[a-zA-Z_]/) {
+                            word = ""
+                            w_start = c_pos
+                            while (c_pos <= c_len && substr(code_part, c_pos, 1) ~ /[a-zA-Z0-9_.]/) {
+                                word = word substr(code_part, c_pos, 1)
+                                c_pos++
+                            }
+                            c_pos--
+
+                            remain_tail = substr(code_part, c_pos + 1)
+                            is_func_decl = (remain_tail ~ /^[ \t]*\([ \t]*\)/) ? 1 : 0
+                            is_assignment = (remain_tail ~ /^=/) ? 1 : 0
+
+                            # Для массивов проверяем наличие [индекса]= сразу за словом
+                            if (!is_assignment) is_assignment = (remain_tail ~ /^\[[^\]]+\]=/) ? 1 : 0
+
+                            next_char = substr(code_part, w_start + length(word), 1)
+                            prev_ch_code = (length(new_code) > 0) ? substr(new_code, length(new_code), 1) : ""
+
+                            if (prev_ch_code == "-") {
+                                last_flag = substr(word, length(word), 1)
+                                if (last_flag == "f" || last_flag == "v") unset_mode = last_flag
+                                new_code = new_code word
+                            } else if (word == "unset") {
+                                unset_mode = "v"
+                                new_code = new_code word
+                            } else if (env_vars[word]) {
+                                new_code = new_code word
+                            } else if (prev_ch_code == "/") {
+                                new_code = new_code word
+                            } else if (unset_mode != "") {
+                                if (unset_mode == "f") new_code = new_code prefix word
+                                else new_code = new_code v_prefix word
+                            } else if (expect_var == 1 || is_assignment == 1) {
+                                # СИНХРОНИЗАЦИЯ С SH: Замена идет ИСКЛЮЧИТЕЛЬНО по динамическому контексту строки!
+                                new_code = new_code v_prefix word
+                            } else if (is_func_decl == 1 || names[word] == 1) {
+                                if (d_quotes == 1) new_code = new_code word
+                                else new_code = new_code prefix word
+                            } else {
+                                new_code = new_code word
+                            }
+                            expect_var = 0
+                        } else {
+                            if (curr_ch != " " && curr_ch != "\t" && curr_ch != "{" && curr_ch != "#") expect_var = 0
+                            if (curr_ch == ";" || curr_ch == "&" || curr_ch == "|") unset_mode = ""
+                            new_code = new_code curr_ch
+                        }
+                    }
+                    print new_code comment_part
+                }
+            }
+        ' < "$_TARGET_FILE"
+    )
+}
+
+_import_module_shell ()
+{
+    _INPUT_FILE="$1"
+    _PREFIX="zzz.zzz"
+    _V_PREFIX="zzz_zzz_"
+    _F_PREFIX="${_PREFIX}."
+
+    _BASH_ENV=${_BASH_ENV_LIST:-}
+
+    _ALL_LINES=""
+    _LIST_FUNCS=" "
+    _IN_HEREDOC=0
+    _HD_TOKEN=""
+    _TAB=$(printf '\011')
+    _SOH=$(printf '\001')
+
+    # --- PASS 1: ПОСИМВОЛЬНЫЙ СБОР ЯВНО ОБЪЯВЛЕННЫХ ФУНКЦИЙ ---
+    while IFS= read -r _RAW_LINE || [ -n "$_RAW_LINE" ]; do
+        if [ -z "$_ALL_LINES" ]; then _ALL_LINES="$_RAW_LINE"; else _ALL_LINES="${_ALL_LINES}$_SOH${_RAW_LINE}"; fi
+
+        _CLEAN_LINE="${_RAW_LINE%%#*}"
+        _REST_PARSE="$_CLEAN_LINE"
+        _EXPECT_FUNC=0
+
+        while [ -n "$_REST_PARSE" ]; do
+            _CURR_CH="${_REST_PARSE%"${_REST_PARSE#?}"}"
+
+            case "$_CURR_CH" in
+                [a-zA-Z_])
+                    _WORD=""
+                    while [ -n "$_REST_PARSE" ]; do
+                        _W_CH="${_REST_PARSE%"${_REST_PARSE#?}"}"
+                        case "$_W_CH" in
+                            [a-zA-Z0-9_.] ) _WORD="${_WORD}${_W_CH}"; _REST_PARSE="${_REST_PARSE#?}" ;;
+                            * ) break ;;
+                        esac
+                    done
+
+                    if [ "$_WORD" = "function" ]; then
+                        _EXPECT_FUNC=1
+                        continue
+                    fi
+
+                    case "$_BASH_ENV" in *" $_WORD "* ) _EXPECT_FUNC=0; continue ;; esac
+
+                    _TAIL="$_REST_PARSE"
+                    _IS_A_FUNC=0
+
+                    while [ -n "$_TAIL" ]; do
+                        _T_CH="${_TAIL%"${_TAIL#?}"}"
+                        case "$_T_CH" in " " | "$_TAB" ) _TAIL="${_TAIL#?}" ;; * ) break ;; esac
+                    done
+
+                    if [ "${_TAIL%"${_TAIL#?}"}" = "(" ]; then
+                        _TAIL="${_TAIL#?}"
+                        while [ -n "$_TAIL" ]; do
+                            _T_CH="${_TAIL%"${_TAIL#?}"}"
+                            case "$_T_CH" in " " | "$_TAB" ) _TAIL="${_TAIL#?}" ;; * ) break ;; esac
+                        done
+                        if [ "${_TAIL%"${_TAIL#?}"}" = ")" ]; then
+                            _IS_A_FUNC=1
+                            _REST_PARSE="${_TAIL#?}"
+                        fi
+                    elif [ $_EXPECT_FUNC -eq 1 ]; then
+                        # СИНХРОНИЗАЦИЯ С AWK: Проверяем чистоту хвоста команды для function name
+                        _F_TAIL="$_TAIL"
+                        _IS_CLEAN_LINE=1
+                        while [ -n "$_F_TAIL" ]; do
+                            _FT_CH="${_F_TAIL%"${_F_TAIL#?}"}"
+                            case "$_FT_CH" in
+                                " " | "$_TAB" | ";" | "{" ) _F_TAIL="${_F_TAIL#?}" ;;
+                                * ) _IS_CLEAN_LINE=0; break ;;
+                            esac
+                        done
+                        if [ $_IS_CLEAN_LINE -eq 1 ]; then _IS_A_FUNC=1; fi
+                    fi
+
+                    if [ $_IS_A_FUNC -eq 1 ]; then
+                        case "$_LIST_FUNCS" in *" $_WORD "* ) ;; * ) _LIST_FUNCS="${_LIST_FUNCS}${_WORD} " ;; esac
+                    fi
+                    # Флаг сбрасывается ТОЛЬКО после проверки текущего слова, а не безусловно в цикле символов!
+                    _EXPECT_FUNC=0
+                    ;;
+                # Сброс флага ожидания функции на жестких разделителях команд, пробелы и табы внутри одной команды его удерживают
+                ";" | "&" | "|" )
+                    _EXPECT_FUNC=0
+                    _REST_PARSE="${_REST_PARSE#?}"
+                ;;
+                * )
+                    _REST_PARSE="${_REST_PARSE#?}"
+                    ;;
+            esac
+        done
+
+        case "$_CLEAN_LINE" in
+            *"unset"*[0-9a-zA-Z_-]* )
+                _U_TAIL="${_CLEAN_LINE#*unset}"
+                _U_REST="$_U_TAIL"
+                _U_MODE=""
+                while [ -n "$_U_REST" ]; do
+                    _U_CH="${_U_REST%"${_U_REST#?}"}"
+                    case "$_U_CH" in
+                        [a-zA-Z_] )
+                            _U_WORD=""
+                            while [ -n "$_U_REST" ]; do
+                                _UW_CH="${_U_REST%"${_U_REST#?}"}"
+                                case "$_UW_CH" in
+                                    # ИСПРАВЛЕНО: уменьшаем правильную переменную _U_REST
+                                    [a-zA-Z0-9_.] ) _U_WORD="${_U_WORD}${_UW_CH}"; _U_REST="${_U_REST#?}" ;;
+                                    * ) break ;;
+                                  esac
+                            done
+
+                            _U_PREV_CHAR=""
+                            _U_NEW_PART="${_U_TAIL%$_U_REST}"
+                            _U_NEW_PART="${_U_NEW_PART%$_U_WORD}"
+                            if [ -n "$_U_NEW_PART" ]; then _U_PREV_CHAR="${_U_NEW_PART#${_U_NEW_PART%?}}"; fi
+
+                            if [ "$_U_PREV_CHAR" = "-" ]; then
+                                _LAST_F="${_U_WORD#${_U_WORD%?}}"
+                                if [ "$_LAST_F" = "f" ] || [ "$_LAST_F" = "v" ]; then _U_MODE="$_LAST_F"; fi
+                            elif [ "$_U_MODE" = "f" ]; then
+                                if [ -n "$_U_WORD" ] && [ "$_U_WORD" != "unset" ]; then
+                                    case "$_LIST_FUNCS" in *" $_U_WORD "* ) ;; * ) _LIST_FUNCS="${_LIST_FUNCS}${_U_WORD} " ;; esac
+                                fi
+                            fi
+                            ;;
+                        ";" | "&" | "|" )
+                            _U_MODE=""
+                            _U_REST="${_U_REST#?}"
+                        ;;
+                        * ) _U_REST="${_U_REST#?}" ;;
+                    esac
+                done
+                ;;
+        esac
+    done < "$_INPUT_FILE"
+
+    # --- PASS 2: ТОКЕНИЗАТОР ЗАМЕН С НАКОПЛЕНИЕМ В ПЕРЕМЕННУЮ ---
+    _IN_HEREDOC=0
+    _HD_TOKEN=""
+    _REST_LINES="$_ALL_LINES"
+
+    while [ -n "$_REST_LINES" ]; do
+        case "$_REST_LINES" in
+            *"$_SOH"* ) _LINE="${_REST_LINES%%$_SOH*}"; _REST_LINES="${_REST_LINES#*$_SOH}" ;;
+            * ) _LINE="$_REST_LINES"; _REST_LINES="" ;;
+        esac
+
+        if [ $_IN_HEREDOC -eq 1 ]; then
+            _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_LINE
+            _TRIMMED_LINE="${_LINE##[ $_TAB]*}"
+            if [ "$_LINE" = "$_HD_TOKEN" ] || [ "$_TRIMMED_LINE" = "$_HD_TOKEN" ]; then
+                _IN_HEREDOC=0; _HD_TOKEN=""
+            fi
+            continue
+        fi
+
+        _IS_HD_START=0
+        case "$_LINE" in
+            *"<<-"* | *"<<"* )
+                _HD_PART=""
+                case "$_LINE" in *"<<-"* ) _HD_PART="${_LINE#*<<-}" ;; *"<<"*  ) _HD_PART="${_LINE#*<<}" ;; esac
+                _HD_PART="${_HD_PART##[ $_TAB]*}"
+                _RAW_TOKEN="${_HD_PART%%[ $_TAB;]*}"
+
+                _CLEAN_TOKEN="" _T_REST="$_RAW_TOKEN"
+                while [ -n "$_T_REST" ]; do
+                    _T_CH="${_T_REST%"${_T_REST#?}"}"
+                    case "$_T_CH" in
+                        "'" | '"' | "\\" ) ;; # ТЕПЕРЬ СБРАСЫВАЕМ И БЭКСЛЕШ \
+                        * ) _CLEAN_TOKEN="${_CLEAN_TOKEN}${_T_CH}" ;;
+                    esac
+                    _T_REST="${_T_REST#?}"
+                done
+                if [ -n "$_CLEAN_TOKEN" ]; then _IN_HEREDOC=1; _HD_TOKEN="$_CLEAN_TOKEN"; _IS_HD_START=1; fi
+                ;;
+        esac
+
+        if [ $_IS_HD_START -eq 1 ]; then
+            _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_LINE
+            continue
+        fi
+
+        _CODE_PART="$_LINE"
+        _COMM_PART=""
+        case "$_LINE" in
+            *"#"*)
+                _BEFORE_HASH="${_LINE%%#*}"
+                case "$_BEFORE_HASH" in
+                    *"\${"*) _CODE_PART="$_LINE" _COMM_PART="" ;;
+                    * ) _CODE_PART="${_LINE%%#*}"; _COMM_PART="#${_LINE#*#}" ;;
+                esac
+                ;;
+        esac
+
+        _NEW_LINE=""
+        _REST="$_CODE_PART"
+        _S_QUOTES=0
+        _D_QUOTES=0
+        _EXPECT_VAR=0
+        _WORD=""
+        _UNSET_MODE=""
+
+        while [ -n "$_REST" ]; do
+            _CH="${_REST%"${_REST#?}"}"
+            _REST="${_REST#?}"
+
+            if [ $_S_QUOTES -eq 1 ]; then
+                case "$_CH" in
+                    "'") _S_QUOTES=0; _NEW_LINE="${_NEW_LINE}${_CH}" ;;
+                    [a-zA-Z0-9_.] )
+                        if [ -n "$_UNSET_MODE" ]; then
+                            _WORD=""
+                            _REST_QUOTES="${_CH}${_REST}"
+                            while [ -n "$_REST_QUOTES" ]; do
+                                _Q_CH="${_REST_QUOTES%"${_REST_QUOTES#?}"}"
+                                case "$_Q_CH" in
+                                    [a-zA-Z0-9_.] ) _WORD="${_WORD}${_Q_CH}"; _REST_QUOTES="${_REST_QUOTES#?}" ;;
+                                    * ) break ;;
+                                esac
+                            done
+                            _REST="$_REST_QUOTES"
+                            if [ "$_UNSET_MODE" = "f" ]; then _NEW_LINE="${_NEW_LINE}${_F_PREFIX}${_WORD}"
+                            else _NEW_LINE="${_NEW_LINE}${_V_PREFIX}${_WORD}"; fi
+                            _WORD=""
+                        else
+                            _NEW_LINE="${_NEW_LINE}${_CH}"
+                        fi
+                        ;;
+                    * ) _NEW_LINE="${_NEW_LINE}${_CH}" ;;
+                esac
+                continue
+            fi
+
+            case "$_CH" in
+                [a-zA-Z0-9_.] )
+                    if [ -z "$_WORD" ]; then
+                        case "$_CH" in [a-zA-Z_] ) _WORD="$_CH" ;; * ) _NEW_LINE="${_NEW_LINE}${_CH}" ;; esac
+                    else
+                        _WORD="${_WORD}${_CH}"
+                    fi
+                    ;;
+                * )
+                    if [ -n "$_WORD" ]; then
+                        _PREV_CHAR=""
+                        if [ -n "$_NEW_LINE" ]; then _PREV_CHAR="${_NEW_LINE#${_NEW_LINE%?}}"; fi
+
+                        if [ "$_PREV_CHAR" = "-" ]; then
+                            _LAST_FLAG="${_WORD#${_WORD%?}}"
+                            if [ "$_LAST_FLAG" = "f" ] || [ "$_LAST_FLAG" = "v" ]; then _UNSET_MODE="$_LAST_FLAG"; fi
+                            _NEW_LINE="${_NEW_LINE}${_WORD}"
+                        elif [ "$_WORD" = "unset" ]; then
+                            _UNSET_MODE="v"
+                            _NEW_LINE="${_NEW_LINE}${_WORD}"
+                        else
+                            _REST_CONTEXT="${_CH}${_REST}"
+                            _IS_SYS_VAR=0; case "$_BASH_ENV" in *" ${_WORD} "* ) _IS_SYS_VAR=1 ;; esac
+
+                            if [ $_IS_SYS_VAR -eq 1 ]; then
+                                _NEW_LINE="${_NEW_LINE}${_WORD}"
+                            elif [ "$_PREV_CHAR" = "/" ]; then
+                                _NEW_LINE="${_NEW_LINE}${_WORD}"
+                            else
+                                _IS_FUNC_DECL=0 _IS_ASSIGNMENT=0
+                                case "$_REST_CONTEXT" in
+                                    "="* ) _IS_ASSIGNMENT=1 ;;
+                                    "["*"]="* ) _IS_ASSIGNMENT=1 ;;
+                                    * )
+                                        _F_REST="$_REST_CONTEXT"
+                                        while [ -n "$_F_REST" ]; do
+                                            _FT_CH="${_F_REST%"${_F_REST#?}"}"
+                                            case "$_FT_CH" in " " | "$_TAB" ) _F_REST="${_F_REST#?}" ;; * ) break ;; esac
+                                        done
+                                        if [ "${_F_REST%"${_F_REST#?}"}" = "(" ]; then
+                                            _F_REST="${_F_REST#?}"
+                                            while [ -n "$_F_REST" ]; do
+                                                _FT_CH="${_F_REST%"${_F_REST#?}"}"
+                                                case "$_FT_CH" in " " | "$_TAB" ) _F_REST="${_F_REST#?}" ;; * ) break ;; esac
+                                            done
+                                            if [ "${_F_REST%"${_F_REST#?}"}" = ")" ]; then _IS_FUNC_DECL=1; fi
+                                        fi
+                                    ;;
+                                esac
+
+                                if [ $_EXPECT_VAR -eq 1 ] || [ $_IS_ASSIGNMENT -eq 1 ]; then
+                                    _NEW_LINE="${_NEW_LINE}${_V_PREFIX}${_WORD}"
+                                elif [ -n "$_UNSET_MODE" ]; then
+                                    if [ "$_UNSET_MODE" = "f" ]; then _NEW_LINE="${_NEW_LINE}${_F_PREFIX}${_WORD}"
+                                    else _NEW_LINE="${_NEW_LINE}${_V_PREFIX}${_WORD}"; fi
+                                elif [ $_IS_FUNC_DECL -eq 1 ] || case "$_LIST_FUNCS" in *" ${_WORD} "* ) true;; *) false;; esac; then
+                                    if [ $_D_QUOTES -eq 1 ] && [ -z "$_UNSET_MODE" ]; then _NEW_LINE="${_NEW_LINE}${_WORD}"
+                                    else _NEW_LINE="${_NEW_LINE}${_F_PREFIX}${_WORD}"; fi
+                                elif [ $_D_QUOTES -eq 1 ]; then _NEW_LINE="${_NEW_LINE}${_WORD}"
+                                else _NEW_LINE="${_NEW_LINE}${_WORD}" ; fi
+                            fi
+                        fi
+                        _WORD=""
+                    fi
+
+                    case $_CH in
+                        "'")
+                            case $_D_QUOTES in 0) _S_QUOTES=1 ;; *) false ;; esac
+                        ;;
+                        *) false ;;
+                    esac ||
+                    case $_CH in
+                        '"')
+                            case $_D_QUOTES in 0) _D_QUOTES=1 ;; *) _D_QUOTES=0 ;; esac
+                        ;;
+                        $) _EXPECT_VAR=1 ;;
+                        [}%:-]) _EXPECT_VAR=0 ;;
+                        [\&\;|] | " " | "$_TAB" )
+                            _EXPECT_VAR=0
+                            case $_CH in [\&\;|] ) _UNSET_MODE="" ;; esac
+                        ;;
+                    esac
+
+                    _NEW_LINE="${_NEW_LINE}${_CH}"
+                    ;;
+            esac
+        done
+
+        if [ -n "$_WORD" ]; then
+            _PREV_CHAR=""
+            if [ -n "$_NEW_LINE" ]; then _PREV_CHAR="${_NEW_LINE#${_NEW_LINE%?}}"; fi
+
+            if [ "$_PREV_CHAR" = "-" ]; then
+                _NEW_LINE="${_NEW_LINE}${_WORD}"
+            else
+                _IS_SYS_VAR=0; case "$_BASH_ENV" in *" ${_WORD} "* ) _IS_SYS_VAR=1 ;; esac
+                if [ $_IS_SYS_VAR -eq 1 ]; then _NEW_LINE="${_NEW_LINE}${_WORD}"
+                elif [ "$_PREV_CHAR" = "/" ]; then _NEW_LINE="${_NEW_LINE}${_WORD}"
+                elif [ -n "$_UNSET_MODE" ]; then
+                    if [ "$_UNSET_MODE" = "f" ]; then _NEW_LINE="${_NEW_LINE}${_F_PREFIX}${_WORD}"
+                    else _NEW_LINE="${_NEW_LINE}${_V_PREFIX}${_WORD}"; fi
+                else
+                    if [ $_EXPECT_VAR -eq 1 ] ; then _NEW_LINE="${_NEW_LINE}${_V_PREFIX}${_WORD}"
+                    else case "$_LIST_FUNCS" in *" ${_WORD} "* ) _NEW_LINE="${_NEW_LINE}${_F_PREFIX}${_WORD}" ;; * ) _NEW_LINE="${_NEW_LINE}${_WORD}" ;; esac; fi
+                fi
+            fi
+        fi
+
+        _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}${_NEW_LINE}${_COMM_PART}
+    done
+}
+
+_get_bash_env_list ()
+{
+    _BASH_ENV_LIST=" ? ! * @ # $ - _ "
+    _BASH_ENV_LIST="$_BASH_ENV_LIST BASH BASHOPTS BASHPID BASH_ALIASES BASH_ARGC BASH_ARGV BASH_ARGV0 BASH_CMDS BASH_COMMAND BASH_COMPAT BASH_ENV BASH_EXECUTION_STRING BASH_LINENO BASH_LOADABLES_PATH BASH_REMATCH BASH_SOURCE BASH_SUBSHELL BASH_VERSINFO BASH_VERSION BASH_XTRACEFD "
+    _BASH_ENV_LIST="$_BASH_ENV_LIST CDPATH CHILD_MAX COLUMNS COMP_CWORD COMP_LINE COMP_POINT COMP_TYPE COMP_KEY COMP_WORDBREAKS COMP_WORDS COMPREPLY COPROC "
+    _BASH_ENV_LIST="$_BASH_ENV_LIST DIRSTACK "
+    _BASH_ENV_LIST="$_BASH_ENV_LIST EMACS ENV EPOCHREALTIME EPOCHSECONDS EUID EXECIGNORE "
+    _BASH_ENV_LIST="$_BASH_ENV_LIST FCEDIT FIGNORE FUNCNAME FUNCNEST "
+    _BASH_ENV_LIST="$_BASH_ENV_LIST GLOBIGNORE GROUPS "
+    _BASH_ENV_LIST="$_BASH_ENV_LIST histchars "
+    _BASH_ENV_LIST="$_BASH_ENV_LIST HOME HISTCMD HISTCONTROL HISTFILE HISTFILESIZE HISTIGNORE HISTSIZE HISTTIMEFORMAT HOSTFILE HOSTNAME HOSTTYPE "
+    _BASH_ENV_LIST="$_BASH_ENV_LIST IFS IGNOREEOF INPUTRC INSIDE_EMACS "
+    _BASH_ENV_LIST="$_BASH_ENV_LIST LANG LC_ALL LC_COLLATE LC_CTYPE LC_MESSAGES LC_NUMERIC LC_TIME LINENO LINES "
+    _BASH_ENV_LIST="$_BASH_ENV_LIST MAIL MAILPATH MACHTYPE MAILCHECK MAPFILE "
+    _BASH_ENV_LIST="$_BASH_ENV_LIST OLDPWD OPTERR OSTYPE OPTARG OPTIND "
+    _BASH_ENV_LIST="$_BASH_ENV_LIST PATH PIPESTATUS POSIXLY_CORRECT PPID PROMPT_COMMAND PROMPT_DIRTRIM PS0 PS1 PS2 PS3 PS4 PWD "
+    _BASH_ENV_LIST="$_BASH_ENV_LIST RANDOM READLINE_ARGUMENT READLINE_LINE READLINE_MARK READLINE_POINT REPLY "
+    _BASH_ENV_LIST="$_BASH_ENV_LIST SECONDS SHELL SHELLOPTS SHLVL SRANDOM "
+    _BASH_ENV_LIST="$_BASH_ENV_LIST TIMEFORMAT TMOUT TMPDIR "
+    _BASH_ENV_LIST="$_BASH_ENV_LIST UID USER "
+}
+
+_import_module ()
+{
+    _MODULE_FUNCS=
+    case ${_BASH_ENV_LIST:-} in
+        '')
+            _get_bash_env_list
+        ;;
+    esac
+    _import_module_$_TYPE_IMPORT
+    eval "${_MODULE_FUNCS:-}"
 }
 
 _exec_module ()
