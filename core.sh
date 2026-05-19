@@ -1745,6 +1745,10 @@ _import_package ()
 
 _import ()
 {
+    # $1     - _IMPORT_SPEC (module/function name)
+    # ${2:-} - as
+    # ${3:-} - _ALIAS
+
     case ${_MODULE_PATH:-} in
         '')
             false
@@ -1752,10 +1756,13 @@ _import ()
         *)
             is_file "$_MODULE_PATH" && {
                 # from subtest.foo import foo as super
-                _import_function "$_MODULE_PATH" "$1" "${3:-$_PREFIX_NAME}" || return
+                _push_prefix_name "${3:-$1}"
+                _import_function "$_MODULE_PATH" "$1" "$_PREFIX_NAME" || return
+                _pop_prefix_name "${3:-$1}"
             }
     esac || {
         _resolve_module_path "$1" || return
+        _push_prefix_name "${3:-$1}"
         set -- "$_SUFIX_MODULE_PATH" "$@"
         if is_file "$_MODULE_PATH"
         then
@@ -1763,12 +1770,12 @@ _import ()
                 "$_IDENTIFIER_PART")
                     # from subtest import foo as super
                     # import subtest.foo as super
-                    _import_module "$_MODULE_PATH" "${4:-$_PREFIX_NAME}"
+                    _import_module "$_MODULE_PATH" "$_PREFIX_NAME"
                 ;;
                 *)
                     # from subtest import foo.caty as super
                     # import subtest.foo.caty as super
-                    _import_function "$_MODULE_PATH" "${_IDENTIFIER#"$_IDENTIFIER_PART."}" "${4:-$_PREFIX_NAME}"
+                    _import_function "$_MODULE_PATH" "${_IDENTIFIER#"$_IDENTIFIER_PART."}" "$_PREFIX_NAME"
                 ;;
             esac || return
         elif is_dir "$_MODULE_PATH"
@@ -1780,6 +1787,7 @@ _import ()
             _modulenotfounderror 3 "$_MODULE_PATH" || return
         fi
         _pop_module_path "$1"
+        _pop_prefix_name "${4:-$2}"
     }
 }
 
