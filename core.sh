@@ -1008,24 +1008,24 @@ _check_import_syntax ()
     esac
 }
 
-_change_module_path ()
+_push_module_path ()
 {
     _MODULE_PATH=$_MODULE_PATH/$1
     _SUFIX_MODULE_PATH=$_SUFIX_MODULE_PATH/$1
 }
 
-_return_module_path ()
+_pop_module_path ()
 {
     _MODULE_PATH=${_MODULE_PATH%$1}
 }
 
 _PREFIX_NAME=
-_change_prefix_name ()
+_push_prefix_name ()
 {
     _PREFIX_NAME=${_PREFIX_NAME:+$_PREFIX_NAME.}$1
 }
 
-_return_prefix_name ()
+_pop_prefix_name ()
 {
     case $1 in
         ..)
@@ -1064,9 +1064,9 @@ _locate_module ()
     do
         _MODULE_PATH="${SYS_PART_PATH:-${_MODULE_PATH:-$SCRIPT_DIR}}"
         is_file "$_MODULE_PATH/$_IDENTIFIER_PART.sh" &&
-        _change_module_path "$_IDENTIFIER_PART.sh" || {
+        _push_module_path "$_IDENTIFIER_PART.sh" || {
             is_dir "$_MODULE_PATH/$_IDENTIFIER_PART" &&
-            _change_module_path "$_IDENTIFIER_PART"
+            _push_module_path "$_IDENTIFIER_PART"
         } && break || _MODULE_PATH=
     done
     case $_MODULE_PATH in
@@ -1101,17 +1101,17 @@ _resolve_module_path ()
         case $_MODULE_PART_PATH in
             '')
                 is_dir "$_MODULE_PATH/.." &&
-                _change_module_path '..'
+                _push_module_path '..'
                 _IDENTIFIER_PART=${_IDENTIFIER_PART:+$_IDENTIFIER_PART.}$_MODULE_PART_PATH
             ;;
             *)
                 is_file "$_MODULE_PATH/$_MODULE_PART_PATH.sh" &&
-                _change_module_path "$_MODULE_PART_PATH.sh" && {
+                _push_module_path "$_MODULE_PART_PATH.sh" && {
                     _IDENTIFIER_PART=${_IDENTIFIER_PART:+$_IDENTIFIER_PART.}$_MODULE_PART_PATH
                     break
                 } || {
                     is_dir "$_MODULE_PATH/$_MODULE_PART_PATH" &&
-                    _change_module_path "$_MODULE_PART_PATH"
+                    _push_module_path "$_MODULE_PART_PATH"
                 } || break
             ;;
         esac || _modulenotfounderror 1 || return
@@ -1779,7 +1779,7 @@ _import ()
         else
             _modulenotfounderror 3 "$_MODULE_PATH" || return
         fi
-        _return_module_path "$1"
+        _pop_module_path "$1"
     }
 }
 
@@ -1858,7 +1858,7 @@ from ()
                     _check_import_syntax "$@" &&
                     _resolve_module_path "$_PATH_FROM" && {
                         set -- "$_SUFIX_MODULE_PATH"
-                        _import_buffer && _return_module_path "$1"
+                        _import_buffer && _pop_module_path "$1"
                     } || return
                 ;;
                 *)
