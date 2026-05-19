@@ -409,8 +409,9 @@ die ()
 }
 
 PWD=$(pwd)
-CR=$(puts '\r')
-TAB=$(puts '\t')
+ CR=$(puts '\015')
+TAB=$(puts '\011')
+SOH=$(puts '\001')
 SPACE=' '
 BLANK=$SPACE$TAB
 POSIX_IFS=$SPACE$TAB$LF
@@ -1117,23 +1118,15 @@ _resolve_module_path ()
     done
 }
 
-_import_module_awk()
+_import_module_awk ()
 {
     _TARGET_FILE="$1"
-    _PREFIX="zzz.zzz"
-    _SOH=$(printf '\001')
-
-    if [ -z "$_TARGET_FILE" ] || [ ! -f "$_TARGET_FILE" ]; then
-        echo "Error: File '$_TARGET_FILE' not found." >&2
-        return 1
-    fi
-
     _MODULE_FUNCS=$(
         2>&1 awk '
             BEGIN {
                 in_heredoc = 0
                 hd_token = ""
-                soh = "'"${_SOH:-}"'"
+                soh = "'"${SOH:-}"'"
                 bash_env_list = "'"${_BASH_ENV_LIST:-}"'"
                 split(bash_env_list, bash_env, " ")
                 for (x in bash_env) env_vars[bash_env[x]] = 1
@@ -1163,8 +1156,8 @@ _import_module_awk()
                 else clean_total = clean_total soh clean
             }
             END {
-                prefix = "'"${_PREFIX}"'."
-                v_prefix = "'"${_PREFIX}"'_"
+                prefix = "'"${_PREFIX_NAME}"'."
+                v_prefix = "'"${_PREFIX_NAME}"'_"
                 gsub(/\./, "_", v_prefix)
 
                 # --- PASS 1: ПОСИМВОЛЬНЫЙ СБОР ФУНКЦИЙ MODULE ---
@@ -1331,9 +1324,9 @@ _import_module_awk()
 _import_module_shell ()
 {
     _INPUT_FILE="$1"
-    _PREFIX="zzz.zzz"
-    _V_PREFIX="zzz_zzz_"
-    _F_PREFIX="${_PREFIX}."
+    _F_PREFIX="$_PREFIX_NAME."
+    str_replace "$_PREFIX_NAME" . _
+    _V_PREFIX="${CORE_RESULT}_"
 
     _BASH_ENV=${_BASH_ENV_LIST:-}
 
@@ -1341,12 +1334,10 @@ _import_module_shell ()
     _LIST_FUNCS=" "
     _IN_HEREDOC=0
     _HD_TOKEN=""
-    _TAB=$(printf '\011')
-    _SOH=$(printf '\001')
 
     # --- PASS 1: ПОСИМВОЛЬНЫЙ СБОР ЯВНО ОБЪЯВЛЕННЫХ ФУНКЦИЙ ---
     while IFS= read -r _RAW_LINE || [ -n "$_RAW_LINE" ]; do
-        if [ -z "$_ALL_LINES" ]; then _ALL_LINES="$_RAW_LINE"; else _ALL_LINES="${_ALL_LINES}$_SOH${_RAW_LINE}"; fi
+        if [ -z "$_ALL_LINES" ]; then _ALL_LINES="$_RAW_LINE"; else _ALL_LINES="${_ALL_LINES}$SOH${_RAW_LINE}"; fi
 
         _CLEAN_LINE="${_RAW_LINE%%#*}"
         _REST_PARSE="$_CLEAN_LINE"
@@ -1378,14 +1369,14 @@ _import_module_shell ()
 
                     while [ -n "$_TAIL" ]; do
                         _T_CH="${_TAIL%"${_TAIL#?}"}"
-                        case "$_T_CH" in " " | "$_TAB" ) _TAIL="${_TAIL#?}" ;; * ) break ;; esac
+                        case "$_T_CH" in " " | "$TAB" ) _TAIL="${_TAIL#?}" ;; * ) break ;; esac
                     done
 
                     if [ "${_TAIL%"${_TAIL#?}"}" = "(" ]; then
                         _TAIL="${_TAIL#?}"
                         while [ -n "$_TAIL" ]; do
                             _T_CH="${_TAIL%"${_TAIL#?}"}"
-                            case "$_T_CH" in " " | "$_TAB" ) _TAIL="${_TAIL#?}" ;; * ) break ;; esac
+                            case "$_T_CH" in " " | "$TAB" ) _TAIL="${_TAIL#?}" ;; * ) break ;; esac
                         done
                         if [ "${_TAIL%"${_TAIL#?}"}" = ")" ]; then
                             _IS_A_FUNC=1
@@ -1398,7 +1389,7 @@ _import_module_shell ()
                         while [ -n "$_F_TAIL" ]; do
                             _FT_CH="${_F_TAIL%"${_F_TAIL#?}"}"
                             case "$_FT_CH" in
-                                " " | "$_TAB" | ";" | "{" ) _F_TAIL="${_F_TAIL#?}" ;;
+                                " " | "$TAB" | ";" | "{" ) _F_TAIL="${_F_TAIL#?}" ;;
                                 * ) _IS_CLEAN_LINE=0; break ;;
                             esac
                         done
@@ -1473,13 +1464,13 @@ _import_module_shell ()
 
     while [ -n "$_REST_LINES" ]; do
         case "$_REST_LINES" in
-            *"$_SOH"* ) _LINE="${_REST_LINES%%$_SOH*}"; _REST_LINES="${_REST_LINES#*$_SOH}" ;;
+            *"$SOH"* ) _LINE="${_REST_LINES%%$SOH*}"; _REST_LINES="${_REST_LINES#*$SOH}" ;;
             * ) _LINE="$_REST_LINES"; _REST_LINES="" ;;
         esac
 
         if [ $_IN_HEREDOC -eq 1 ]; then
             _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_LINE
-            _TRIMMED_LINE="${_LINE##[ $_TAB]*}"
+            _TRIMMED_LINE="${_LINE##[ $TAB]*}"
             if [ "$_LINE" = "$_HD_TOKEN" ] || [ "$_TRIMMED_LINE" = "$_HD_TOKEN" ]; then
                 _IN_HEREDOC=0; _HD_TOKEN=""
             fi
@@ -1491,8 +1482,8 @@ _import_module_shell ()
             *"<<-"* | *"<<"* )
                 _HD_PART=""
                 case "$_LINE" in *"<<-"* ) _HD_PART="${_LINE#*<<-}" ;; *"<<"*  ) _HD_PART="${_LINE#*<<}" ;; esac
-                _HD_PART="${_HD_PART##[ $_TAB]*}"
-                _RAW_TOKEN="${_HD_PART%%[ $_TAB;]*}"
+                _HD_PART="${_HD_PART##[ $TAB]*}"
+                _RAW_TOKEN="${_HD_PART%%[ $TAB;]*}"
 
                 _CLEAN_TOKEN="" _T_REST="$_RAW_TOKEN"
                 while [ -n "$_T_REST" ]; do
@@ -1600,13 +1591,13 @@ _import_module_shell ()
                                         _F_REST="$_REST_CONTEXT"
                                         while [ -n "$_F_REST" ]; do
                                             _FT_CH="${_F_REST%"${_F_REST#?}"}"
-                                            case "$_FT_CH" in " " | "$_TAB" ) _F_REST="${_F_REST#?}" ;; * ) break ;; esac
+                                            case "$_FT_CH" in " " | "$TAB" ) _F_REST="${_F_REST#?}" ;; * ) break ;; esac
                                         done
                                         if [ "${_F_REST%"${_F_REST#?}"}" = "(" ]; then
                                             _F_REST="${_F_REST#?}"
                                             while [ -n "$_F_REST" ]; do
                                                 _FT_CH="${_F_REST%"${_F_REST#?}"}"
-                                                case "$_FT_CH" in " " | "$_TAB" ) _F_REST="${_F_REST#?}" ;; * ) break ;; esac
+                                                case "$_FT_CH" in " " | "$TAB" ) _F_REST="${_F_REST#?}" ;; * ) break ;; esac
                                             done
                                             if [ "${_F_REST%"${_F_REST#?}"}" = ")" ]; then _IS_FUNC_DECL=1; fi
                                         fi
@@ -1640,7 +1631,7 @@ _import_module_shell ()
                         ;;
                         $) _EXPECT_VAR=1 ;;
                         [}%:-]) _EXPECT_VAR=0 ;;
-                        [\&\;|] | " " | "$_TAB" )
+                        [\&\;|] | " " | "$TAB" )
                             _EXPECT_VAR=0
                             case $_CH in [\&\;|] ) _UNSET_MODE="" ;; esac
                         ;;
