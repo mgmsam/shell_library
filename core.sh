@@ -1731,7 +1731,10 @@ _import_package ()
     else
         for _MODULE in "$1"/*.sh
         do
+            _MODULE_NAME="${_MODULE##*/}"
+            _push_prefix_name "${_MODULE_NAME%.sh}"
             _import_module
+            _pop_prefix_name "${_MODULE_NAME%.sh}"
         done
     fi
 }
