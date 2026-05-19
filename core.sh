@@ -1007,15 +1007,6 @@ _check_import_syntax ()
     esac
 }
 
-_exec_module ()
-{
-    ERROR=$(2>&1 . "${1:-}") || {
-        say "$ERROR"
-        return ${SAY_RESULT:-1}
-    }
-    . "$1" && _LOADED=true
-}
-
 _change_module_path ()
 {
     _MODULE_PATH=$_MODULE_PATH/$1
@@ -1025,6 +1016,24 @@ _change_module_path ()
 _return_module_path ()
 {
     _MODULE_PATH=${_MODULE_PATH%$1}
+}
+
+_PREFIX_NAME=
+_change_prefix_name ()
+{
+    _PREFIX_NAME=${_PREFIX_NAME:+$_PREFIX_NAME.}$1
+}
+
+_return_prefix_name ()
+{
+    case $1 in
+        ..)
+            _PREFIX_NAME=${_PREFIX_NAME%.*}
+        ;;
+        *)
+            _PREFIX_NAME=${_PREFIX_NAME%.${1%.sh}}
+        ;;
+    esac
 }
 
 _modulenotfounderror ()
