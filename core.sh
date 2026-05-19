@@ -1070,7 +1070,7 @@ _locate_module ()
     done
     case $_MODULE_PATH in
         '')
-            _modulenotfounderror 1 || return
+            _modulenotfounderror 1
         ;;
     esac
 }
@@ -1786,7 +1786,7 @@ _import ()
             #        import subtest as super
             _import_package "$_MODULE_PATH"
         else
-            _modulenotfounderror 3 "$_MODULE_PATH"
+            _modulenotfounderror 3 "$_MODULE_PATH" || return
         fi
         _return_module_path "$1"
     }
