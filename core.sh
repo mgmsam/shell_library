@@ -1698,10 +1698,7 @@ _import_module ()
 
 _import_function ()
 {
-    _MODULE_PATH=$1
-    _FUNCTION_NAME=$2
-    _NEW_FUNCTION_NAME=${3:-$2}
-
+    _FUNCTION_NAME=$1
     $_CORE_IMPORT_AS || {
         echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\""
         echo "    $_IMPORT_STATEMENT"
@@ -1713,7 +1710,7 @@ _import_function ()
         2>&1 bash -c ". '$_MODULE_PATH' && type '$_FUNCTION_NAME'"
     ) && {
         str_replace "$_FUNCTION" "$_FUNCTION_NAME is a function
-$_FUNCTION_NAME" "$_NEW_FUNCTION_NAME"
+$_FUNCTION_NAME" "$_PREFIX_NAME"
         eval "$CORE_RESULT"
     } || _modulenotfounderror 3 "$_FUNCTION_NAME"
 }
@@ -1753,7 +1750,7 @@ _import ()
             is_file "$_MODULE_PATH" && {
                 # from subtest.foo import foo as super
                 _push_prefix_name "${3:-$1}"
-                _import_function "$_MODULE_PATH" "$1" "$_PREFIX_NAME" || return
+                _import_function "$1" || return
                 _pop_prefix_name "${3:-$1}"
             }
     esac || {
@@ -1766,12 +1763,12 @@ _import ()
                 "$_IDENTIFIER_PART")
                     # from subtest import foo as super
                     # import subtest.foo as super
-                    _import_module "$_MODULE_PATH" "$_PREFIX_NAME"
+                    _import_module
                 ;;
                 *)
                     # from subtest import foo.caty as super
                     # import subtest.foo.caty as super
-                    _import_function "$_MODULE_PATH" "${_IDENTIFIER#"$_IDENTIFIER_PART."}" "$_PREFIX_NAME"
+                    _import_function "${_IDENTIFIER#"$_IDENTIFIER_PART."}"
                 ;;
             esac || return
         elif is_dir "$_MODULE_PATH"
