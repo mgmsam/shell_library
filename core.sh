@@ -1316,7 +1316,7 @@ _import_module_awk ()
                     print new_code comment_part
                 }
             }
-        ' < "$_MODULE_PATH"
+        ' < "$_MODULE"
     )
 }
 
@@ -1451,7 +1451,7 @@ _import_module_shell ()
                 done
                 ;;
         esac
-    done < "$_MODULE_PATH"
+    done < "$_MODULE"
 
     # --- PASS 2: ТОКЕНИЗАТОР ЗАМЕН С НАКОПЛЕНИЕМ В ПЕРЕМЕННУЮ ---
     _IN_HEREDOC=0
@@ -1731,7 +1731,7 @@ _import_package ()
     else
         for _MODULE in "$1"/*.sh
         do
-            _exec_module "$_MODULE"
+            _import_module
         done
     fi
 }
@@ -1763,6 +1763,7 @@ _import ()
                 "$_IDENTIFIER_PART")
                     # from subtest import foo as super
                     # import subtest.foo as super
+                    _MODULE="$_MODULE_PATH"
                     _import_module
                 ;;
                 *)
