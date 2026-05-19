@@ -1696,7 +1696,7 @@ _import_module ()
             _get_bash_env_list
         ;;
     esac
-    _import_module_$_TYPE_IMPORT
+    _import_module_$_TYPE_IMPORT "$@"
     eval "${_MODULE_FUNCS:-}"
 }
 
@@ -1805,6 +1805,46 @@ _import_module ()
             fi
         ;;
     esac
+}
+
+_import ()
+{
+    case ${_MODULE_PATH:-} in
+        '')
+            false
+        ;;
+        *)
+            is_file "$_MODULE_PATH" && {
+                # from subtest.foo import foo as super
+                _import_function "$_MODULE_PATH" "$1" "${3:-$_PREFIX_NAME}" || return
+            }
+    esac || {
+        _resolve_module_path "$1" || return
+        set -- "$_SUFIX_MODULE_PATH" "$@"
+        if is_file "$_MODULE_PATH"
+        then
+            case $_IDENTIFIER in
+                "$_IDENTIFIER_PART")
+                    # from subtest import foo as super
+                    # import subtest.foo as super
+                    _import_module "$_MODULE_PATH" "${4:-$_PREFIX_NAME}"
+                ;;
+                *)
+                    # from subtest import foo.caty as super
+                    # import subtest.foo.caty as super
+                    _import_function "$_MODULE_PATH" "${_IDENTIFIER#"$_IDENTIFIER_PART."}" "${4:-$_PREFIX_NAME}"
+                ;;
+            esac || return
+        elif is_dir "$_MODULE_PATH"
+        then
+            # from . import subtest as super
+            #        import subtest as super
+            _import_package "$_MODULE_PATH"
+        else
+            _modulenotfounderror 3 "$_MODULE_PATH"
+        fi
+        _return_module_path "$1"
+    }
 }
 
 _import_buffer ()
