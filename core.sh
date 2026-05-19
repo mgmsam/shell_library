@@ -693,7 +693,15 @@ is_valid_identifier ()
     for _MODULE_PART_NAME
     do
         case $_IMPORT_COMMAND in
-            from | import)
+            from)
+            ;;
+            import)
+                case $_COUNT in
+                    3)
+                        $_ONE_MODULE_PART_NAME &&
+                         _ONE_MODULE_PART_NAME=false || _syntax_error 1
+                    ;;
+                esac
             ;;
             *)
                 $_ONE_MODULE_PART_NAME &&
