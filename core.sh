@@ -439,7 +439,7 @@ case ${BASH_VERSION:-} in
     ;;
 esac
 
-type awk >/dev/null && {
+type awk >/dev/null 2>&1 && {
     _TYPE_IMPORT=awk
 } || _TYPE_IMPORT=shell
 
