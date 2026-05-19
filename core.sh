@@ -696,7 +696,7 @@ is_valid_identifier ()
             from)
             ;;
             import)
-                case $_COUNT in
+                case $_IMPORT_TOKEN in
                     3)
                         $_ONE_MODULE_PART_NAME &&
                          _ONE_MODULE_PART_NAME=false || _syntax_error 1
@@ -818,7 +818,7 @@ _check_import_syntax ()
         ;;
     esac
 
-    _COUNT=0
+    _IMPORT_TOKEN=0
     while
         case $# in
             0)
@@ -829,8 +829,8 @@ _check_import_syntax ()
         _MODULE=$1
         shift
 
-        _COUNT=$((_COUNT + 1))
-        case $_COUNT in
+        _IMPORT_TOKEN=$((_IMPORT_TOKEN + 1))
+        case $_IMPORT_TOKEN in
             1)
                 case $_MODULE in
                     ,*)
@@ -842,7 +842,7 @@ _check_import_syntax ()
                         _MODULE="${_MODULE%%,*}"
                         is_valid_identifier "$_MODULE" || return
                         _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_MODULE'"
-                        _COUNT=0
+                        _IMPORT_TOKEN=0
                         $_MERGE &&
                             _IMPORT_SPECS="$_IMPORT_SPECS$_MODULE," ||
                             _IMPORT_SPECS="${_IMPORT_SPECS:+$_IMPORT_SPECS }$_MODULE,"
@@ -852,7 +852,7 @@ _check_import_syntax ()
                         _MODULE="${_MODULE%,}"
                         is_valid_identifier "$_MODULE" || return
                         _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_MODULE'"
-                        _COUNT=0
+                        _IMPORT_TOKEN=0
                         $_MERGE &&
                             _IMPORT_SPECS="$_IMPORT_SPECS$_MODULE," ||
                             _IMPORT_SPECS="${_IMPORT_SPECS:+$_IMPORT_SPECS }$_MODULE,"
@@ -880,7 +880,7 @@ _check_import_syntax ()
                                 _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}${_IMPORT_SPEC:+"'$_IMPORT_SPEC' "}'$_MODULE'"
                                 _IMPORT_SPEC=
                                 _IMPORT_SPECS="${_IMPORT_SPECS:+$_IMPORT_SPECS },$_MODULE,"
-                                _COUNT=0
+                                _IMPORT_TOKEN=0
                                 _MERGE=true
                             ;;
                             *,)
@@ -890,14 +890,14 @@ _check_import_syntax ()
                                 _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}${_IMPORT_SPEC:+"'$_IMPORT_SPEC' "}'$_MODULE'"
                                 _IMPORT_SPEC=
                                 _IMPORT_SPECS="$_IMPORT_SPECS ,$_MODULE,"
-                                _COUNT=0
+                                _IMPORT_TOKEN=0
                             ;;
                             *)
                                 _MODULE_NAME=,
                                 is_valid_identifier "${_MODULE#,}" || return
                                 _IMPORT_SPEC="${_IMPORT_SPEC:+$_IMPORT_SPEC }$_MODULE"
                                 _IMPORT_SPECS="${_IMPORT_SPECS:+$_IMPORT_SPECS }$_MODULE"
-                                _COUNT=1
+                                _IMPORT_TOKEN=1
                             ;;
                         esac
                     ;;
@@ -905,7 +905,7 @@ _check_import_syntax ()
                         _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC'"
                         _IMPORT_SPEC=
                         _IMPORT_SPECS="$_IMPORT_SPECS ,"
-                        _COUNT=0
+                        _IMPORT_TOKEN=0
                     ;;
                     as)
                         case $# in
@@ -938,7 +938,7 @@ _check_import_syntax ()
                         _IMPORT_SPEC=
                         _IMPORT_SPECS="$_IMPORT_SPECS $_MODULE,"
                         _MERGE=true
-                        _COUNT=0
+                        _IMPORT_TOKEN=0
                     ;;
                     *,)
                         _MODULE="${_MODULE%,}"
@@ -946,7 +946,7 @@ _check_import_syntax ()
                         _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC' '$_MODULE'"
                         _IMPORT_SPEC=
                         _IMPORT_SPECS="$_IMPORT_SPECS $_MODULE,"
-                        _COUNT=0
+                        _IMPORT_TOKEN=0
                         case $# in
                             0)
                                 _MODULE_NAME=' '
@@ -972,13 +972,13 @@ _check_import_syntax ()
                         esac
                         _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC'"
                         _IMPORT_SPEC=
-                        _COUNT=0
+                        _IMPORT_TOKEN=0
                     ;;
                     ,*)
                         set -- "${_MODULE#,}" "$@"
                         _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC'"
                         _IMPORT_SPEC=
-                        _COUNT=0
+                        _IMPORT_TOKEN=0
                     ;;
                     *)
                         false
