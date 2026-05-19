@@ -1080,19 +1080,21 @@ _resolve_module_path ()
 
     for _MODULE_PART_PATH
     do
-        is_dir $_MODULE_PATH || _modulenotfounderror 2 || return
-        _IDENTIFIER_PART=${_IDENTIFIER_PART:+$_IDENTIFIER_PART.}$_MODULE_PART_PATH
         case $_MODULE_PART_PATH in
             '')
                 is_dir "$_MODULE_PATH/.." &&
                 _change_module_path '..'
+                _IDENTIFIER_PART=${_IDENTIFIER_PART:+$_IDENTIFIER_PART.}$_MODULE_PART_PATH
             ;;
             *)
                 is_file "$_MODULE_PATH/$_MODULE_PART_PATH.sh" &&
-                _change_module_path "$_MODULE_PART_PATH.sh" || {
+                _change_module_path "$_MODULE_PART_PATH.sh" && {
+                    _IDENTIFIER_PART=${_IDENTIFIER_PART:+$_IDENTIFIER_PART.}$_MODULE_PART_PATH
+                    break
+                } || {
                     is_dir "$_MODULE_PATH/$_MODULE_PART_PATH" &&
                     _change_module_path "$_MODULE_PART_PATH"
-                }
+                } || break
             ;;
         esac || _modulenotfounderror 1 || return
     done
@@ -1748,28 +1750,28 @@ _import_module ()
                 ;;
             esac || {
                 _resolve_module_path "$1" || return
-                set -- "$_SUFIX_MODULE_PATH"
+                set -- "$1" "$_SUFIX_MODULE_PATH"
                 if is_file "$_MODULE_PATH"
                 then
-                    _exec_module "$_MODULE_PATH"
-                    _return_module_path "$1"
+                    case $_IDENTIFIER in
+                        "$_IDENTIFIER_PART")
+                            _exec_module "$_MODULE_PATH"
+                            _return_module_path "$2"
+                        ;;
+                        *)
+                            _import_function "$_MODULE_PATH" "${_IDENTIFIER#"$_IDENTIFIER_PART."}"
+                        ;;
+                    esac || return
                 elif is_dir "$_MODULE_PATH"
                 then
                     _import_package "$_MODULE_PATH"
-                    _return_module_path "$1"
+                    _return_module_path "$2"
                 else
                     _modulenotfounderror 3 "$_MODULE_PATH/$1"
                 fi
             }
-            return
         ;;
         3)
-            case ${_MODULE_PATH:-} in
-                '')
-                    _resolve_module_path "$1" || return
-                ;;
-            esac
-
             if is_file "$_MODULE_PATH"
             then
                 _import_function "$_MODULE_PATH" "$1" "$3"
@@ -1792,7 +1794,7 @@ _import_module ()
                 fi
             else
                 _modulenotfounderror 3 "$_MODULE_PATH/$1"
-            fi || return
+            fi
         ;;
     esac
 }
