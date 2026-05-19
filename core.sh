@@ -1709,14 +1709,6 @@ _import_module ()
     eval "${_MODULE_FUNCS:-}"
 }
 
-_exec_module ()
-{
-    set -- "$1" "${_FILE_PATH:-}"
-    _FILE_PATH=$1
-    . "$1"
-    _FILE_PATH=$2
-}
-
 _import_function ()
 {
     _MODULE_PATH=$1
@@ -1739,6 +1731,14 @@ $_FUNCTION_NAME" "$_NEW_FUNCTION_NAME"
     } || _modulenotfounderror 3 "$_FUNCTION_NAME"
 }
 
+_exec_module ()
+{
+    set -- "$1" "${_FILE_PATH:-}"
+    _FILE_PATH=$1
+    . "$1"
+    _FILE_PATH=$2
+}
+
 _import_package ()
 {
     if is_file "$1/__init__.sh"
@@ -1750,70 +1750,6 @@ _import_package ()
             _exec_module "$_MODULE"
         done
     fi
-}
-
-_import_module ()
-{
-    case $# in
-        1)
-            case ${_MODULE_PATH:-} in
-                '')
-                    false
-                ;;
-                *)
-                    is_file "$_MODULE_PATH" && {
-                        _import_function "$_MODULE_PATH" "$1" || return
-                    }
-                ;;
-            esac || {
-                _resolve_module_path "$1" || return
-                set -- "$1" "$_SUFIX_MODULE_PATH"
-                if is_file "$_MODULE_PATH"
-                then
-                    case $_IDENTIFIER in
-                        "$_IDENTIFIER_PART")
-                            _exec_module "$_MODULE_PATH"
-                            _return_module_path "$2"
-                        ;;
-                        *)
-                            _import_function "$_MODULE_PATH" "${_IDENTIFIER#"$_IDENTIFIER_PART."}"
-                        ;;
-                    esac || return
-                elif is_dir "$_MODULE_PATH"
-                then
-                    _import_package "$_MODULE_PATH"
-                    _return_module_path "$2"
-                else
-                    _modulenotfounderror 3 "$_MODULE_PATH/$1"
-                fi
-            }
-        ;;
-        3)
-            if is_file "$_MODULE_PATH"
-            then
-                _import_function "$_MODULE_PATH" "$1" "$3"
-            elif is_dir "$_MODULE_PATH"
-            then
-                _resolve_module_path "$1" || return
-                set -- "$@" "$_SUFIX_MODULE_PATH"
-                if is_file "$_MODULE_PATH"
-                then
-                    _import_function "$_MODULE_PATH" "$1" "$3"
-                    _return_module_path "$4"
-                elif is_dir "$_MODULE_PATH"
-                then
-                    echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\""
-                    echo "    $_IMPORT_STATEMENT"
-                    echo "ModuleError: 'import ... as ...' not supported for package"
-                    return 1
-                else
-                    _modulenotfounderror 3 "$_MODULE_PATH/$1"
-                fi
-            else
-                _modulenotfounderror 3 "$_MODULE_PATH/$1"
-            fi
-        ;;
-    esac
 }
 
 _import ()
@@ -1862,7 +1798,7 @@ _import_buffer ()
     _IMPORT_BUFFER=
     for _MODULE
     do
-        _import_module $_MODULE
+        _import $_MODULE
     done
 }
 
