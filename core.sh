@@ -1120,7 +1120,6 @@ _resolve_module_path ()
 
 _import_module_awk ()
 {
-    _TARGET_FILE="$1"
     _MODULE_FUNCS=$(
         2>&1 awk '
             BEGIN {
@@ -1156,8 +1155,8 @@ _import_module_awk ()
                 else clean_total = clean_total soh clean
             }
             END {
-                prefix = "'"${_PREFIX_NAME}"'."
-                v_prefix = "'"${_PREFIX_NAME}"'_"
+                prefix = "'"${_PREFIX_NAME:-}"'."
+                v_prefix = "'"${_PREFIX_NAME:-}"'_"
                 gsub(/\./, "_", v_prefix)
 
                 # --- PASS 1: ПОСИМВОЛЬНЫЙ СБОР ФУНКЦИЙ MODULE ---
@@ -1317,18 +1316,15 @@ _import_module_awk ()
                     print new_code comment_part
                 }
             }
-        ' < "$_TARGET_FILE"
+        ' < "$_MODULE_PATH"
     )
 }
 
 _import_module_shell ()
 {
-    _INPUT_FILE="$1"
     _F_PREFIX="$_PREFIX_NAME."
     str_replace "$_PREFIX_NAME" . _
     _V_PREFIX="${CORE_RESULT}_"
-
-    _BASH_ENV=${_BASH_ENV_LIST:-}
 
     _ALL_LINES=""
     _LIST_FUNCS=" "
@@ -1362,7 +1358,7 @@ _import_module_shell ()
                         continue
                     fi
 
-                    case "$_BASH_ENV" in *" $_WORD "* ) _EXPECT_FUNC=0; continue ;; esac
+                    case "$_BASH_ENV_LIST" in *" $_WORD "* ) _EXPECT_FUNC=0; continue ;; esac
 
                     _TAIL="$_REST_PARSE"
                     _IS_A_FUNC=0
@@ -1455,7 +1451,7 @@ _import_module_shell ()
                 done
                 ;;
         esac
-    done < "$_INPUT_FILE"
+    done < "$_MODULE_PATH"
 
     # --- PASS 2: ТОКЕНИЗАТОР ЗАМЕН С НАКОПЛЕНИЕМ В ПЕРЕМЕННУЮ ---
     _IN_HEREDOC=0
@@ -1576,7 +1572,7 @@ _import_module_shell ()
                             _NEW_LINE="${_NEW_LINE}${_WORD}"
                         else
                             _REST_CONTEXT="${_CH}${_REST}"
-                            _IS_SYS_VAR=0; case "$_BASH_ENV" in *" ${_WORD} "* ) _IS_SYS_VAR=1 ;; esac
+                            _IS_SYS_VAR=0; case "$_BASH_ENV_LIST" in *" ${_WORD} "* ) _IS_SYS_VAR=1 ;; esac
 
                             if [ $_IS_SYS_VAR -eq 1 ]; then
                                 _NEW_LINE="${_NEW_LINE}${_WORD}"
@@ -1649,7 +1645,7 @@ _import_module_shell ()
             if [ "$_PREV_CHAR" = "-" ]; then
                 _NEW_LINE="${_NEW_LINE}${_WORD}"
             else
-                _IS_SYS_VAR=0; case "$_BASH_ENV" in *" ${_WORD} "* ) _IS_SYS_VAR=1 ;; esac
+                _IS_SYS_VAR=0; case "$_BASH_ENV_LIST" in *" ${_WORD} "* ) _IS_SYS_VAR=1 ;; esac
                 if [ $_IS_SYS_VAR -eq 1 ]; then _NEW_LINE="${_NEW_LINE}${_WORD}"
                 elif [ "$_PREV_CHAR" = "/" ]; then _NEW_LINE="${_NEW_LINE}${_WORD}"
                 elif [ -n "$_UNSET_MODE" ]; then
@@ -1696,7 +1692,7 @@ _import_module ()
             _get_bash_env_list
         ;;
     esac
-    _import_module_$_TYPE_IMPORT "$@"
+    _import_module_$_TYPE_IMPORT
     eval "${_MODULE_FUNCS:-}"
 }
 
