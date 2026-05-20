@@ -475,16 +475,18 @@ case $_CURRENT_SHELL in
     bash | mksh | zsh)
         which "$_CURRENT_SHELL"
         _CURRENT_SHELL=$CORE_RESULT
-        _CORE_IMPORT_AS=true
+        _IMPORT_AS=true
+        _IMPORT_PREFIX_SEP=.
     ;;
     *)
-        _CORE_IMPORT_AS=false
+        _IMPORT_AS=false
+        _IMPORT_PREFIX_SEP=_
     ;;
 esac
 
 type awk >/dev/null 2>&1 && {
-    _TYPE_IMPORT=awk
-} || _TYPE_IMPORT=shell
+    _IMPORT_TYPE=awk
+} || _IMPORT_TYPE=shell
 
 is_diff ()
 {
@@ -1044,20 +1046,20 @@ _pop_module_path ()
     _MODULE_PATH=${_MODULE_PATH%$1}
 }
 
-_PREFIX_NAME=
+_IMPORT_PREFIX_NAME=
 _push_prefix_name ()
 {
-    _PREFIX_NAME=${_PREFIX_NAME:+$_PREFIX_NAME.}$1
+    _IMPORT_PREFIX_NAME=${_IMPORT_PREFIX_NAME:+$_IMPORT_PREFIX_NAME$_IMPORT_PREFIX_SEP}$1
 }
 
 _pop_prefix_name ()
 {
     case $1 in
         ..)
-            _PREFIX_NAME=${_PREFIX_NAME%.*}
+            _IMPORT_PREFIX_NAME=${_IMPORT_PREFIX_NAME%$_IMPORT_PREFIX_SEP*}
         ;;
         *)
-            _PREFIX_NAME=${_PREFIX_NAME%.${1%.sh}}
+            _IMPORT_PREFIX_NAME=${_IMPORT_PREFIX_NAME%$_IMPORT_PREFIX_SEP${1%.sh}}
         ;;
     esac
 }
@@ -1180,8 +1182,8 @@ _import_module_awk ()
                 else clean_total = clean_total soh clean
             }
             END {
-                prefix = "'"${_PREFIX_NAME:-}"'."
-                v_prefix = "'"${_PREFIX_NAME:-}"'_"
+                prefix = "'"${_IMPORT_PREFIX_NAME:-}${_IMPORT_PREFIX_SEP:-}"'"
+                v_prefix = "'"${_IMPORT_PREFIX_NAME:-}"'_"
                 gsub(/\./, "_", v_prefix)
 
                 # --- PASS 1: ПОСИМВОЛЬНЫЙ СБОР ФУНКЦИЙ MODULE ---
@@ -1347,9 +1349,17 @@ _import_module_awk ()
 
 _import_module_shell ()
 {
-    _F_PREFIX="$_PREFIX_NAME."
-    str_replace "$_PREFIX_NAME" . _
-    _V_PREFIX="${CORE_RESULT}_"
+    case $_IMPORT_PREFIX_SEP in
+        _)
+            _F_PREFIX=${_IMPORT_PREFIX_NAME}_
+            _V_PREFIX=${_IMPORT_PREFIX_NAME}_
+        ;;
+        .)
+            _F_PREFIX=${_IMPORT_PREFIX_NAME}.
+            str_replace "$_IMPORT_PREFIX_NAME" . _
+            _V_PREFIX="${CORE_RESULT}_"
+        ;;
+    esac
 
     _ALL_LINES=""
     _LIST_FUNCS=" "
@@ -1717,15 +1727,15 @@ _import_module ()
             _get_bash_env_list
         ;;
     esac
-    _import_module_$_TYPE_IMPORT
+    _import_module_$_IMPORT_TYPE
     eval "${_MODULE_FUNCS:-}"
 }
 
 _import_function ()
 {
     _FUNCTION_NAME=$1
-    $_CORE_IMPORT_AS || {
-        puts "  File \"${_ERROR_FILE:-$SCRIPT_FILE}\"
+    $_IMPORT_AS || {
+        echo "  File \"${_ERROR_FILE:-$SCRIPT_FILE}\"
     $_ERROR_IMPORT_STATEMENT
 ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh|zsh)"
         return 1
@@ -1735,7 +1745,7 @@ ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh
         2>&1 $_CURRENT_SHELL -c ". '$_MODULE_PATH' && type '$_FUNCTION_NAME'"
     ) && {
         str_replace "$_FUNCTION_BODY" "$_FUNCTION_NAME is a function
-$_FUNCTION_NAME" "$_PREFIX_NAME"
+$_FUNCTION_NAME" "$_IMPORT_PREFIX_NAME"
         eval "$CORE_RESULT"
     } || _modulenotfounderror 3 "$_FUNCTION_NAME"
 }
