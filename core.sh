@@ -803,25 +803,7 @@ is_valid_identifier ()
                 _MODULE_NAME=${_MODULE_NAME:+$_MODULE_NAME.}
                 _syntax_error 1 "$_MODULE_PART_NAME"
             ;;
-            alias   | as        | \
-            bg      | bind      | break    | builtin | \
-            caller  | case      | cd       | command | compgen | complete | compopt  | continue | coproc | \
-            declare | dirs      | disown   | do      | done    | \
-            echo    | elif      | else     | enable  | 'esac'  | eval     | exec     | exit     | export | \
-            false   | fc        | fg       | fi      | for     | from     | function | \
-            getopts | \
-            hash    | help      | history  | \
-            if      | import    | in       | \
-            jobs    | \
-            kill    | \
-            let     | local     | logout   | \
-            mapfile | \
-            popd    | printf    | pushd    | pwd    | \
-            read    | readarray | readonly | return | \
-            select  | set       | shift    | shopt  | source | suspend | \
-            test    | then      | time     | times  | trap   | true    | type | typeset | \
-            ulimit  | umask     | unalias  | unset  | until  | \
-            wait    | while)
+            case | do | done | elif | else | 'esac' | fi | for | from | function | if | import | in | then | until | while)
                 case $_MODULE_NAME in
                     '')
                         _MODULE_NAME=' '
