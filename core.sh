@@ -700,7 +700,7 @@ _syntax_error ()
         _get_error "    $_ERROR_IMPORT_COMMAND $_ERROR_IMPORT_SPECS${_MODULE_NAME%%[[:blank:]]*}" "${2:-.}" ||
         _get_error "    $_ERROR_IMPORT_COMMAND${_ERROR_IMPORT_SPECS:+ $_ERROR_IMPORT_SPECS}${_MODULE_NAME:+ ${_MODULE_NAME%%[[:blank:]]*}}" "${2:-.}"
 
-    echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\"
+    echo "  File \"${_ERROR_FILE:-$SCRIPT_FILE}\"
     $_ERROR_IMPORT_STATEMENT"
     _ERROR_IMPORT_COMMAND=
     case $1 in
@@ -1064,7 +1064,7 @@ _pop_prefix_name ()
 
 _modulenotfounderror ()
 {
-    echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\"
+    echo "  File \"${_ERROR_FILE:-$SCRIPT_FILE}\"
     $_ERROR_IMPORT_STATEMENT"
     case $1 in
         1)
@@ -1725,7 +1725,7 @@ _import_function ()
 {
     _FUNCTION_NAME=$1
     $_CORE_IMPORT_AS || {
-        puts "  File \"${_FILE_PATH:-$SCRIPT_FILE}\"
+        puts "  File \"${_ERROR_FILE:-$SCRIPT_FILE}\"
     $_ERROR_IMPORT_STATEMENT
 ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh|zsh)"
         return 1
@@ -1742,10 +1742,10 @@ $_FUNCTION_NAME" "$_PREFIX_NAME"
 
 _exec_module ()
 {
-    set -- "$1" "${_FILE_PATH:-}"
-    _FILE_PATH=$1
+    set -- "$1" "${_ERROR_FILE:-}"
+    _ERROR_FILE=$1
     . "$1"
-    _FILE_PATH=$2
+    _ERROR_FILE=$2
 }
 
 _import_package ()
