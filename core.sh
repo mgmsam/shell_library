@@ -19,8 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-set -e
-
 eval 'ERROR=$(:)' 2>/dev/null || {
     echo "error: POSIX command substitution \$(...) is not supported by this shell."
     exit 1
@@ -40,6 +38,8 @@ eval 'ERROR=${ERROR#*:}' 2>/dev/null || {
     echo "error: shell built-in 'type' is not supported. Unable to verify system commands."
     exit 1
 }
+
+set -eu
 
 COLOR_PROMPT=
 case ${TERM:-} in
@@ -430,12 +430,55 @@ SCRIPT_FILE="${SCRIPT_DIR%/}/${0##*/}"
 SYS_LIBDIR='/usr/lib/shell'
 SYS_PATH="'' '$SYS_LIBDIR'"
 
+which ()
+{
+    IFS=':'
+    for i in ${PATH:-}
+    do
+        case $i in
+            '')
+                i=.
+            ;;
+        esac
+        CORE_RESULT="${i%/}/$1"
+        test -f "$CORE_RESULT" && {
+            IFS=$POSIX_IFS
+            test -x "$CORE_RESULT" && return || return 126
+        }
+    done
+    IFS=$POSIX_IFS
+    CORE_RESULT=
+    return 127
+}
+
+_CURRENT_SHELL=
 case ${BASH_VERSION:-} in
     '')
-        _CORE_IMPORT_AS=false
+        case ${ZSH_VERSION:-} in
+            '')
+                case ${KSH_VERSION:-} in
+                    *MIRBSD*)
+                        _CURRENT_SHELL=mksh
+                    ;;
+                esac
+            ;;
+            *)
+                _CURRENT_SHELL=zsh
+            ;;
+        esac
     ;;
     *)
+        _CURRENT_SHELL=bash
+    ;;
+esac
+case $_CURRENT_SHELL in
+    bash | mksh | zsh)
+        which "$_CURRENT_SHELL"
+        _CURRENT_SHELL=$CORE_RESULT
         _CORE_IMPORT_AS=true
+    ;;
+    *)
+        _CORE_IMPORT_AS=false
     ;;
 esac
 
@@ -1702,12 +1745,12 @@ _import_function ()
     $_CORE_IMPORT_AS || {
         echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\""
         echo "    $_IMPORT_STATEMENT"
-        echo "ModuleError: 'import ... as ...' not supported in POSIX shell (requires Bash)"
+        echo "ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh|zsh)"
         return 1
     }
 
     _FUNCTION_BODY=$(
-        2>&1 bash -c ". '$_MODULE_PATH' && type '$_FUNCTION_NAME'"
+        2>&1 $_CURRENT_SHELL -c ". '$_MODULE_PATH' && type '$_FUNCTION_NAME'"
     ) && {
         str_replace "$_FUNCTION_BODY" "$_FUNCTION_NAME is a function
 $_FUNCTION_NAME" "$_PREFIX_NAME"
