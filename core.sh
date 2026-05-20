@@ -484,7 +484,7 @@ case $_CURRENT_SHELL in
     ;;
 esac
 
-type awk1 >/dev/null 2>&1 && {
+type awk >/dev/null 2>&1 && {
     _IMPORT_TYPE=awk
 } || _IMPORT_TYPE=shell
 
@@ -1395,7 +1395,6 @@ _import_module_shell ()
             esac
         do
             _CURR_CH=${_REST_PARSE%${_REST_PARSE#?}}
-
             case $_CURR_CH in
                 [a-zA-Z_])
                     _WORD=
@@ -1533,47 +1532,93 @@ _import_module_shell ()
             esac
         done
 
-        case "$_CLEAN_LINE" in
-            *"unset"*[0-9a-zA-Z_-]* )
-                _U_TAIL="${_CLEAN_LINE#*unset}"
-                _U_REST="$_U_TAIL"
-                _U_MODE=""
-                while [ -n "$_U_REST" ]; do
-                    _U_CH="${_U_REST%"${_U_REST#?}"}"
-                    case "$_U_CH" in
-                        [a-zA-Z_] )
-                            _U_WORD=""
-                            while [ -n "$_U_REST" ]; do
-                                _UW_CH="${_U_REST%"${_U_REST#?}"}"
-                                case "$_UW_CH" in
-                                    # ИСПРАВЛЕНО: уменьшаем правильную переменную _U_REST
-                                    [a-zA-Z0-9_.] ) _U_WORD="${_U_WORD}${_UW_CH}"; _U_REST="${_U_REST#?}" ;;
-                                    * ) break ;;
-                                  esac
-                            done
-
-                            _U_PREV_CHAR=""
-                            _U_NEW_PART="${_U_TAIL%$_U_REST}"
-                            _U_NEW_PART="${_U_NEW_PART%$_U_WORD}"
-                            if [ -n "$_U_NEW_PART" ]; then _U_PREV_CHAR="${_U_NEW_PART#${_U_NEW_PART%?}}"; fi
-
-                            if [ "$_U_PREV_CHAR" = "-" ]; then
-                                _LAST_F="${_U_WORD#${_U_WORD%?}}"
-                                if [ "$_LAST_F" = "f" ] || [ "$_LAST_F" = "v" ]; then _U_MODE="$_LAST_F"; fi
-                            elif [ "$_U_MODE" = "f" ]; then
-                                if [ -n "$_U_WORD" ] && [ "$_U_WORD" != "unset" ]; then
-                                    case "$_LIST_FUNCS" in *" $_U_WORD "* ) ;; * ) _LIST_FUNCS="${_LIST_FUNCS}${_U_WORD} " ;; esac
-                                fi
-                            fi
-                            ;;
-                        ";" | "&" | "|" )
-                            _U_MODE=""
-                            _U_REST="${_U_REST#?}"
+        case $_CLEAN_LINE in
+            *unset*[0-9a-zA-Z_-]*)
+                _U_TAIL=${_CLEAN_LINE#*unset}
+                _U_REST=$_U_TAIL
+                _U_MODE=
+                while
+                    case $_U_REST in
+                        '')
+                            false
                         ;;
-                        * ) _U_REST="${_U_REST#?}" ;;
+                    esac
+                do
+                    _U_CH=${_U_REST%${_U_REST#?}}
+                    case $_U_CH in
+                        [a-zA-Z_])
+                            _U_WORD=
+                            while
+                                case $_U_REST in
+                                    '')
+                                        false
+                                    ;;
+                                esac
+                            do
+                                _UW_CH=${_U_REST%${_U_REST#?}}
+                                case $_UW_CH in
+                                    # ИСПРАВЛЕНО: уменьшаем правильную переменную _U_REST
+                                    [a-zA-Z0-9_.])
+                                        _U_WORD=$_U_WORD$_UW_CH
+                                        _U_REST=${_U_REST#?}
+                                    ;;
+                                    *)
+                                        break
+                                    ;;
+                                esac
+                            done
+                            _U_PREV_CHAR=
+                            _U_NEW_PART=${_U_TAIL%$_U_REST}
+                            _U_NEW_PART=${_U_NEW_PART%$_U_WORD}
+                            case $_U_NEW_PART in
+                                ?*)
+                                    _U_PREV_CHAR=${_U_NEW_PART#${_U_NEW_PART%?}}
+                                ;;
+                            esac
+                            case $_U_PREV_CHAR in
+                                -)
+                                    _LAST_F=${_U_WORD#${_U_WORD%?}}
+                                    case $_LAST_F in
+                                        [fv])
+                                            _U_MODE=$_LAST_F
+                                        ;;
+                                    esac
+                                ;;
+                                *)
+                                    case $_U_MODE in
+                                        f)
+                                            case $_U_WORD in
+                                                ?*)
+                                                    case $_U_WORD in
+                                                        unset)
+                                                        ;;
+                                                        *)
+                                                            case $_LIST_FUNCS in
+                                                                *" $_U_WORD "*)
+                                                                ;;
+                                                                *)
+                                                                    _LIST_FUNCS="$_LIST_FUNCS$_U_WORD "
+                                                                ;;
+                                                            esac
+                                                        ;;
+                                                    esac
+                                                ;;
+                                            esac
+                                        ;;
+                                    esac
+                                ;;
+                            esac
+                            ;;
+                        [\;\&|])
+                            _U_MODE=
+                            _U_REST=${_U_REST#?}
+                        ;;
+                        *)
+                            _U_REST=${_U_REST#?}
+                        ;;
                     esac
                 done
-                ;;
+            ;;
         esac
     done < "$_MODULE"
 
