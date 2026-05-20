@@ -484,7 +484,7 @@ case $_CURRENT_SHELL in
     ;;
 esac
 
-type awk >/dev/null 2>&1 && {
+type awk1 >/dev/null 2>&1 && {
     _IMPORT_TYPE=awk
 } || _IMPORT_TYPE=shell
 
@@ -1585,70 +1585,196 @@ _import_module_shell ()
                 continue
             fi
 
-            case "$_CH" in
-                [a-zA-Z0-9_.] )
-                    if [ -z "$_WORD" ]; then
-                        case "$_CH" in [a-zA-Z_] ) _WORD="$_CH" ;; * ) _NEW_LINE="${_NEW_LINE}${_CH}" ;; esac
-                    else
-                        _WORD="${_WORD}${_CH}"
-                    fi
-                    ;;
+            case $_CH in
+                [a-zA-Z0-9_.])
+                    case $_WORD in
+                        '')
+                            case $_CH in
+                                [a-zA-Z_])
+                                    _WORD=$_CH
+                                ;;
+                                *)
+                                    _NEW_LINE=$_NEW_LINE$_CH
+                                ;;
+                            esac
+                        ;;
+                        *)
+                            _WORD=$_WORD$_CH
+                        ;;
+                    esac
+                ;;
                 * )
-                    if [ -n "$_WORD" ]; then
-                        _PREV_CHAR=""
-                        if [ -n "$_NEW_LINE" ]; then _PREV_CHAR="${_NEW_LINE#${_NEW_LINE%?}}"; fi
-
-                        if [ "$_PREV_CHAR" = "-" ]; then
-                            _LAST_FLAG="${_WORD#${_WORD%?}}"
-                            if [ "$_LAST_FLAG" = "f" ] || [ "$_LAST_FLAG" = "v" ]; then _UNSET_MODE="$_LAST_FLAG"; fi
-                            _NEW_LINE="${_NEW_LINE}${_WORD}"
-                        elif [ "$_WORD" = "unset" ]; then
-                            _UNSET_MODE="v"
-                            _NEW_LINE="${_NEW_LINE}${_WORD}"
-                        else
-                            _REST_CONTEXT="${_CH}${_REST}"
-                            _IS_SYS_VAR=0; case "$_BASH_ENV_LIST" in *" ${_WORD} "* ) _IS_SYS_VAR=1 ;; esac
-
-                            if [ $_IS_SYS_VAR -eq 1 ]; then
-                                _NEW_LINE="${_NEW_LINE}${_WORD}"
-                            elif [ "$_PREV_CHAR" = "/" ]; then
-                                _NEW_LINE="${_NEW_LINE}${_WORD}"
-                            else
-                                _IS_FUNC_DECL=0 _IS_ASSIGNMENT=0
-                                case "$_REST_CONTEXT" in
-                                    "="* ) _IS_ASSIGNMENT=1 ;;
-                                    "["*"]="* ) _IS_ASSIGNMENT=1 ;;
-                                    * )
-                                        _F_REST="$_REST_CONTEXT"
-                                        while [ -n "$_F_REST" ]; do
-                                            _FT_CH="${_F_REST%"${_F_REST#?}"}"
-                                            case "$_FT_CH" in " " | "$TAB" ) _F_REST="${_F_REST#?}" ;; * ) break ;; esac
-                                        done
-                                        if [ "${_F_REST%"${_F_REST#?}"}" = "(" ]; then
-                                            _F_REST="${_F_REST#?}"
-                                            while [ -n "$_F_REST" ]; do
-                                                _FT_CH="${_F_REST%"${_F_REST#?}"}"
-                                                case "$_FT_CH" in " " | "$TAB" ) _F_REST="${_F_REST#?}" ;; * ) break ;; esac
-                                            done
-                                            if [ "${_F_REST%"${_F_REST#?}"}" = ")" ]; then _IS_FUNC_DECL=1; fi
-                                        fi
+                    case $_WORD in
+                        ?*)
+                            _PREV_CHAR=
+                            case $_NEW_LINE in
+                                ?*)
+                                    _PREV_CHAR=${_NEW_LINE#${_NEW_LINE%?}}
+                                ;;
+                            esac
+                            case $_PREV_CHAR in
+                                -)
+                                    _LAST_FLAG=${_WORD#${_WORD%?}}
+                                    case $_LAST_FLAG in
+                                        [fv])
+                                            _UNSET_MODE=$_LAST_FLAG
+                                        ;;
+                                    esac
+                                    _NEW_LINE=$_NEW_LINE$_WORD
+                                ;;
+                                *)
+                                    case $_WORD in
+                                        unset)
+                                            _UNSET_MODE=v
+                                            _NEW_LINE=$_NEW_LINE$_WORD
+                                        ;;
+                                        *)
+                                            false
+                                        ;;
+                                    esac
+                                ;;
+                            esac || {
+                                _REST_CONTEXT=$_CH$_REST
+                                _IS_SYS_VAR=0
+                                case $_BASH_ENV_LIST in
+                                    *" $_WORD "*)
+                                        _IS_SYS_VAR=1
                                     ;;
                                 esac
-
-                                if [ $_EXPECT_VAR -eq 1 ] || [ $_IS_ASSIGNMENT -eq 1 ]; then
-                                    _NEW_LINE="${_NEW_LINE}${_V_PREFIX}${_WORD}"
-                                elif [ -n "$_UNSET_MODE" ]; then
-                                    if [ "$_UNSET_MODE" = "f" ]; then _NEW_LINE="${_NEW_LINE}${_F_PREFIX}${_WORD}"
-                                    else _NEW_LINE="${_NEW_LINE}${_V_PREFIX}${_WORD}"; fi
-                                elif [ $_IS_FUNC_DECL -eq 1 ] || case "$_LIST_FUNCS" in *" ${_WORD} "* ) true;; *) false;; esac; then
-                                    if [ $_D_QUOTES -eq 1 ] && [ -z "$_UNSET_MODE" ]; then _NEW_LINE="${_NEW_LINE}${_WORD}"
-                                    else _NEW_LINE="${_NEW_LINE}${_F_PREFIX}${_WORD}"; fi
-                                elif [ $_D_QUOTES -eq 1 ]; then _NEW_LINE="${_NEW_LINE}${_WORD}"
-                                else _NEW_LINE="${_NEW_LINE}${_WORD}" ; fi
-                            fi
-                        fi
-                        _WORD=""
-                    fi
+                                case $_IS_SYS_VAR in
+                                    1)
+                                        _NEW_LINE=$_NEW_LINE$_WORD
+                                    ;;
+                                    *)
+                                        case $_PREV_CHAR in
+                                            /)
+                                                _NEW_LINE=$_NEW_LINE$_WORD
+                                            ;;
+                                            *)
+                                                false
+                                            ;;
+                                        esac
+                                    ;;
+                                esac || {
+                                    _IS_FUNC_DECL=0 _IS_ASSIGNMENT=0
+                                    case $_REST_CONTEXT in
+                                        =*)
+                                            _IS_ASSIGNMENT=1
+                                        ;;
+                                        \[*\]=*)
+                                            _IS_ASSIGNMENT=1
+                                        ;;
+                                        *)
+                                            _F_REST=$_REST_CONTEXT
+                                            while
+                                                case $_F_REST in
+                                                    '')
+                                                        false
+                                                    ;;
+                                                esac
+                                            do
+                                                _FT_CH=${_F_REST%${_F_REST#?}}
+                                                case $_FT_CH in
+                                                    ' ' | $TAB)
+                                                        _F_REST=${_F_REST#?}
+                                                    ;;
+                                                    *)
+                                                        break
+                                                    ;;
+                                                esac
+                                            done
+                                            case ${_F_REST%${_F_REST#?}} in
+                                                \()
+                                                    _F_REST=${_F_REST#?}
+                                                    while
+                                                        case $_F_REST in
+                                                            '')
+                                                                false
+                                                            ;;
+                                                        esac
+                                                    do
+                                                        _FT_CH=${_F_REST%${_F_REST#?}}
+                                                        case $_FT_CH in
+                                                            ' ' | $TAB)
+                                                                _F_REST=${_F_REST#?}
+                                                            ;;
+                                                            *)
+                                                                break
+                                                            ;;
+                                                        esac
+                                                    done
+                                                    case ${_F_REST%${_F_REST#?}} in
+                                                        \))
+                                                            _IS_FUNC_DECL=1
+                                                        ;;
+                                                    esac
+                                                ;;
+                                            esac
+                                        ;;
+                                    esac
+                                    case $_EXPECT_VAR in
+                                        1)
+                                            true
+                                        ;;
+                                        *)
+                                            case $_IS_ASSIGNMENT in
+                                                1)
+                                                    true
+                                                ;;
+                                                *)
+                                                    false
+                                                ;;
+                                            esac
+                                    esac && _NEW_LINE=$_NEW_LINE$_V_PREFIX$_WORD ||
+                                    case $_UNSET_MODE in
+                                        ?*)
+                                            case $_UNSET_MODE in
+                                                f)
+                                                    _NEW_LINE=$_NEW_LINE$_F_PREFIX$_WORD
+                                                ;;
+                                                *)
+                                                    _NEW_LINE=$_NEW_LINE$_V_PREFIX$_WORD
+                                                ;;
+                                            esac
+                                        ;;
+                                        *)
+                                            case $_IS_FUNC_DECL in
+                                                1)
+                                                    true
+                                                ;;
+                                                *)
+                                                    case $_LIST_FUNCS in
+                                                        *" $_WORD "*)
+                                                            true
+                                                        ;;
+                                                        *)
+                                                            false
+                                                        ;;
+                                                    esac
+                                            esac && {
+                                                case $_D_QUOTES in
+                                                    1)
+                                                        case $_UNSET_MODE in
+                                                            '')
+                                                                _NEW_LINE=$_NEW_LINE$_WORD
+                                                            ;;
+                                                            *)
+                                                                false
+                                                            ;;
+                                                        esac
+                                                    ;;
+                                                    *)
+                                                        false
+                                                    ;;
+                                                esac || _NEW_LINE=$_NEW_LINE$_F_PREFIX$_WORD
+                                            } || _NEW_LINE=$_NEW_LINE$_WORD
+                                        ;;
+                                    esac
+                                }
+                            }
+                            _WORD=
+                        ;;
+                    esac
 
                     case $_CH in
                         "'")
