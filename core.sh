@@ -1361,86 +1361,175 @@ _import_module_shell ()
         ;;
     esac
 
-    _ALL_LINES=""
-    _LIST_FUNCS=" "
+    _ALL_LINES=
+    _LIST_FUNCS=$SPACE
     _IN_HEREDOC=0
-    _HD_TOKEN=""
+    _HD_TOKEN=
 
     # --- PASS 1: ПОСИМВОЛЬНЫЙ СБОР ЯВНО ОБЪЯВЛЕННЫХ ФУНКЦИЙ ---
-    while IFS= read -r _RAW_LINE || [ -n "$_RAW_LINE" ]; do
-        if [ -z "$_ALL_LINES" ]; then _ALL_LINES="$_RAW_LINE"; else _ALL_LINES="${_ALL_LINES}$SOH${_RAW_LINE}"; fi
+    while IFS= read -r _RAW_LINE ||
+        case $_RAW_LINE in
+            '')
+                false
+            ;;
+        esac
+    do
+        case $_ALL_LINES in
+            '')
+                _ALL_LINES=$_RAW_LINE
+            ;;
+            *)
+                _ALL_LINES=$_ALL_LINES$SOH$_RAW_LINE
+            ;;
+        esac
 
-        _CLEAN_LINE="${_RAW_LINE%%#*}"
-        _REST_PARSE="$_CLEAN_LINE"
+        _CLEAN_LINE=${_RAW_LINE%%#*}
+        _REST_PARSE=$_CLEAN_LINE
         _EXPECT_FUNC=0
 
-        while [ -n "$_REST_PARSE" ]; do
-            _CURR_CH="${_REST_PARSE%"${_REST_PARSE#?}"}"
+        while
+            case $_REST_PARSE in
+                '')
+                    false
+                ;;
+            esac
+        do
+            _CURR_CH=${_REST_PARSE%${_REST_PARSE#?}}
 
-            case "$_CURR_CH" in
+            case $_CURR_CH in
                 [a-zA-Z_])
-                    _WORD=""
-                    while [ -n "$_REST_PARSE" ]; do
-                        _W_CH="${_REST_PARSE%"${_REST_PARSE#?}"}"
-                        case "$_W_CH" in
-                            [a-zA-Z0-9_.] ) _WORD="${_WORD}${_W_CH}"; _REST_PARSE="${_REST_PARSE#?}" ;;
-                            * ) break ;;
+                    _WORD=
+                    while
+                        case $_REST_PARSE in
+                            '')
+                                false
+                            ;;
+                        esac
+                    do
+                        _W_CH=${_REST_PARSE%${_REST_PARSE#?}}
+                        case $_W_CH in
+                            [a-zA-Z0-9_.])
+                                _WORD=$_WORD$_W_CH
+                                _REST_PARSE=${_REST_PARSE#?}
+                            ;;
+                            *)
+                                break
+                            ;;
                         esac
                     done
-
-                    if [ "$_WORD" = "function" ]; then
-                        _EXPECT_FUNC=1
-                        continue
-                    fi
-
-                    case "$_BASH_ENV_LIST" in *" $_WORD "* ) _EXPECT_FUNC=0; continue ;; esac
-
-                    _TAIL="$_REST_PARSE"
+                    case $_WORD in
+                        function)
+                            _EXPECT_FUNC=1
+                            continue
+                        ;;
+                    esac
+                    case $_BASH_ENV_LIST in
+                        *" $_WORD "*)
+                            _EXPECT_FUNC=0
+                            continue
+                        ;;
+                    esac
+                    _TAIL=$_REST_PARSE
                     _IS_A_FUNC=0
-
-                    while [ -n "$_TAIL" ]; do
-                        _T_CH="${_TAIL%"${_TAIL#?}"}"
-                        case "$_T_CH" in " " | "$TAB" ) _TAIL="${_TAIL#?}" ;; * ) break ;; esac
+                    while
+                        case $_TAIL in
+                            '')
+                                false
+                            ;;
+                        esac
+                    do
+                        _T_CH=${_TAIL%${_TAIL#?}}
+                        case $_T_CH in
+                            [$SPACE$TAB])
+                                _TAIL=${_TAIL#?}
+                            ;;
+                            *)
+                                break
+                            ;;
+                        esac
                     done
-
-                    if [ "${_TAIL%"${_TAIL#?}"}" = "(" ]; then
-                        _TAIL="${_TAIL#?}"
-                        while [ -n "$_TAIL" ]; do
-                            _T_CH="${_TAIL%"${_TAIL#?}"}"
-                            case "$_T_CH" in " " | "$TAB" ) _TAIL="${_TAIL#?}" ;; * ) break ;; esac
-                        done
-                        if [ "${_TAIL%"${_TAIL#?}"}" = ")" ]; then
-                            _IS_A_FUNC=1
-                            _REST_PARSE="${_TAIL#?}"
-                        fi
-                    elif [ $_EXPECT_FUNC -eq 1 ]; then
-                        # СИНХРОНИЗАЦИЯ С AWK: Проверяем чистоту хвоста команды для function name
-                        _F_TAIL="$_TAIL"
-                        _IS_CLEAN_LINE=1
-                        while [ -n "$_F_TAIL" ]; do
-                            _FT_CH="${_F_TAIL%"${_F_TAIL#?}"}"
-                            case "$_FT_CH" in
-                                " " | "$TAB" | ";" | "{" ) _F_TAIL="${_F_TAIL#?}" ;;
-                                * ) _IS_CLEAN_LINE=0; break ;;
+                    case ${_TAIL%${_TAIL#?}} in
+                        \()
+                            _TAIL=${_TAIL#?}
+                            while
+                                case $_TAIL in
+                                    '')
+                                        false
+                                    ;;
+                                esac
+                            do
+                                _T_CH=${_TAIL%${_TAIL#?}}
+                                case $_T_CH in
+                                    [$SPACE$TAB])
+                                        _TAIL=${_TAIL#?}
+                                    ;;
+                                    *)
+                                        break
+                                    ;;
+                                esac
+                            done
+                            case ${_TAIL%${_TAIL#?}} in
+                                \))
+                                    _IS_A_FUNC=1
+                                    _REST_PARSE=${_TAIL#?}
+                                ;;
                             esac
-                        done
-                        if [ $_IS_CLEAN_LINE -eq 1 ]; then _IS_A_FUNC=1; fi
-                    fi
-
-                    if [ $_IS_A_FUNC -eq 1 ]; then
-                        case "$_LIST_FUNCS" in *" $_WORD "* ) ;; * ) _LIST_FUNCS="${_LIST_FUNCS}${_WORD} " ;; esac
-                    fi
+                        ;;
+                        *)
+                            case $_EXPECT_FUNC in
+                                1)
+                                    # СИНХРОНИЗАЦИЯ С AWK: Проверяем чистоту хвоста команды для function name
+                                    _F_TAIL=$_TAIL
+                                    _IS_CLEAN_LINE=1
+                                    while
+                                        case $_F_TAIL in
+                                            '')
+                                                false
+                                            ;;
+                                        esac
+                                    do
+                                        _FT_CH=${_F_TAIL%${_F_TAIL#?}}
+                                        case $_FT_CH in
+                                            [$SPACE$TAB\;{])
+                                                _F_TAIL=${_F_TAIL#?}
+                                            ;;
+                                            *)
+                                                _IS_CLEAN_LINE=0
+                                                break
+                                            ;;
+                                        esac
+                                    done
+                                    case $_IS_CLEAN_LINE in
+                                        1)
+                                            _IS_A_FUNC=1
+                                        ;;
+                                    esac
+                                ;;
+                            esac
+                        ;;
+                    esac
+                    case $_IS_A_FUNC in
+                        1)
+                            case $_LIST_FUNCS in
+                                *" $_WORD "*)
+                                ;;
+                                *)
+                                    _LIST_FUNCS="$_LIST_FUNCS$_WORD "
+                                ;;
+                            esac
+                        ;;
+                    esac
                     # Флаг сбрасывается ТОЛЬКО после проверки текущего слова, а не безусловно в цикле символов!
                     _EXPECT_FUNC=0
-                    ;;
-                # Сброс флага ожидания функции на жестких разделителях команд, пробелы и табы внутри одной команды его удерживают
-                ";" | "&" | "|" )
-                    _EXPECT_FUNC=0
-                    _REST_PARSE="${_REST_PARSE#?}"
                 ;;
-                * )
-                    _REST_PARSE="${_REST_PARSE#?}"
-                    ;;
+                [\&\;|])
+                    # Сброс флага ожидания функции на жестких разделителях команд, пробелы и табы внутри одной команды его удерживают
+                    _EXPECT_FUNC=0
+                    _REST_PARSE=${_REST_PARSE#?}
+                ;;
+                *)
+                    _REST_PARSE=${_REST_PARSE#?}
+                ;;
             esac
         done
 
@@ -1513,7 +1602,7 @@ _import_module_shell ()
         case $_IN_HEREDOC in
             1)
                 _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_LINE
-                _TRIMMED_LINE=${_LINE##[ $TAB]*}
+                _TRIMMED_LINE=${_LINE##[$SPACE$TAB]*}
                 case $_HD_TOKEN in
                     $_LINE | $_TRIMMED_LINE)
                         _IN_HEREDOC=0
@@ -1536,8 +1625,8 @@ _import_module_shell ()
                         _HD_PART=${_LINE#*<<}
                     ;;
                 esac
-                _HD_PART=${_HD_PART##[ $TAB]*}
-                _RAW_TOKEN=${_HD_PART%%[ $TAB;]*}
+                _HD_PART=${_HD_PART##[$SPACE$TAB]*}
+                _RAW_TOKEN=${_HD_PART%%[$SPACE$TAB;]*}
 
                 _CLEAN_TOKEN=
                 _T_REST=$_RAW_TOKEN
@@ -1680,7 +1769,7 @@ _import_module_shell ()
                         ;;
                     esac
                 ;;
-                * )
+                *)
                     case $_WORD in
                         ?*)
                             _PREV_CHAR=
@@ -1733,7 +1822,8 @@ _import_module_shell ()
                                         esac
                                     ;;
                                 esac || {
-                                    _IS_FUNC_DECL=0 _IS_ASSIGNMENT=0
+                                    _IS_FUNC_DECL=0
+                                    _IS_ASSIGNMENT=0
                                     case $_REST_CONTEXT in
                                         =*)
                                             _IS_ASSIGNMENT=1
@@ -1752,7 +1842,7 @@ _import_module_shell ()
                                             do
                                                 _FT_CH=${_F_REST%${_F_REST#?}}
                                                 case $_FT_CH in
-                                                    ' ' | $TAB)
+                                                    [$SPACE$TAB])
                                                         _F_REST=${_F_REST#?}
                                                     ;;
                                                     *)
@@ -1772,7 +1862,7 @@ _import_module_shell ()
                                                     do
                                                         _FT_CH=${_F_REST%${_F_REST#?}}
                                                         case $_FT_CH in
-                                                            ' ' | $TAB)
+                                                            [$SPACE$TAB])
                                                                 _F_REST=${_F_REST#?}
                                                             ;;
                                                             *)
@@ -1875,7 +1965,7 @@ _import_module_shell ()
                         [}%:-])
                             _EXPECT_VAR=0
                         ;;
-                        [\&\;|] | ' ' | $TAB)
+                        [$SPACE$TAB\&\;|])
                             _EXPECT_VAR=0
                             case $_CH in
                                 [\&\;|])
@@ -1884,7 +1974,6 @@ _import_module_shell ()
                             esac
                         ;;
                     esac
-
                     _NEW_LINE=$_NEW_LINE$_CH
                 ;;
             esac
