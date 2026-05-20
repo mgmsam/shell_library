@@ -700,24 +700,24 @@ _syntax_error ()
         _get_error "    $_ERROR_IMPORT_COMMAND $_ERROR_IMPORT_SPECS${_MODULE_NAME%%[[:blank:]]*}" "${2:-.}" ||
         _get_error "    $_ERROR_IMPORT_COMMAND${_ERROR_IMPORT_SPECS:+ $_ERROR_IMPORT_SPECS}${_MODULE_NAME:+ ${_MODULE_NAME%%[[:blank:]]*}}" "${2:-.}"
 
-    puts "  File \"${_FILE_PATH:-$SCRIPT_FILE}\"
+    echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\"
     $_ERROR_IMPORT_STATEMENT"
     _ERROR_IMPORT_COMMAND=
     case $1 in
         1)
-            puts "$_ERROR_POINTER
+            echo "$_ERROR_POINTER
 SyntaxError: invalid syntax"
         ;;
         2)
-            puts "$_ERROR_POINTER
+            echo "$_ERROR_POINTER
 SyntaxError: leading zeros in decimal integer literals are not permitted"
         ;;
         3)
-            puts "$_ERROR_POINTER
+            echo "$_ERROR_POINTER
 SyntaxError: invalid decimal literal"
         ;;
         4)
-            puts "$_ERROR_POINTER
+            echo "$_ERROR_POINTER
 SyntaxError: trailing comma not allowed without surrounding parentheses"
         ;;
     esac
@@ -1064,18 +1064,18 @@ _pop_prefix_name ()
 
 _modulenotfounderror ()
 {
-    puts "  File \"${_FILE_PATH:-$SCRIPT_FILE}\"
+    echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\"
     $_ERROR_IMPORT_STATEMENT"
     case $1 in
         1)
-            puts "ImportError: attempted relative import with no known parent package"
+            echo "ImportError: attempted relative import with no known parent package"
         ;;
         2)
-            puts "ModuleNotFoundError: No module named '$_IDENTIFIER'; '$_IDENTIFIER_PART' is not a package"
+            echo "ModuleNotFoundError: No module named '$_IDENTIFIER'; '$_IDENTIFIER_PART' is not a package"
         ;;
         3)
             str_replace "${2#$PWD}" '/' '.'
-            puts "ModuleNotFoundError: No module named '$CORE_RESULT'"
+            echo "ModuleNotFoundError: No module named '$CORE_RESULT'"
         ;;
     esac
     return 1
