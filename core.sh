@@ -1652,24 +1652,38 @@ _import_module_shell ()
 
                     case $_CH in
                         "'")
-                            case $_D_QUOTES in 0) _S_QUOTES=1 ;; *) false ;; esac
+                            case $_D_QUOTES in
+                                0) _S_QUOTES=1 ;;
+                                *) false ;;
+                            esac
                         ;;
                         *) false ;;
                     esac ||
                     case $_CH in
                         '"')
-                            case $_D_QUOTES in 0) _D_QUOTES=1 ;; *) _D_QUOTES=0 ;; esac
+                            case $_D_QUOTES in
+                                0) _D_QUOTES=1 ;;
+                                *) _D_QUOTES=0 ;;
+                            esac
                         ;;
-                        $) _EXPECT_VAR=1 ;;
-                        [}%:-]) _EXPECT_VAR=0 ;;
-                        [\&\;|] | " " | "$TAB" )
+                        $)
+                            _EXPECT_VAR=1
+                        ;;
+                        [}%:-])
                             _EXPECT_VAR=0
-                            case $_CH in [\&\;|] ) _UNSET_MODE="" ;; esac
+                        ;;
+                        [\&\;|] | ' ' | $TAB)
+                            _EXPECT_VAR=0
+                            case $_CH in
+                                [\&\;|])
+                                    _UNSET_MODE=
+                                ;;
+                            esac
                         ;;
                     esac
 
-                    _NEW_LINE="${_NEW_LINE}${_CH}"
-                    ;;
+                    _NEW_LINE=$_NEW_LINE$_CH
+                ;;
             esac
         done
 
