@@ -1706,10 +1706,10 @@ _import_function ()
         return 1
     }
 
-    _FUNCTION=$(
+    _FUNCTION_BODY=$(
         2>&1 bash -c ". '$_MODULE_PATH' && type '$_FUNCTION_NAME'"
     ) && {
-        str_replace "$_FUNCTION" "$_FUNCTION_NAME is a function
+        str_replace "$_FUNCTION_BODY" "$_FUNCTION_NAME is a function
 $_FUNCTION_NAME" "$_PREFIX_NAME"
         eval "$CORE_RESULT"
     } || _modulenotfounderror 3 "$_FUNCTION_NAME"
