@@ -1490,101 +1490,178 @@ _import_module_shell ()
 
     # --- PASS 2: ТОКЕНИЗАТОР ЗАМЕН С НАКОПЛЕНИЕМ В ПЕРЕМЕННУЮ ---
     _IN_HEREDOC=0
-    _HD_TOKEN=""
-    _REST_LINES="$_ALL_LINES"
+    _HD_TOKEN=
+    _REST_LINES=$_ALL_LINES
 
-    while [ -n "$_REST_LINES" ]; do
-        case "$_REST_LINES" in
-            *"$SOH"* ) _LINE="${_REST_LINES%%$SOH*}"; _REST_LINES="${_REST_LINES#*$SOH}" ;;
-            * ) _LINE="$_REST_LINES"; _REST_LINES="" ;;
+    while
+        case $_REST_LINES in
+            '')
+                false
+            ;;
+        esac
+    do
+        case $_REST_LINES in
+            *$SOH*)
+                _LINE=${_REST_LINES%%$SOH*}
+                _REST_LINES=${_REST_LINES#*$SOH}
+            ;;
+            *)
+                _LINE=$_REST_LINES
+                _REST_LINES=
         esac
 
-        if [ $_IN_HEREDOC -eq 1 ]; then
-            _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_LINE
-            _TRIMMED_LINE="${_LINE##[ $TAB]*}"
-            if [ "$_LINE" = "$_HD_TOKEN" ] || [ "$_TRIMMED_LINE" = "$_HD_TOKEN" ]; then
-                _IN_HEREDOC=0; _HD_TOKEN=""
-            fi
-            continue
-        fi
+        case $_IN_HEREDOC in
+            1)
+                _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_LINE
+                _TRIMMED_LINE=${_LINE##[ $TAB]*}
+                case $_HD_TOKEN in
+                    $_LINE | $_TRIMMED_LINE)
+                        _IN_HEREDOC=0
+                        _HD_TOKEN=
+                    ;;
+                esac
+                continue
+            ;;
+        esac
 
         _IS_HD_START=0
-        case "$_LINE" in
-            *"<<-"* | *"<<"* )
-                _HD_PART=""
-                case "$_LINE" in *"<<-"* ) _HD_PART="${_LINE#*<<-}" ;; *"<<"*  ) _HD_PART="${_LINE#*<<}" ;; esac
-                _HD_PART="${_HD_PART##[ $TAB]*}"
-                _RAW_TOKEN="${_HD_PART%%[ $TAB;]*}"
-
-                _CLEAN_TOKEN="" _T_REST="$_RAW_TOKEN"
-                while [ -n "$_T_REST" ]; do
-                    _T_CH="${_T_REST%"${_T_REST#?}"}"
-                    case "$_T_CH" in
-                        "'" | '"' | "\\" ) ;; # ТЕПЕРЬ СБРАСЫВАЕМ И БЭКСЛЕШ \
-                        * ) _CLEAN_TOKEN="${_CLEAN_TOKEN}${_T_CH}" ;;
-                    esac
-                    _T_REST="${_T_REST#?}"
-                done
-                if [ -n "$_CLEAN_TOKEN" ]; then _IN_HEREDOC=1; _HD_TOKEN="$_CLEAN_TOKEN"; _IS_HD_START=1; fi
-                ;;
-        esac
-
-        if [ $_IS_HD_START -eq 1 ]; then
-            _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_LINE
-            continue
-        fi
-
-        _CODE_PART="$_LINE"
-        _COMM_PART=""
-        case "$_LINE" in
-            *"#"*)
-                _BEFORE_HASH="${_LINE%%#*}"
-                case "$_BEFORE_HASH" in
-                    *"\${"*) _CODE_PART="$_LINE" _COMM_PART="" ;;
-                    * ) _CODE_PART="${_LINE%%#*}"; _COMM_PART="#${_LINE#*#}" ;;
+        case $_LINE in
+            *'<<-'* | *'<<'* )
+                _HD_PART=
+                case $_LINE in
+                    *'<<-'*)
+                        _HD_PART=${_LINE#*<<-}
+                    ;;
+                    *'<<'*)
+                        _HD_PART=${_LINE#*<<}
+                    ;;
                 esac
-                ;;
+                _HD_PART=${_HD_PART##[ $TAB]*}
+                _RAW_TOKEN=${_HD_PART%%[ $TAB;]*}
+
+                _CLEAN_TOKEN=
+                _T_REST=$_RAW_TOKEN
+                while
+                    case $_T_REST in
+                        '')
+                            false
+                        ;;
+                    esac
+                do
+                    _T_CH=${_T_REST%${_T_REST#?}}
+                    case $_T_CH in
+                        "'" | '"' | "\\" )
+                            # ТЕПЕРЬ СБРАСЫВАЕМ И БЭКСЛЕШ \
+                        ;;
+                        *)
+                            _CLEAN_TOKEN=$_CLEAN_TOKEN$_T_CH
+                        ;;
+                    esac
+                    _T_REST=${_T_REST#?}
+                done
+                case $_CLEAN_TOKEN in
+                    ?*)
+                        _IN_HEREDOC=1
+                        _HD_TOKEN=$_CLEAN_TOKEN
+                        _IS_HD_START=1
+                    ;;
+                esac
+            ;;
+        esac
+        case $_IS_HD_START in
+            1)
+                _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_LINE
+                continue
+            ;;
         esac
 
-        _NEW_LINE=""
-        _REST="$_CODE_PART"
+        _CODE_PART=$_LINE
+        _COMM_PART=
+        case $_LINE in
+            *#*)
+                _BEFORE_HASH=${_LINE%%#*}
+                case $_BEFORE_HASH in
+                    *\${*)
+                        _CODE_PART=$_LINE
+                        _COMM_PART=
+                    ;;
+                    *)
+                        _CODE_PART=${_LINE%%#*}
+                        _COMM_PART=#${_LINE#*#}
+                    ;;
+                esac
+            ;;
+        esac
+
+        _NEW_LINE=
+        _REST=$_CODE_PART
         _S_QUOTES=0
         _D_QUOTES=0
         _EXPECT_VAR=0
-        _WORD=""
-        _UNSET_MODE=""
-
-        while [ -n "$_REST" ]; do
-            _CH="${_REST%"${_REST#?}"}"
-            _REST="${_REST#?}"
-
-            if [ $_S_QUOTES -eq 1 ]; then
-                case "$_CH" in
-                    "'") _S_QUOTES=0; _NEW_LINE="${_NEW_LINE}${_CH}" ;;
-                    [a-zA-Z0-9_.] )
-                        if [ -n "$_UNSET_MODE" ]; then
-                            _WORD=""
-                            _REST_QUOTES="${_CH}${_REST}"
-                            while [ -n "$_REST_QUOTES" ]; do
-                                _Q_CH="${_REST_QUOTES%"${_REST_QUOTES#?}"}"
-                                case "$_Q_CH" in
-                                    [a-zA-Z0-9_.] ) _WORD="${_WORD}${_Q_CH}"; _REST_QUOTES="${_REST_QUOTES#?}" ;;
-                                    * ) break ;;
-                                esac
-                            done
-                            _REST="$_REST_QUOTES"
-                            if [ "$_UNSET_MODE" = "f" ]; then _NEW_LINE="${_NEW_LINE}${_F_PREFIX}${_WORD}"
-                            else _NEW_LINE="${_NEW_LINE}${_V_PREFIX}${_WORD}"; fi
-                            _WORD=""
-                        else
-                            _NEW_LINE="${_NEW_LINE}${_CH}"
-                        fi
+        _WORD=
+        _UNSET_MODE=
+        while
+            case $_REST in
+                '')
+                    false
+                ;;
+            esac
+        do
+            _CH=${_REST%${_REST#?}}
+            _REST=${_REST#?}
+            case $_S_QUOTES in
+                1)
+                    case $_CH in
+                        "'")
+                            _S_QUOTES=0
+                            _NEW_LINE=$_NEW_LINE$_CH
                         ;;
-                    * ) _NEW_LINE="${_NEW_LINE}${_CH}" ;;
-                esac
-                continue
-            fi
-
+                        [a-zA-Z0-9_.])
+                            case $_UNSET_MODE in
+                                '')
+                                    _NEW_LINE=$_NEW_LINE$_CH
+                                ;;
+                                *)
+                                    _WORD=
+                                    _REST_QUOTES=$_CH$_REST
+                                    while
+                                        case $_REST_QUOTES in
+                                            '')
+                                                false
+                                            ;;
+                                        esac
+                                    do
+                                        _Q_CH=${_REST_QUOTES%${_REST_QUOTES#?}}
+                                        case $_Q_CH in
+                                            [a-zA-Z0-9_.])
+                                                _WORD=$_WORD$_Q_CH
+                                                _REST_QUOTES=${_REST_QUOTES#?}
+                                            ;;
+                                            *)
+                                                break
+                                            ;;
+                                        esac
+                                    done
+                                    _REST=$_REST_QUOTES
+                                    case $_UNSET_MODE in
+                                        f)
+                                            _NEW_LINE=$_NEW_LINE$_F_PREFIX$_WORD
+                                        ;;
+                                        *)
+                                            _NEW_LINE=$_NEW_LINE$_V_PREFIX$_WORD
+                                        ;;
+                                    esac
+                                    _WORD=
+                                ;;
+                            esac
+                        ;;
+                        *)
+                            _NEW_LINE=$_NEW_LINE$_CH
+                        ;;
+                    esac
+                    continue
+                ;;
+            esac
             case $_CH in
                 [a-zA-Z0-9_.])
                     case $_WORD in
