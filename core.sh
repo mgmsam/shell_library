@@ -700,24 +700,24 @@ _syntax_error ()
         _get_error "    $_IMPORT_COMMAND $_IMPORT_SPECS${_MODULE_NAME%%[[:blank:]]*}" "${2:-.}" ||
         _get_error "    $_IMPORT_COMMAND${_IMPORT_SPECS:+ $_IMPORT_SPECS}${_MODULE_NAME:+ ${_MODULE_NAME%%[[:blank:]]*}}" "${2:-.}"
 
-    echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\""
-    echo "    $_IMPORT_STATEMENT"
+    puts "  File \"${_FILE_PATH:-$SCRIPT_FILE}\"
+    $_IMPORT_STATEMENT"
     _IMPORT_COMMAND=
     case $1 in
         1)
-            echo "$_CORE_ERROR
+            puts "$_CORE_ERROR
 SyntaxError: invalid syntax"
         ;;
         2)
-            echo "$_CORE_ERROR
+            puts "$_CORE_ERROR
 SyntaxError: leading zeros in decimal integer literals are not permitted"
         ;;
         3)
-            echo "$_CORE_ERROR
+            puts "$_CORE_ERROR
 SyntaxError: invalid decimal literal"
         ;;
         4)
-            echo "$_CORE_ERROR
+            puts "$_CORE_ERROR
 SyntaxError: trailing comma not allowed without surrounding parentheses"
         ;;
     esac
@@ -1082,18 +1082,18 @@ _pop_prefix_name ()
 
 _modulenotfounderror ()
 {
-    echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\""
-    echo "    $_IMPORT_STATEMENT"
+    puts "  File \"${_FILE_PATH:-$SCRIPT_FILE}\"
+    $_IMPORT_STATEMENT"
     case $1 in
         1)
-            echo "ImportError: attempted relative import with no known parent package"
+            puts "ImportError: attempted relative import with no known parent package"
         ;;
         2)
-            echo "ModuleNotFoundError: No module named '$_IDENTIFIER'; '$_IDENTIFIER_PART' is not a package"
+            puts "ModuleNotFoundError: No module named '$_IDENTIFIER'; '$_IDENTIFIER_PART' is not a package"
         ;;
         3)
             str_replace "${2#$PWD}" '/' '.'
-            echo "ModuleNotFoundError: No module named '$CORE_RESULT'"
+            puts "ModuleNotFoundError: No module named '$CORE_RESULT'"
         ;;
     esac
     return 1
@@ -1743,9 +1743,9 @@ _import_function ()
 {
     _FUNCTION_NAME=$1
     $_CORE_IMPORT_AS || {
-        echo "  File \"${_FILE_PATH:-$SCRIPT_FILE}\""
-        echo "    $_IMPORT_STATEMENT"
-        echo "ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh|zsh)"
+        puts "  File \"${_FILE_PATH:-$SCRIPT_FILE}\"
+    $_IMPORT_STATEMENT
+ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh|zsh)"
         return 1
     }
 
