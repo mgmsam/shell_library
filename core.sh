@@ -683,41 +683,41 @@ _get_error ()
 {
     case $1 in
         '')
-            _CORE_ERROR_INDENT=
+            _ERROR_INDENT=
         ;;
         *)
             get_indent ${#1}
-            _CORE_ERROR_INDENT=$CORE_INDENT
+            _ERROR_INDENT=$CORE_INDENT
         ;;
     esac
     get_indent ${#2} '^'
-    _CORE_ERROR=$_CORE_ERROR_INDENT$CORE_INDENT
+    _ERROR_POINTER=$_ERROR_INDENT$CORE_INDENT
 }
 
 _syntax_error ()
 {
-    $_MERGE &&
-        _get_error "    $_IMPORT_COMMAND $_IMPORT_SPECS${_MODULE_NAME%%[[:blank:]]*}" "${2:-.}" ||
-        _get_error "    $_IMPORT_COMMAND${_IMPORT_SPECS:+ $_IMPORT_SPECS}${_MODULE_NAME:+ ${_MODULE_NAME%%[[:blank:]]*}}" "${2:-.}"
+    $_ERROR_TIGHT_LIST &&
+        _get_error "    $_ERROR_IMPORT_COMMAND $_ERROR_IMPORT_SPECS${_MODULE_NAME%%[[:blank:]]*}" "${2:-.}" ||
+        _get_error "    $_ERROR_IMPORT_COMMAND${_ERROR_IMPORT_SPECS:+ $_ERROR_IMPORT_SPECS}${_MODULE_NAME:+ ${_MODULE_NAME%%[[:blank:]]*}}" "${2:-.}"
 
     puts "  File \"${_FILE_PATH:-$SCRIPT_FILE}\"
-    $_IMPORT_STATEMENT"
-    _IMPORT_COMMAND=
+    $_ERROR_IMPORT_STATEMENT"
+    _ERROR_IMPORT_COMMAND=
     case $1 in
         1)
-            puts "$_CORE_ERROR
+            puts "$_ERROR_POINTER
 SyntaxError: invalid syntax"
         ;;
         2)
-            puts "$_CORE_ERROR
+            puts "$_ERROR_POINTER
 SyntaxError: leading zeros in decimal integer literals are not permitted"
         ;;
         3)
-            puts "$_CORE_ERROR
+            puts "$_ERROR_POINTER
 SyntaxError: invalid decimal literal"
         ;;
         4)
-            puts "$_CORE_ERROR
+            puts "$_ERROR_POINTER
 SyntaxError: trailing comma not allowed without surrounding parentheses"
         ;;
     esac
@@ -736,7 +736,7 @@ is_valid_identifier ()
     _ONE_MODULE_PART_NAME=true
     for _MODULE_PART_NAME
     do
-        case $_IMPORT_COMMAND in
+        case $_ERROR_IMPORT_COMMAND in
             from)
             ;;
             import)
@@ -869,28 +869,28 @@ _check_import_syntax ()
                         is_valid_identifier "$_MODULE" || return
                         _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_MODULE'"
                         _IMPORT_TOKEN=0
-                        $_MERGE &&
-                            _IMPORT_SPECS="$_IMPORT_SPECS$_MODULE," ||
-                            _IMPORT_SPECS="${_IMPORT_SPECS:+$_IMPORT_SPECS }$_MODULE,"
-                        _MERGE=true
+                        $_ERROR_TIGHT_LIST &&
+                            _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS$_MODULE," ||
+                            _ERROR_IMPORT_SPECS="${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS }$_MODULE,"
+                        _ERROR_TIGHT_LIST=true
                     ;;
                     *,)
                         _MODULE="${_MODULE%,}"
                         is_valid_identifier "$_MODULE" || return
                         _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_MODULE'"
                         _IMPORT_TOKEN=0
-                        $_MERGE &&
-                            _IMPORT_SPECS="$_IMPORT_SPECS$_MODULE," ||
-                            _IMPORT_SPECS="${_IMPORT_SPECS:+$_IMPORT_SPECS }$_MODULE,"
-                        _MERGE=false
+                        $_ERROR_TIGHT_LIST &&
+                            _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS$_MODULE," ||
+                            _ERROR_IMPORT_SPECS="${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS }$_MODULE,"
+                        _ERROR_TIGHT_LIST=false
                     ;;
                     *)
                         is_valid_identifier "$_MODULE" || return
                         _IMPORT_SPEC="${_IMPORT_SPEC:+$_IMPORT_SPEC }$_MODULE"
-                        $_MERGE &&
-                            _IMPORT_SPECS="$_IMPORT_SPECS$_MODULE" ||
-                            _IMPORT_SPECS="${_IMPORT_SPECS:+$_IMPORT_SPECS }$_MODULE"
-                        _MERGE=false
+                        $_ERROR_TIGHT_LIST &&
+                            _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS$_MODULE" ||
+                            _ERROR_IMPORT_SPECS="${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS }$_MODULE"
+                        _ERROR_TIGHT_LIST=false
                     ;;
                 esac
             ;;
@@ -905,9 +905,9 @@ _check_import_syntax ()
                                 is_valid_identifier "$_MODULE" || return
                                 _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}${_IMPORT_SPEC:+"'$_IMPORT_SPEC' "}'$_MODULE'"
                                 _IMPORT_SPEC=
-                                _IMPORT_SPECS="${_IMPORT_SPECS:+$_IMPORT_SPECS },$_MODULE,"
+                                _ERROR_IMPORT_SPECS="${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS },$_MODULE,"
                                 _IMPORT_TOKEN=0
-                                _MERGE=true
+                                _ERROR_TIGHT_LIST=true
                             ;;
                             *,)
                                 _MODULE=${_MODULE#,}
@@ -915,14 +915,14 @@ _check_import_syntax ()
                                 is_valid_identifier "$_MODULE" || return
                                 _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}${_IMPORT_SPEC:+"'$_IMPORT_SPEC' "}'$_MODULE'"
                                 _IMPORT_SPEC=
-                                _IMPORT_SPECS="$_IMPORT_SPECS ,$_MODULE,"
+                                _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS ,$_MODULE,"
                                 _IMPORT_TOKEN=0
                             ;;
                             *)
                                 _MODULE_NAME=,
                                 is_valid_identifier "${_MODULE#,}" || return
                                 _IMPORT_SPEC="${_IMPORT_SPEC:+$_IMPORT_SPEC }$_MODULE"
-                                _IMPORT_SPECS="${_IMPORT_SPECS:+$_IMPORT_SPECS }$_MODULE"
+                                _ERROR_IMPORT_SPECS="${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS }$_MODULE"
                                 _IMPORT_TOKEN=1
                             ;;
                         esac
@@ -930,7 +930,7 @@ _check_import_syntax ()
                     ,)
                         _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC'"
                         _IMPORT_SPEC=
-                        _IMPORT_SPECS="$_IMPORT_SPECS ,"
+                        _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS ,"
                         _IMPORT_TOKEN=0
                     ;;
                     as)
@@ -941,7 +941,7 @@ _check_import_syntax ()
                             ;;
                             *)
                                 _IMPORT_SPEC="$_IMPORT_SPEC as"
-                                _IMPORT_SPECS="$_IMPORT_SPECS as"
+                                _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS as"
                             ;;
                         esac
                     ;;
@@ -962,8 +962,8 @@ _check_import_syntax ()
                         is_valid_identifier "$_MODULE" || return
                         _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC' '$_MODULE'"
                         _IMPORT_SPEC=
-                        _IMPORT_SPECS="$_IMPORT_SPECS $_MODULE,"
-                        _MERGE=true
+                        _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS $_MODULE,"
+                        _ERROR_TIGHT_LIST=true
                         _IMPORT_TOKEN=0
                     ;;
                     *,)
@@ -971,7 +971,7 @@ _check_import_syntax ()
                         is_valid_identifier "$_MODULE" || return
                         _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC' '$_MODULE'"
                         _IMPORT_SPEC=
-                        _IMPORT_SPECS="$_IMPORT_SPECS $_MODULE,"
+                        _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS $_MODULE,"
                         _IMPORT_TOKEN=0
                         case $# in
                             0)
@@ -983,7 +983,7 @@ _check_import_syntax ()
                     *)
                         is_valid_identifier "$_MODULE" || return
                         _IMPORT_SPEC="${_IMPORT_SPEC:+$_IMPORT_SPEC }$_MODULE"
-                        _IMPORT_SPECS="$_IMPORT_SPECS $_MODULE"
+                        _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS $_MODULE"
                     ;;
                 esac
             ;;
@@ -1065,7 +1065,7 @@ _pop_prefix_name ()
 _modulenotfounderror ()
 {
     puts "  File \"${_FILE_PATH:-$SCRIPT_FILE}\"
-    $_IMPORT_STATEMENT"
+    $_ERROR_IMPORT_STATEMENT"
     case $1 in
         1)
             puts "ImportError: attempted relative import with no known parent package"
@@ -1726,7 +1726,7 @@ _import_function ()
     _FUNCTION_NAME=$1
     $_CORE_IMPORT_AS || {
         puts "  File \"${_FILE_PATH:-$SCRIPT_FILE}\"
-    $_IMPORT_STATEMENT
+    $_ERROR_IMPORT_STATEMENT
 ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh|zsh)"
         return 1
     }
@@ -1825,20 +1825,20 @@ _import_buffer ()
 
 import ()
 {
-    _IMPORT_STATEMENT=import${*:+ $*}
-    _IMPORT_COMMAND=import
-    _IMPORT_SPECS=
-    _MERGE=false
+    _ERROR_IMPORT_STATEMENT=import${*:+ $*}
+    _ERROR_IMPORT_COMMAND=import
+    _ERROR_IMPORT_SPECS=
+    _ERROR_TIGHT_LIST=false
     _check_import_syntax "$@"
     _import_buffer
 }
 
 from ()
 {
-    _IMPORT_STATEMENT=from${*:+ $*}
-    _IMPORT_COMMAND=from
-    _IMPORT_SPECS=
-    _MERGE=false
+    _ERROR_IMPORT_STATEMENT=from${*:+ $*}
+    _ERROR_IMPORT_COMMAND=from
+    _ERROR_IMPORT_SPECS=
+    _ERROR_TIGHT_LIST=false
     _PATH_FROM=${1:-}
 
     case $# in
@@ -1856,7 +1856,7 @@ from ()
             case ${1:-} in
                 import)
                     shift
-                    _IMPORT_COMMAND='from . import'
+                    _ERROR_IMPORT_COMMAND='from . import'
                     _MODULE_NAME=
                     _check_import_syntax "$@" &&
                     _import_buffer || return
@@ -1884,7 +1884,7 @@ from ()
             case ${1:-} in
                 import)
                     shift
-                    _IMPORT_COMMAND="from $_PATH_FROM import"
+                    _ERROR_IMPORT_COMMAND="from $_PATH_FROM import"
                     _check_import_syntax "$@" &&
                     _resolve_module_path "$_PATH_FROM" && {
                         set -- "$_SUFIX_MODULE_PATH"
