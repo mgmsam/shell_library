@@ -1673,25 +1673,72 @@ _import_module_shell ()
             esac
         done
 
-        if [ -n "$_WORD" ]; then
-            _PREV_CHAR=""
-            if [ -n "$_NEW_LINE" ]; then _PREV_CHAR="${_NEW_LINE#${_NEW_LINE%?}}"; fi
-
-            if [ "$_PREV_CHAR" = "-" ]; then
-                _NEW_LINE="${_NEW_LINE}${_WORD}"
-            else
-                _IS_SYS_VAR=0; case "$_BASH_ENV_LIST" in *" ${_WORD} "* ) _IS_SYS_VAR=1 ;; esac
-                if [ $_IS_SYS_VAR -eq 1 ]; then _NEW_LINE="${_NEW_LINE}${_WORD}"
-                elif [ "$_PREV_CHAR" = "/" ]; then _NEW_LINE="${_NEW_LINE}${_WORD}"
-                elif [ -n "$_UNSET_MODE" ]; then
-                    if [ "$_UNSET_MODE" = "f" ]; then _NEW_LINE="${_NEW_LINE}${_F_PREFIX}${_WORD}"
-                    else _NEW_LINE="${_NEW_LINE}${_V_PREFIX}${_WORD}"; fi
-                else
-                    if [ $_EXPECT_VAR -eq 1 ] ; then _NEW_LINE="${_NEW_LINE}${_V_PREFIX}${_WORD}"
-                    else case "$_LIST_FUNCS" in *" ${_WORD} "* ) _NEW_LINE="${_NEW_LINE}${_F_PREFIX}${_WORD}" ;; * ) _NEW_LINE="${_NEW_LINE}${_WORD}" ;; esac; fi
-                fi
-            fi
-        fi
+        case $_WORD in
+            ?*)
+                _PREV_CHAR=
+                case $_NEW_LINE in
+                    ?*)
+                        _PREV_CHAR=${_NEW_LINE#${_NEW_LINE%?}}
+                    ;;
+                esac
+                case $_PREV_CHAR in
+                    -)
+                        _NEW_LINE=$_NEW_LINE$_WORD
+                    ;;
+                    *)
+                        _IS_SYS_VAR=0
+                        case $_BASH_ENV_LIST in
+                            *" $_WORD "*)
+                                _IS_SYS_VAR=1
+                            ;;
+                        esac
+                        case $_IS_SYS_VAR in
+                            1)
+                                _NEW_LINE=$_NEW_LINE$_WORD
+                            ;;
+                            *)
+                                case $_PREV_CHAR in
+                                    /)
+                                        _NEW_LINE=$_NEW_LINE$_WORD
+                                    ;;
+                                    *)
+                                        case $_UNSET_MODE in
+                                            ?*)
+                                                case $_UNSET_MODE in
+                                                    f)
+                                                        _NEW_LINE=$_NEW_LINE$_F_PREFIX$_WORD
+                                                    ;;
+                                                    *)
+                                                        _NEW_LINE=$_NEW_LINE$_V_PREFIX$_WORD
+                                                    ;;
+                                                esac
+                                            ;;
+                                            *)
+                                                case $_EXPECT_VAR in
+                                                    1)
+                                                        _NEW_LINE=$_NEW_LINE$_V_PREFIX$_WORD
+                                                    ;;
+                                                    *)
+                                                        case $_LIST_FUNCS in
+                                                            *" $_WORD "*)
+                                                                _NEW_LINE=$_NEW_LINE$_F_PREFIX$_WORD
+                                                            ;;
+                                                            *)
+                                                                _NEW_LINE=$_NEW_LINE$_WORD
+                                                            ;;
+                                                        esac
+                                                    ;;
+                                                esac
+                                            ;;
+                                        esac
+                                    ;;
+                                esac
+                            ;;
+                        esac
+                    ;;
+                esac
+            ;;
+        esac
 
         _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}${_NEW_LINE}${_COMM_PART}
     done
