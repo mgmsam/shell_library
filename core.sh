@@ -416,14 +416,14 @@ SPACE=' '
 BLANK=$SPACE$TAB
 POSIX_IFS=$SPACE$TAB$LF
 IFS=$POSIX_IFS
-SCRIPT_DIR=$(2>&1
+SCRIPT_DIR=$(
     _PATH="${0%/*}"
     case $0 in
         "$_PATH")
             _PATH=$PWD
         ;;
     esac
-    cd -- "${_PATH:-/}" && 2>&1 pwd -P
+    2>&1 cd -- "${_PATH:-/}" && 2>&1 pwd -P
 )
 SCRIPT_FILE="${SCRIPT_DIR%/}/${0##*/}"
 
@@ -432,7 +432,7 @@ SYS_PATH="'' '$SYS_LIBDIR'"
 
 which ()
 {
-    IFS=':'
+    IFS=:
     for i in ${PATH:-}
     do
         case $i in
