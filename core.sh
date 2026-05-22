@@ -2294,7 +2294,6 @@ _import_module ()
 
 _import_function ()
 {
-    _FUNCTION_NAME=$1
     $_IMPORT_AS || {
         echo "  File \"${_ERROR_FILE:-$SCRIPT_FILE}\"
     $_ERROR_IMPORT_STATEMENT
@@ -2302,13 +2301,9 @@ ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh
         return 1
     }
 
-    _FUNCTION_BODY=$(
-        2>&1 $_CURRENT_SHELL -c ". '$_MODULE_PATH' && type '$_FUNCTION_NAME'"
-    ) && {
-        str_replace "$_FUNCTION_BODY" "$_FUNCTION_NAME is a function
-$_FUNCTION_NAME" "$_IMPORT_PREFIX_NAME"
-        eval "$CORE_RESULT"
-    } || _modulenotfounderror 3 "$_FUNCTION_NAME"
+    _get_function_body_$_IMPORT_TYPE "$@" &&
+    _import_module_$_IMPORT_TYPE &&
+    eval "${_MODULE_FUNCS:-}" || _modulenotfounderror 3 "$_FUNCTION_NAME"
 }
 
 _exec_module ()
@@ -2341,53 +2336,69 @@ _import ()
     # ${2:-} - as
     # ${3:-} - _ALIAS
 
-    case ${_MODULE_PATH:-} in
-        '')
-            false
+    _resolve_module_path "$1" || return
+    _push_prefix_name "${3:-$1}"
+    set -- "$_SUFIX_MODULE_PATH" "$@"
+    if is_file "$_MODULE_PATH"
+    then
+        case $_IDENTIFIER in
+            $_IDENTIFIER_PART)
+                # from subtest import foo as super
+                # import subtest.foo as super
+                _MODULE=$_MODULE_PATH
+                _import_module
+            ;;
+            *)
+                # from subtest import foo.caty as super
+                # import subtest.foo.caty as super
+                _import_function "${_IDENTIFIER#"$_IDENTIFIER_PART."}"
+            ;;
+        esac || return
+    elif is_dir "$_MODULE_PATH"
+    then
+        # from . import subtest as super
+        #        import subtest as super
+        _import_package "$_MODULE_PATH"
+    else
+        _modulenotfounderror 3 "$_MODULE_PATH" || return
+    fi
+    _pop_module_path "$1"
+    _pop_prefix_name "${4:-$2}"
+}
+
+_get_function_map ()
+{
+    case $# in
+        1)
+            _FUNCTION_MAP="${_FUNCTION_MAP:-FUNC_MAP:} $1:$1"
         ;;
-        *)
-            is_file "$_MODULE_PATH" && {
-                # from subtest.foo import foo as super
-                _push_prefix_name "${3:-$1}"
-                _import_function "$1" || return
-                _pop_prefix_name "${3:-$1}"
-            }
-    esac || {
-        _resolve_module_path "$1" || return
-        _push_prefix_name "${3:-$1}"
-        set -- "$_SUFIX_MODULE_PATH" "$@"
-        if is_file "$_MODULE_PATH"
-        then
-            case $_IDENTIFIER in
-                $_IDENTIFIER_PART)
-                    # from subtest import foo as super
-                    # import subtest.foo as super
-                    _MODULE=$_MODULE_PATH
-                    _import_module
-                ;;
-                *)
-                    # from subtest import foo.caty as super
-                    # import subtest.foo.caty as super
-                    _import_function "${_IDENTIFIER#"$_IDENTIFIER_PART."}"
-                ;;
-            esac || return
-        elif is_dir "$_MODULE_PATH"
-        then
-            # from . import subtest as super
-            #        import subtest as super
-            _import_package "$_MODULE_PATH"
-        else
-            _modulenotfounderror 3 "$_MODULE_PATH" || return
-        fi
-        _pop_module_path "$1"
-        _pop_prefix_name "${4:-$2}"
-    }
+        3)
+            _FUNCTION_MAP="${_FUNCTION_MAP:-FUNC_MAP:} $1:$3"
+        ;;
+    esac
+    _FUNCTION_NAME="$_FUNCTION_NAME $1"
 }
 
 _import_buffer ()
 {
     eval set -- "$_IMPORT_BUFFER"
     _IMPORT_BUFFER=
+    case ${_MODULE_PATH:-} in
+        '')
+            false
+        ;;
+        *)
+            is_file "$_MODULE_PATH" && {
+                # from subtest.foo import func1, func2 as boo
+                _FUNCTION_MAP=
+                _FUNCTION_NAME=
+                for _IDENTIFIER
+                do
+                    _get_function_map $_IDENTIFIER
+                done
+                _import_function $_FUNCTION_NAME || return
+            }
+    esac ||
     for _MODULE
     do
         _import $_MODULE
