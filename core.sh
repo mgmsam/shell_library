@@ -1185,6 +1185,17 @@ _import_module_awk ()
                 bash_env_list = "'"${_BASH_ENV_LIST:-}"'"
                 split(bash_env_list, bash_env, " ")
                 for (x in bash_env) env_vars[bash_env[x]] = 1
+
+                # РАЗБОР КАРТЫ АЛИАСОВ: из "FUNC_MAP: func1:func1 func2:boo"
+                f_map = "'"${_FUNCTION_MAP:-}"'"
+                if (f_map ~ /^FUNC_MAP:/) {
+                    sub(/^FUNC_MAP:[ \t]*/, "", f_map)
+                    split(f_map, pairs, " ")
+                    for (p in pairs) {
+                        split(pairs[p], kv, ":")
+                        alias_map[kv[1]] = kv[2]
+                    }
+                }
             }
             {
                 lines[NR] = $0
@@ -1310,8 +1321,15 @@ _import_module_awk ()
                                     c_pos += (RLENGTH + 1)
                                 }
                                 c_pos--
-                                if (unset_mode == "f") new_code = new_code prefix full_word
-                                else new_code = new_code v_prefix full_word
+                                
+                                # ИСПРАВЛЕНО ДЛЯ КАРТЫ: замена имени функции в одиночных кавычках (например, unset 'func2')
+                                if (unset_mode == "f" && alias_map[full_word] != "") {
+                                    new_code = new_code prefix alias_map[full_word]
+                                } else if (unset_mode == "f") {
+                                    new_code = new_code prefix full_word
+                                } else {
+                                    new_code = new_code v_prefix full_word
+                                }
                             } else {
                                 new_code = new_code curr_ch
                             }
@@ -1351,14 +1369,18 @@ _import_module_awk ()
                             } else if (prev_ch_code == "/") {
                                 new_code = new_code word
                             } else if (unset_mode != "") {
-                                if (unset_mode == "f") new_code = new_code prefix word
+                                # ИСПРАВЛЕНО ДЛЯ КАРТЫ: если функция удаляется через unset -f func2
+                                if (unset_mode == "f" && alias_map[word] != "") new_code = new_code prefix alias_map[word]
+                                else if (unset_mode == "f") new_code = new_code prefix word
                                 else new_code = new_code v_prefix word
                             } else if (expect_var == 1 || is_assignment == 1) {
                                 # СИНХРОНИЗАЦИЯ С SH: Замена идет ИСКЛЮЧИТЕЛЬНО по динамическому контексту строки!
                                 new_code = new_code v_prefix word
                             } else if (is_func_decl == 1 || names[word] == 1) {
-                                if (d_quotes == 1) new_code = new_code word
-                                else new_code = new_code prefix word
+                                # ИСПРАВЛЕНО ДЛЯ КАРТЫ: Перехват объявления и вызова функций из карты соответствий
+                                target_word = (alias_map[word] != "") ? alias_map[word] : word
+                                if (d_quotes == 1) new_code = new_code target_word
+                                else new_code = new_code prefix target_word
                             } else {
                                 new_code = new_code word
                             }
@@ -1389,6 +1411,15 @@ _import_module_shell ()
             _F_PREFIX=${_IMPORT_PREFIX_NAME}.
             str_replace "$_IMPORT_PREFIX_NAME" . _
             _V_PREFIX=${CORE_RESULT}_
+        ;;
+    esac
+
+    # --- РАЗБОР КАРТЫ АЛИАСОВ ДЛЯ ИМПОРТА ФУНКЦИЙ ---
+    _USE_MAP=0
+    case ${_FUNCTION_MAP:-} in
+        'FUNC_MAP:'*)
+            _USE_MAP=1
+            _MAP_DATA=${_FUNCTION_MAP#FUNC_MAP:"$SPACE"}
         ;;
     esac
 
@@ -1983,6 +2014,19 @@ _MODULE_BODY
                                             esac
                                         ;;
                                         *)
+                                            # Извлекаем алиас по оригинальному имени из карты
+                                            _TARGET_WORD=$_WORD
+                                            case $_USE_MAP in
+                                                1)
+                                                    case $_MAP_DATA in
+                                                        *"$_WORD:"*)
+                                                            _M_TAIL=${_MAP_DATA#*"$_WORD":}
+                                                            _TARGET_WORD=${_M_TAIL%%"$SPACE"*}
+                                                        ;;
+                                                    esac
+                                                ;;
+                                            esac
+
                                             case $_IS_FUNC_DECL in
                                                 1)
                                                     true
@@ -1996,12 +2040,13 @@ _MODULE_BODY
                                                             false
                                                         ;;
                                                     esac
+                                                ;;
                                             esac && {
                                                 case $_D_QUOTES in
                                                     1)
                                                         case $_UNSET_MODE in
                                                             '')
-                                                                _NEW_LINE=$_NEW_LINE$_WORD
+                                                                _NEW_LINE=$_NEW_LINE$_TARGET_WORD
                                                             ;;
                                                             *)
                                                                 false
@@ -2011,7 +2056,7 @@ _MODULE_BODY
                                                     *)
                                                         false
                                                     ;;
-                                                esac || _NEW_LINE=$_NEW_LINE$_F_PREFIX$_WORD
+                                                esac || _NEW_LINE=$_NEW_LINE$_F_PREFIX$_TARGET_WORD
                                             } || _NEW_LINE=$_NEW_LINE$_WORD
                                         ;;
                                     esac
@@ -2098,6 +2143,17 @@ _MODULE_BODY
                                                 esac
                                             ;;
                                             *)
+                                                _TARGET_WORD=$_WORD
+                                                case $_USE_MAP in
+                                                    1)
+                                                        case $_MAP_DATA in
+                                                            *$_WORD:*)
+                                                                _M_TAIL=${_MAP_DATA#*"$_WORD":}
+                                                                _TARGET_WORD=${_M_TAIL%%"$SPACE"*}
+                                                            ;;
+                                                        esac
+                                                    ;;
+                                                esac
                                                 case $_EXPECT_VAR in
                                                     1)
                                                         _NEW_LINE=$_NEW_LINE$_V_PREFIX$_WORD
@@ -2105,7 +2161,7 @@ _MODULE_BODY
                                                     *)
                                                         case $_LIST_FUNCS in
                                                             *" $_WORD "*)
-                                                                _NEW_LINE=$_NEW_LINE$_F_PREFIX$_WORD
+                                                                _NEW_LINE=$_NEW_LINE$_F_PREFIX$_TARGET_WORD
                                                             ;;
                                                             *)
                                                                 _NEW_LINE=$_NEW_LINE$_WORD
@@ -2287,7 +2343,6 @@ _import_module ()
             _get_bash_env_list
         ;;
     esac
-    _load_module
     _import_module_$_IMPORT_TYPE
     eval "${_MODULE_FUNCS:-}"
 }
@@ -2302,7 +2357,7 @@ ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh
     }
 
     _get_function_body_$_IMPORT_TYPE "$@" &&
-    _import_module_$_IMPORT_TYPE &&
+    _import_module &&
     eval "${_MODULE_FUNCS:-}" || _modulenotfounderror 3 "$_FUNCTION_NAME"
 }
 
@@ -2332,32 +2387,35 @@ _import_package ()
 
 _import ()
 {
-    # $1     - _IMPORT_SPEC (module/function name)
+    # $1     - _IMPORT_SPEC (module/function_name)
     # ${2:-} - as
     # ${3:-} - _ALIAS
 
     _resolve_module_path "$1" || return
-    _push_prefix_name "${3:-$1}"
     set -- "$_SUFIX_MODULE_PATH" "$@"
     if is_file "$_MODULE_PATH"
     then
         case $_IDENTIFIER in
             $_IDENTIFIER_PART)
-                # from subtest import foo as super
-                # import subtest.foo as super
+                # from subpackage import module as alias
+                # import subpackage.module as alias
+                _push_prefix_name "${4:-$2}"
                 _MODULE=$_MODULE_PATH
+                _load_module
                 _import_module
             ;;
             *)
-                # from subtest import foo.caty as super
-                # import subtest.foo.caty as super
+                # from subpackage import module.func as alias
+                # import subpackage.module.func as alias
+                _push_prefix_name "${4:-$_IDENTIFIER_PART}"
                 _import_function "${_IDENTIFIER#"$_IDENTIFIER_PART."}"
             ;;
         esac || return
     elif is_dir "$_MODULE_PATH"
     then
-        # from . import subtest as super
-        #        import subtest as super
+        # from . import subpackage as alias
+        #        import subpackage as alias
+        _push_prefix_name "${4:-$2}"
         _import_package "$_MODULE_PATH"
     else
         _modulenotfounderror 3 "$_MODULE_PATH" || return
@@ -2389,7 +2447,7 @@ _import_buffer ()
         ;;
         *)
             is_file "$_MODULE_PATH" && {
-                # from subtest.foo import func1, func2 as boo
+                # from subpackage.module import func1, func2 as alias
                 _FUNCTION_MAP=
                 _FUNCTION_NAME=
                 for _IDENTIFIER
