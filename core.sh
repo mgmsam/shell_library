@@ -220,7 +220,12 @@ fi >/dev/null 2>&1
 puts_stream ()
 {
     PUTS_LINE=$($PUTS "$*")${SAY_SUFFIX:-}
-    while case ${PUTS_LINE:-} in '') false ;; esac
+    while
+        case ${PUTS_LINE:-} in
+            '')
+                false
+            ;;
+        esac
     do
         PUTS_CHAR=${PUTS_LINE%"${PUTS_LINE#?}"}
         PUTS_LINE=${PUTS_LINE#?}
@@ -244,7 +249,12 @@ puts_indented ()
                 PUTS_LENGHT_PREFIX=${SAY_LENGHT_INDENT:-${#SAY_PREFIX}}
                 SAY_COUNT=$PUTS_LENGHT_PREFIX
                 SAY_INDENT=
-                while case $SAY_COUNT in 0) false ;; esac
+                while
+                    case $SAY_COUNT in
+                        0)
+                            false
+                        ;;
+                    esac
                 do
                     SAY_COUNT=$((SAY_COUNT - 1))
                     SAY_INDENT="${SAY_INDENT:-} "
@@ -259,7 +269,12 @@ puts_indented ()
                     *)
                         SAY_COUNT=$((PUTS_LENGHT_PREFIX - ${#SAY_PREFIX}))
                         SAY_DIVIDER=
-                        while case $((SAY_COUNT > 0)) in 0) false ;; esac
+                        while
+                            case $((SAY_COUNT > 0)) in
+                                0)
+                                    false
+                                ;;
+                            esac
                         do
                             SAY_COUNT=$((SAY_COUNT - 1))
                             SAY_DIVIDER="${SAY_DIVIDER:-} "
@@ -285,7 +300,12 @@ puts_indented ()
     case $# in
         [!01])
             SAY_SUFFIX=$LF
-            while case $# in 1) false ;; esac
+            while
+                case $# in
+                    1)
+                        false
+                    ;;
+                esac
             do
                 puts "${SAY_PREFIX:-}$1"
                 shift
@@ -310,7 +330,12 @@ say ()
 
     set -- ${SAY_OPTIONS:-} "$@"
 
-    while case $# in 0) false ;; esac
+    while
+        case $# in
+            0)
+                false
+            ;;
+        esac
     do
         case ${1:-} in
             -c*)
@@ -585,7 +610,11 @@ is_term ()
 is_root_access ()
 {
     type id >/dev/null 2>&1 && {
-        case $(id -u 2>/dev/null) in 0) return 0 ;; esac
+        case $(id -u 2>/dev/null) in
+            0)
+                return 0
+            ;;
+        esac
         return 1
     } || test -w /
 }
@@ -2369,7 +2398,12 @@ full_path ()
     # resolve path /home/bob/../alisa/.//.ssh/ to /home/alisa/.ssh
     ARG=${TARGET:-}
     TARGET=
-    while case ${ARG:-} in '') false ;; esac
+    while
+        case ${ARG:-} in
+            '')
+                false
+            ;;
+        esac
     do
         DIR=${ARG%%/*}
         case ${DIR:-} in
