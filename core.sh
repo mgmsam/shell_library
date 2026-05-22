@@ -105,13 +105,13 @@ init_color ()
     } || reset_color
 }
 
-case "${KSH_VERSION:-}" in
+case ${KSH_VERSION:-} in
     ?*)
         PUTS_TYPE=print PUTS_ESCAPE=true
         puts ()
         {
-            "$SAY_ESCAPE" && PUTS_FORMAT=-n || PUTS_FORMAT="-n -r"
-            "$SAY_BATCH" && print $PUTS_FORMAT "$*${SAY_SUFFIX:-}" || {
+            $SAY_ESCAPE && PUTS_FORMAT=-n || PUTS_FORMAT='-n -r'
+            $SAY_BATCH && print $PUTS_FORMAT "$*${SAY_SUFFIX:-}" || {
                 PUTS="print $PUTS_FORMAT"
                 puts_stream "$*"
             }
@@ -128,8 +128,8 @@ then
     PUTS_TYPE=printf
     puts ()
     {
-        "$SAY_ESCAPE" && PUTS_FORMAT=%b || PUTS_FORMAT=%s
-        "$SAY_BATCH" && printf $PUTS_FORMAT "$*${SAY_SUFFIX:-}" || {
+        $SAY_ESCAPE && PUTS_FORMAT=%b || PUTS_FORMAT=%s
+        $SAY_BATCH && printf $PUTS_FORMAT "$*${SAY_SUFFIX:-}" || {
             PUTS="printf $PUTS_FORMAT"
             puts_stream "$*"
         }
@@ -144,16 +144,16 @@ then
                     PUTS_TYPE=echo
                     puts ()
                     {
-                        "$SAY_BATCH" && echo "$*${SAY_SUFFIX:-}\c" || {
-                            case "${SAY_SUFFIX:-}" in
-                                "")
-                                    SAY_SUFFIX="\c"
+                        $SAY_BATCH && echo "$*${SAY_SUFFIX:-}\c" || {
+                            case ${SAY_SUFFIX:-} in
+                                '')
+                                    SAY_SUFFIX='\c'
                                 ;;
                                 *)
                                     SAY_SUFFIX=
                                 ;;
                             esac
-                            PUTS="echo"
+                            PUTS=echo
                             puts_stream "$*"
                         }
                     }
@@ -172,8 +172,8 @@ then
                     PUTS_TYPE=echo_n
                     puts ()
                     {
-                        "$SAY_BATCH" && echo -n "$*${SAY_SUFFIX:-}" || {
-                            PUTS="echo -n"
+                        $SAY_BATCH && echo -n "$*${SAY_SUFFIX:-}" || {
+                            PUTS='echo -n'
                             puts_stream "$*"
                         }
                     }
@@ -187,8 +187,8 @@ then
         PUTS_TYPE=echo_ne PUTS_ESCAPE=true
         puts ()
         {
-            "$SAY_ESCAPE" && PUTS_FORMAT="-ne" || PUTS_FORMAT="-n"
-            "$SAY_BATCH" && echo $PUTS_FORMAT "$*${SAY_SUFFIX:-}" || {
+            $SAY_ESCAPE && PUTS_FORMAT=-ne || PUTS_FORMAT=-n
+            $SAY_BATCH && echo $PUTS_FORMAT "$*${SAY_SUFFIX:-}" || {
                 PUTS="echo $PUTS_FORMAT"
                 puts_stream "$*"
             }
@@ -220,12 +220,12 @@ fi >/dev/null 2>&1
 puts_stream ()
 {
     PUTS_LINE=$($PUTS "$*")${SAY_SUFFIX:-}
-    while case "${PUTS_LINE:-}" in "") false ;; esac
+    while case ${PUTS_LINE:-} in '') false ;; esac
     do
-        PUTS_CHAR=${PUTS_LINE%${PUTS_LINE#?}}
+        PUTS_CHAR=${PUTS_LINE%"${PUTS_LINE#?}"}
         PUTS_LINE=${PUTS_LINE#?}
         $PUTS "$PUTS_CHAR"
-        case "$PUTS_CHAR" in
+        case $PUTS_CHAR in
             [[:alnum:]])
                 sleep "${SAY_TIMEOUT:-0.05}"
             ;;
@@ -237,8 +237,8 @@ puts_indented ()
 {
     if $SAY_PREFIX_INDENT
     then
-        case "${PUTS_LENGHT_PREFIX:-}" in
-            "${SAY_LENGHT_INDENT:-0}")
+        case ${PUTS_LENGHT_PREFIX:-} in
+            ${SAY_LENGHT_INDENT:-0})
             ;;
             *)
                 PUTS_LENGHT_PREFIX=${SAY_LENGHT_INDENT:-${#SAY_PREFIX}}
@@ -251,15 +251,15 @@ puts_indented ()
                 done
             ;;
         esac
-        case "${SAY_PREFIX:-}" in
+        case ${SAY_PREFIX:-} in
             ?*)
-                case "$((${#SAY_PREFIX} + ${#SAY_DIVIDER}))" in
-                    "${PUTS_LENGHT_PREFIX:-}")
+                case $((${#SAY_PREFIX} + ${#SAY_DIVIDER})) in
+                    ${PUTS_LENGHT_PREFIX:-})
                     ;;
                     *)
                         SAY_COUNT=$((PUTS_LENGHT_PREFIX - ${#SAY_PREFIX}))
                         SAY_DIVIDER=
-                        while case "$((SAY_COUNT > 0))" in 0) false ;; esac
+                        while case $((SAY_COUNT > 0)) in 0) false ;; esac
                         do
                             SAY_COUNT=$((SAY_COUNT - 1))
                             SAY_DIVIDER="${SAY_DIVIDER:-} "
@@ -306,22 +306,22 @@ say ()
     SAY_NEWLINE=true
     SAY_PREFIX="${LOG_PREFIX:-$0}: "
     SAY_PREFIX_INDENT=false
-    SAY_SUFFIX="$LF"
+    SAY_SUFFIX=$LF
 
     set -- ${SAY_OPTIONS:-} "$@"
 
     while case $# in 0) false ;; esac
     do
-        case "${1:-}" in
+        case ${1:-} in
             -c*)
-                case "$1" in
+                case $1 in
                     -c[!0-9\.]* | -c[0-9]*[!0-9\.]* | -c\.*[!0-9]* | *\.*\.*)
                         false
                     ;;
                     *)
                         if $CAN_SLEEP
                         then
-                            case "${1#??}" in
+                            case ${1#??} in
                                 *\.*)
                                     if $CAN_SLEEP_FLOAT
                                     then
@@ -333,7 +333,7 @@ say ()
                                 ;;
                             esac || {
                                 SAY_BATCH=false
-                                SAY_TIMEOUT="${1#??}"
+                                SAY_TIMEOUT=${1#??}
                             }
                         fi
                     ;;
@@ -343,15 +343,15 @@ say ()
                 false
             ;;
         esac ||
-        case "${1:-}" in
+        case ${1:-} in
             -i*)
-                case "$1" in
+                case $1 in
                     -i[!0-9]* | -i[0-9]*[!0-9]*)
                         false
                     ;;
                     *)
                         SAY_PREFIX_INDENT=true
-                        SAY_LENGHT_INDENT="${1#??}"
+                        SAY_LENGHT_INDENT=${1#??}
                     ;;
                 esac
             ;;
@@ -359,7 +359,7 @@ say ()
                 false
             ;;
         esac ||
-        case "${1:-}" in
+        case ${1:-} in
             -l)
                 SAY_LIST=true
             ;;
@@ -382,7 +382,7 @@ say ()
         esac
         shift
     done
-    case "$SAY_RESULT" in
+    case $SAY_RESULT in
         0)
             EXIT_CODE=${EXIT_CODE:-0}
         ;;
@@ -390,9 +390,9 @@ say ()
             EXIT_CODE=$SAY_RESULT
         ;;
     esac
-    case "$*" in
+    case $* in
         ?*)
-            if "$SAY_LIST"
+            if $SAY_LIST
             then
                 puts_indented ${1:+"$@"}
             else
@@ -417,17 +417,17 @@ BLANK=$SPACE$TAB
 POSIX_IFS=$SPACE$TAB$LF
 IFS=$POSIX_IFS
 SCRIPT_DIR=$(
-    _PATH="${0%/*}"
+    _PATH=${0%/*}
     case $0 in
-        "$_PATH")
+        $_PATH)
             _PATH=$PWD
         ;;
     esac
     2>&1 cd -- "${_PATH:-/}" && 2>&1 pwd -P
 )
-SCRIPT_FILE="${SCRIPT_DIR%/}/${0##*/}"
+SCRIPT_FILE=${SCRIPT_DIR%/}/${0##*/}
 
-SYS_LIBDIR='/usr/lib/shell'
+SYS_LIBDIR=/usr/lib/shell
 SYS_PATH="'' '$SYS_LIBDIR'"
 
 which ()
@@ -440,7 +440,7 @@ which ()
                 i=.
             ;;
         esac
-        CORE_RESULT="${i%/}/$1"
+        CORE_RESULT=${i%/}/$1
         test -f "$CORE_RESULT" && {
             IFS=$POSIX_IFS
             test -x "$CORE_RESULT" && return || return 126
@@ -490,8 +490,8 @@ type awk >/dev/null 2>&1 && {
 
 is_diff ()
 {
-    case "${1:-}" in
-        "${2:-}")
+    case ${1:-} in
+        ${2:-})
             return 1
         ;;
     esac
@@ -499,7 +499,7 @@ is_diff ()
 
 is_empty ()
 {
-    case "${1:-}" in
+    case ${1:-} in
         ?*)
             return 1
         ;;
@@ -508,8 +508,8 @@ is_empty ()
 
 is_not_empty ()
 {
-    case "${1:-}" in
-        "")
+    case ${1:-} in
+        '')
             return 1
         ;;
     esac
@@ -517,8 +517,8 @@ is_not_empty ()
 
 is_same ()
 {
-    case "${1:-}" in
-        "${2:-}")
+    case ${1:-} in
+        ${2:-})
             return 0
         ;;
     esac
@@ -527,7 +527,7 @@ is_same ()
 
 is_equal ()
 {
-    case "$((${1:-0} == ${2:-0}))" in
+    case $((${1:-0} == ${2:-0})) in
         0)
             return 1
         ;;
@@ -536,7 +536,7 @@ is_equal ()
 
 is_greater ()
 {
-    case "$((${1:-0} > ${2:-0}))" in
+    case $((${1:-0} > ${2:-0})) in
         0)
             return 1
         ;;
@@ -545,7 +545,7 @@ is_greater ()
 
 is_less ()
 {
-    case "$((${1:-0} < ${2:-0}))" in
+    case $((${1:-0} < ${2:-0})) in
         0)
             return 1
         ;;
@@ -554,7 +554,7 @@ is_less ()
 
 is_digit ()
 {
-    case "${1:-}" in
+    case ${1:-} in
         *[!0-9]*)
             return 1
         ;;
@@ -585,7 +585,7 @@ is_term ()
 is_root_access ()
 {
     type id >/dev/null 2>&1 && {
-        case "$(id -u 2>/dev/null)" in 0) return 0 ;; esac
+        case $(id -u 2>/dev/null) in 0) return 0 ;; esac
         return 1
     } || test -w /
 }
@@ -605,7 +605,7 @@ str_replace ()
     _CORE_REPLACE_ALL=false
     while true
     do
-        case "$1" in
+        case ${1:-} in
             --)
                 shift
                 break
@@ -619,10 +619,10 @@ str_replace ()
             ;;
         esac
     done
-    CORE_RESULT="$1"
+    CORE_RESULT=${1:-}
     while
         case $CORE_RESULT in
-            *$2*)
+            *${2:-}*)
             ;;
             *)
                 false
@@ -632,19 +632,19 @@ str_replace ()
         _CORE_ACCUMULATOR=
         while
             case $CORE_RESULT in
-                "")
+                '')
                     false
                 ;;
             esac
         do
-            _CORE_LEFT=${CORE_RESULT%%$2*}
-            case "$_CORE_LEFT" in
-                "$CORE_RESULT")
+            _CORE_LEFT=${CORE_RESULT%%"$2"*}
+            case $_CORE_LEFT in
+                $CORE_RESULT)
                     break
                 ;;
             esac
             _CORE_ACCUMULATOR=$_CORE_ACCUMULATOR$_CORE_LEFT${3:-}
-            CORE_RESULT=${CORE_RESULT#*$2}
+            CORE_RESULT=${CORE_RESULT#*"$2"}
         done
         CORE_RESULT=$_CORE_ACCUMULATOR$CORE_RESULT _CORE_ACCUMULATOR=
         $_CORE_REPLACE_ALL || break
@@ -655,9 +655,9 @@ get_indent ()
 {
     CORE_INDENT_LEN=
     CORE_INDENT=${1:-}
-    _CORE_INDENT_CHAR=${2:-" "}
-    case "$CORE_INDENT" in
-        0 | "")
+    _CORE_INDENT_CHAR=${2:- }
+    case $CORE_INDENT in
+        0 | '')
             CORE_INDENT=
             CORE_INDENT_LEN=0
             return
@@ -676,7 +676,7 @@ get_indent ()
             ;;
         esac
     do
-        CORE_INDENT="$CORE_INDENT$_CORE_INDENT_CHAR"
+        CORE_INDENT=$CORE_INDENT$_CORE_INDENT_CHAR
         _CORE_COUNT=$((_CORE_COUNT + 1))
     done
 }
@@ -692,7 +692,7 @@ _get_error ()
             _ERROR_INDENT=$CORE_INDENT
         ;;
     esac
-    get_indent ${#2} '^'
+    get_indent ${#2} ^
     _ERROR_POINTER=$_ERROR_INDENT$CORE_INDENT
 }
 
@@ -757,13 +757,13 @@ is_valid_identifier ()
 
         case $_MODULE_PART_NAME in
             '')
-                _MODULE_NAME="${_MODULE_NAME:- }"
-                case ${_IDENTIFIER#${_IDENTIFIER%%.*}} in
+                _MODULE_NAME=${_MODULE_NAME:- }
+                case ${_IDENTIFIER#"${_IDENTIFIER%%.*}"} in
                     ...*)
                         _syntax_error 1 '...'
                     ;;
                     .*)
-                        _MODULE_NAME="$_MODULE_NAME."
+                        _MODULE_NAME=$_MODULE_NAME.
                         _syntax_error 1
                     ;;
                     *)
@@ -778,7 +778,7 @@ is_valid_identifier ()
                         case $_MODULE_PART_NAME in
                             *[!0]*)
                                 _MODULE_PART_NAME=${_MODULE_PART_NAME%%[!0]*}
-                                _MODULE_NAME=' '
+                                _MODULE_NAME=$SPACE
                                 _syntax_error 2 "$_MODULE_PART_NAME"
                             ;;
                             *)
@@ -808,10 +808,10 @@ is_valid_identifier ()
             case | do | done | elif | else | 'esac' | fi | for | from | function | if | import | in | then | until | while)
                 case $_MODULE_NAME in
                     '')
-                        _MODULE_NAME=' '
+                        _MODULE_NAME=$SPACE
                     ;;
                     *)
-                        _MODULE_NAME="$_MODULE_NAME."
+                        _MODULE_NAME=$_MODULE_NAME.
                     ;;
                 esac
                 _syntax_error 1 "$_MODULE_PART_NAME"
@@ -841,7 +841,7 @@ _check_import_syntax ()
 
     case $# in
         0)
-            _MODULE_NAME=' '
+            _MODULE_NAME=$SPACE
             _syntax_error 1 || return
         ;;
     esac
@@ -862,36 +862,36 @@ _check_import_syntax ()
             1)
                 case $_MODULE in
                     ,*)
-                        _MODULE_NAME=' '
+                        _MODULE_NAME=$SPACE
                         _syntax_error 1 || return
                     ;;
                     *,?*)
                         set -- "${_MODULE#*,}" "$@"
-                        _MODULE="${_MODULE%%,*}"
+                        _MODULE=${_MODULE%%,*}
                         is_valid_identifier "$_MODULE" || return
-                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_MODULE'"
+                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }'$_MODULE'"
                         _IMPORT_TOKEN=0
                         $_ERROR_TIGHT_LIST &&
-                            _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS$_MODULE," ||
-                            _ERROR_IMPORT_SPECS="${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS }$_MODULE,"
+                            _ERROR_IMPORT_SPECS=$_ERROR_IMPORT_SPECS$_MODULE, ||
+                            _ERROR_IMPORT_SPECS=${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS }$_MODULE,
                         _ERROR_TIGHT_LIST=true
                     ;;
                     *,)
-                        _MODULE="${_MODULE%,}"
+                        _MODULE=${_MODULE%,}
                         is_valid_identifier "$_MODULE" || return
-                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_MODULE'"
+                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }'$_MODULE'"
                         _IMPORT_TOKEN=0
                         $_ERROR_TIGHT_LIST &&
-                            _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS$_MODULE," ||
-                            _ERROR_IMPORT_SPECS="${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS }$_MODULE,"
+                            _ERROR_IMPORT_SPECS=$_ERROR_IMPORT_SPECS$_MODULE, ||
+                            _ERROR_IMPORT_SPECS=${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS }$_MODULE,
                         _ERROR_TIGHT_LIST=false
                     ;;
                     *)
                         is_valid_identifier "$_MODULE" || return
-                        _IMPORT_SPEC="${_IMPORT_SPEC:+$_IMPORT_SPEC }$_MODULE"
+                        _IMPORT_SPEC=${_IMPORT_SPEC:+$_IMPORT_SPEC }$_MODULE
                         $_ERROR_TIGHT_LIST &&
-                            _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS$_MODULE" ||
-                            _ERROR_IMPORT_SPECS="${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS }$_MODULE"
+                            _ERROR_IMPORT_SPECS=$_ERROR_IMPORT_SPECS$_MODULE ||
+                            _ERROR_IMPORT_SPECS=${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS }$_MODULE
                         _ERROR_TIGHT_LIST=false
                     ;;
                 esac
@@ -905,9 +905,9 @@ _check_import_syntax ()
                                 set -- "${_MODULE#*,}" "$@"
                                 _MODULE=${_MODULE%%,*}
                                 is_valid_identifier "$_MODULE" || return
-                                _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}${_IMPORT_SPEC:+"'$_IMPORT_SPEC' "}'$_MODULE'"
+                                _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }${_IMPORT_SPEC:+"'$_IMPORT_SPEC' "}'$_MODULE'"
                                 _IMPORT_SPEC=
-                                _ERROR_IMPORT_SPECS="${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS },$_MODULE,"
+                                _ERROR_IMPORT_SPECS=${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS },$_MODULE,
                                 _IMPORT_TOKEN=0
                                 _ERROR_TIGHT_LIST=true
                             ;;
@@ -915,7 +915,7 @@ _check_import_syntax ()
                                 _MODULE=${_MODULE#,}
                                 _MODULE=${_MODULE%,}
                                 is_valid_identifier "$_MODULE" || return
-                                _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}${_IMPORT_SPEC:+"'$_IMPORT_SPEC' "}'$_MODULE'"
+                                _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }${_IMPORT_SPEC:+"'$_IMPORT_SPEC' "}'$_MODULE'"
                                 _IMPORT_SPEC=
                                 _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS ,$_MODULE,"
                                 _IMPORT_TOKEN=0
@@ -923,14 +923,14 @@ _check_import_syntax ()
                             *)
                                 _MODULE_NAME=,
                                 is_valid_identifier "${_MODULE#,}" || return
-                                _IMPORT_SPEC="${_IMPORT_SPEC:+$_IMPORT_SPEC }$_MODULE"
-                                _ERROR_IMPORT_SPECS="${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS }$_MODULE"
+                                _IMPORT_SPEC=${_IMPORT_SPEC:+$_IMPORT_SPEC }$_MODULE
+                                _ERROR_IMPORT_SPECS=${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS }$_MODULE
                                 _IMPORT_TOKEN=1
                             ;;
                         esac
                     ;;
                     ,)
-                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC'"
+                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }'$_IMPORT_SPEC'"
                         _IMPORT_SPEC=
                         _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS ,"
                         _IMPORT_TOKEN=0
@@ -955,36 +955,36 @@ _check_import_syntax ()
             3)
                 case $_MODULE in
                     ,*)
-                        _MODULE_NAME=' '
+                        _MODULE_NAME=$SPACE
                         _syntax_error 1 || return
                     ;;
                     *,?*)
                         set -- "${_MODULE#*,}" "$@"
-                        _MODULE="${_MODULE%%,*}"
+                        _MODULE=${_MODULE%%,*}
                         is_valid_identifier "$_MODULE" || return
-                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC' '$_MODULE'"
+                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }'$_IMPORT_SPEC' '$_MODULE'"
                         _IMPORT_SPEC=
                         _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS $_MODULE,"
                         _ERROR_TIGHT_LIST=true
                         _IMPORT_TOKEN=0
                     ;;
                     *,)
-                        _MODULE="${_MODULE%,}"
+                        _MODULE=${_MODULE%,}
                         is_valid_identifier "$_MODULE" || return
-                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC' '$_MODULE'"
+                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }'$_IMPORT_SPEC' '$_MODULE'"
                         _IMPORT_SPEC=
                         _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS $_MODULE,"
                         _IMPORT_TOKEN=0
                         case $# in
                             0)
-                                _MODULE_NAME=' '
+                                _MODULE_NAME=$SPACE
                                 _syntax_error 4 || return
                             ;;
                         esac
                     ;;
                     *)
                         is_valid_identifier "$_MODULE" || return
-                        _IMPORT_SPEC="${_IMPORT_SPEC:+$_IMPORT_SPEC }$_MODULE"
+                        _IMPORT_SPEC=${_IMPORT_SPEC:+$_IMPORT_SPEC }$_MODULE
                         _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS $_MODULE"
                     ;;
                 esac
@@ -998,13 +998,13 @@ _check_import_syntax ()
                                 _syntax_error 4 || return
                             ;;
                         esac
-                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC'"
+                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }'$_IMPORT_SPEC'"
                         _IMPORT_SPEC=
                         _IMPORT_TOKEN=0
                     ;;
                     ,*)
                         set -- "${_MODULE#,}" "$@"
-                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC'"
+                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }'$_IMPORT_SPEC'"
                         _IMPORT_SPEC=
                         _IMPORT_TOKEN=0
                     ;;
@@ -1014,7 +1014,7 @@ _check_import_syntax ()
                 esac
             ;;
         esac || {
-            _MODULE_NAME=' '
+            _MODULE_NAME=$SPACE
             case $_MODULE in
                 ...*)
                     _syntax_error 1 '...'
@@ -1030,7 +1030,7 @@ _check_import_syntax ()
     done
     case $_IMPORT_SPEC in
         ?*)
-            _IMPORT_BUFFER="${_IMPORT_BUFFER:+"$_IMPORT_BUFFER "}'$_IMPORT_SPEC'"
+            _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }'$_IMPORT_SPEC'"
         ;;
     esac
 }
@@ -1043,7 +1043,7 @@ _push_module_path ()
 
 _pop_module_path ()
 {
-    _MODULE_PATH=${_MODULE_PATH%$1}
+    _MODULE_PATH=${_MODULE_PATH%"$1"}
 }
 
 _IMPORT_PREFIX_NAME=
@@ -1056,10 +1056,10 @@ _pop_prefix_name ()
 {
     case $1 in
         ..)
-            _IMPORT_PREFIX_NAME=${_IMPORT_PREFIX_NAME%$_IMPORT_PREFIX_SEP*}
+            _IMPORT_PREFIX_NAME=${_IMPORT_PREFIX_NAME%"$_IMPORT_PREFIX_SEP"*}
         ;;
         *)
-            _IMPORT_PREFIX_NAME=${_IMPORT_PREFIX_NAME%$_IMPORT_PREFIX_SEP${1%.sh}}
+            _IMPORT_PREFIX_NAME=${_IMPORT_PREFIX_NAME%"$_IMPORT_PREFIX_SEP${1%.sh}"}
         ;;
     esac
 }
@@ -1076,7 +1076,7 @@ _modulenotfounderror ()
             echo "ModuleNotFoundError: No module named '$_IDENTIFIER'; '$_IDENTIFIER_PART' is not a package"
         ;;
         3)
-            str_replace "${2#$PWD}" '/' '.'
+            str_replace "${2#"$PWD"}" / .
             echo "ModuleNotFoundError: No module named '$CORE_RESULT'"
         ;;
     esac
@@ -1089,7 +1089,7 @@ _locate_module ()
     eval set -- "$SYS_PATH"
     for SYS_PART_PATH
     do
-        _MODULE_PATH="${SYS_PART_PATH:-${_MODULE_PATH:-$SCRIPT_DIR}}"
+        _MODULE_PATH=${SYS_PART_PATH:-${_MODULE_PATH:-$SCRIPT_DIR}}
         is_file "$_MODULE_PATH/$_IDENTIFIER_PART.sh" &&
         _push_module_path "$_IDENTIFIER_PART.sh" || {
             is_dir "$_MODULE_PATH/$_IDENTIFIER_PART" &&
@@ -1357,7 +1357,7 @@ _import_module_shell ()
         .)
             _F_PREFIX=${_IMPORT_PREFIX_NAME}.
             str_replace "$_IMPORT_PREFIX_NAME" . _
-            _V_PREFIX="${CORE_RESULT}_"
+            _V_PREFIX=${CORE_RESULT}_
         ;;
     esac
 
@@ -1394,7 +1394,7 @@ _import_module_shell ()
                 ;;
             esac
         do
-            _CURR_CH=${_REST_PARSE%${_REST_PARSE#?}}
+            _CURR_CH=${_REST_PARSE%"${_REST_PARSE#?}"}
             case $_CURR_CH in
                 [a-zA-Z_])
                     _WORD=
@@ -1405,7 +1405,7 @@ _import_module_shell ()
                             ;;
                         esac
                     do
-                        _W_CH=${_REST_PARSE%${_REST_PARSE#?}}
+                        _W_CH=${_REST_PARSE%"${_REST_PARSE#?}"}
                         case $_W_CH in
                             [a-zA-Z0-9_.])
                                 _WORD=$_WORD$_W_CH
@@ -1437,9 +1437,9 @@ _import_module_shell ()
                             ;;
                         esac
                     do
-                        _T_CH=${_TAIL%${_TAIL#?}}
+                        _T_CH=${_TAIL%"${_TAIL#?}"}
                         case $_T_CH in
-                            [$SPACE$TAB])
+                            $SPACE | $TAB)
                                 _TAIL=${_TAIL#?}
                             ;;
                             *)
@@ -1447,8 +1447,8 @@ _import_module_shell ()
                             ;;
                         esac
                     done
-                    case ${_TAIL%${_TAIL#?}} in
-                        \()
+                    case ${_TAIL%"${_TAIL#?}"} in
+                        '(')
                             _TAIL=${_TAIL#?}
                             while
                                 case $_TAIL in
@@ -1457,9 +1457,9 @@ _import_module_shell ()
                                     ;;
                                 esac
                             do
-                                _T_CH=${_TAIL%${_TAIL#?}}
+                                _T_CH=${_TAIL%"${_TAIL#?}"}
                                 case $_T_CH in
-                                    [$SPACE$TAB])
+                                    $SPACE | $TAB)
                                         _TAIL=${_TAIL#?}
                                     ;;
                                     *)
@@ -1467,8 +1467,8 @@ _import_module_shell ()
                                     ;;
                                 esac
                             done
-                            case ${_TAIL%${_TAIL#?}} in
-                                \))
+                            case ${_TAIL%"${_TAIL#?}"} in
+                                ')')
                                     _IS_A_FUNC=1
                                     _REST_PARSE=${_TAIL#?}
                                 ;;
@@ -1487,9 +1487,9 @@ _import_module_shell ()
                                             ;;
                                         esac
                                     do
-                                        _FT_CH=${_F_TAIL%${_F_TAIL#?}}
+                                        _FT_CH=${_F_TAIL%"${_F_TAIL#?}"}
                                         case $_FT_CH in
-                                            [$SPACE$TAB\;{])
+                                            [\;{] | $SPACE | $TAB)
                                                 _F_TAIL=${_F_TAIL#?}
                                             ;;
                                             *)
@@ -1521,7 +1521,7 @@ _import_module_shell ()
                     # Флаг сбрасывается ТОЛЬКО после проверки текущего слова, а не безусловно в цикле символов!
                     _EXPECT_FUNC=0
                 ;;
-                [\&\;|])
+                '&' | ';' | '|')
                     # Сброс флага ожидания функции на жестких разделителях команд, пробелы и табы внутри одной команды его удерживают
                     _EXPECT_FUNC=0
                     _REST_PARSE=${_REST_PARSE#?}
@@ -1544,7 +1544,7 @@ _import_module_shell ()
                         ;;
                     esac
                 do
-                    _U_CH=${_U_REST%${_U_REST#?}}
+                    _U_CH=${_U_REST%"${_U_REST#?}"}
                     case $_U_CH in
                         [a-zA-Z_])
                             _U_WORD=
@@ -1555,7 +1555,7 @@ _import_module_shell ()
                                     ;;
                                 esac
                             do
-                                _UW_CH=${_U_REST%${_U_REST#?}}
+                                _UW_CH=${_U_REST%"${_U_REST#?}"}
                                 case $_UW_CH in
                                     # ИСПРАВЛЕНО: уменьшаем правильную переменную _U_REST
                                     [a-zA-Z0-9_.])
@@ -1568,16 +1568,16 @@ _import_module_shell ()
                                 esac
                             done
                             _U_PREV_CHAR=
-                            _U_NEW_PART=${_U_TAIL%$_U_REST}
-                            _U_NEW_PART=${_U_NEW_PART%$_U_WORD}
+                            _U_NEW_PART=${_U_TAIL%"$_U_REST"}
+                            _U_NEW_PART=${_U_NEW_PART%"$_U_WORD"}
                             case $_U_NEW_PART in
                                 ?*)
-                                    _U_PREV_CHAR=${_U_NEW_PART#${_U_NEW_PART%?}}
+                                    _U_PREV_CHAR=${_U_NEW_PART#"${_U_NEW_PART%?}"}
                                 ;;
                             esac
                             case $_U_PREV_CHAR in
                                 -)
-                                    _LAST_F=${_U_WORD#${_U_WORD%?}}
+                                    _LAST_F=${_U_WORD#"${_U_WORD%?}"}
                                     case $_LAST_F in
                                         [fv])
                                             _U_MODE=$_LAST_F
@@ -1609,7 +1609,7 @@ _import_module_shell ()
                                 ;;
                             esac
                             ;;
-                        [\;\&|])
+                        '&' | ';' | '|')
                             _U_MODE=
                             _U_REST=${_U_REST#?}
                         ;;
@@ -1636,8 +1636,8 @@ _import_module_shell ()
     do
         case $_REST_LINES in
             *$SOH*)
-                _LINE=${_REST_LINES%%$SOH*}
-                _REST_LINES=${_REST_LINES#*$SOH}
+                _LINE=${_REST_LINES%%"$SOH"*}
+                _REST_LINES=${_REST_LINES#*"$SOH"}
             ;;
             *)
                 _LINE=$_REST_LINES
@@ -1682,9 +1682,9 @@ _import_module_shell ()
                         ;;
                     esac
                 do
-                    _T_CH=${_T_REST%${_T_REST#?}}
+                    _T_CH=${_T_REST%"${_T_REST#?}"}
                     case $_T_CH in
-                        "'" | '"' | "\\" )
+                        "'" | '"' | '\' )
                             # ТЕПЕРЬ СБРАСЫВАЕМ И БЭКСЛЕШ \
                         ;;
                         *)
@@ -1741,7 +1741,7 @@ _import_module_shell ()
                 ;;
             esac
         do
-            _CH=${_REST%${_REST#?}}
+            _CH=${_REST%"${_REST#?}"}
             _REST=${_REST#?}
             case $_S_QUOTES in
                 1)
@@ -1765,7 +1765,7 @@ _import_module_shell ()
                                             ;;
                                         esac
                                     do
-                                        _Q_CH=${_REST_QUOTES%${_REST_QUOTES#?}}
+                                        _Q_CH=${_REST_QUOTES%"${_REST_QUOTES#?}"}
                                         case $_Q_CH in
                                             [a-zA-Z0-9_.])
                                                 _WORD=$_WORD$_Q_CH
@@ -1820,12 +1820,12 @@ _import_module_shell ()
                             _PREV_CHAR=
                             case $_NEW_LINE in
                                 ?*)
-                                    _PREV_CHAR=${_NEW_LINE#${_NEW_LINE%?}}
+                                    _PREV_CHAR=${_NEW_LINE#"${_NEW_LINE%?}"}
                                 ;;
                             esac
                             case $_PREV_CHAR in
                                 -)
-                                    _LAST_FLAG=${_WORD#${_WORD%?}}
+                                    _LAST_FLAG=${_WORD#"${_WORD%?}"}
                                     case $_LAST_FLAG in
                                         [fv])
                                             _UNSET_MODE=$_LAST_FLAG
@@ -1885,9 +1885,9 @@ _import_module_shell ()
                                                     ;;
                                                 esac
                                             do
-                                                _FT_CH=${_F_REST%${_F_REST#?}}
+                                                _FT_CH=${_F_REST%"${_F_REST#?}"}
                                                 case $_FT_CH in
-                                                    [$SPACE$TAB])
+                                                    $SPACE | $TAB)
                                                         _F_REST=${_F_REST#?}
                                                     ;;
                                                     *)
@@ -1895,8 +1895,8 @@ _import_module_shell ()
                                                     ;;
                                                 esac
                                             done
-                                            case ${_F_REST%${_F_REST#?}} in
-                                                \()
+                                            case ${_F_REST%"${_F_REST#?}"} in
+                                                '(')
                                                     _F_REST=${_F_REST#?}
                                                     while
                                                         case $_F_REST in
@@ -1905,9 +1905,9 @@ _import_module_shell ()
                                                             ;;
                                                         esac
                                                     do
-                                                        _FT_CH=${_F_REST%${_F_REST#?}}
+                                                        _FT_CH=${_F_REST%"${_F_REST#?}"}
                                                         case $_FT_CH in
-                                                            [$SPACE$TAB])
+                                                            $SPACE | $TAB)
                                                                 _F_REST=${_F_REST#?}
                                                             ;;
                                                             *)
@@ -1915,8 +1915,8 @@ _import_module_shell ()
                                                             ;;
                                                         esac
                                                     done
-                                                    case ${_F_REST%${_F_REST#?}} in
-                                                        \))
+                                                    case ${_F_REST%"${_F_REST#?}"} in
+                                                        ')')
                                                             _IS_FUNC_DECL=1
                                                         ;;
                                                     esac
@@ -2010,10 +2010,10 @@ _import_module_shell ()
                         [}%:-])
                             _EXPECT_VAR=0
                         ;;
-                        [$SPACE$TAB\&\;|])
+                        '&' | ';' | '|' | $SPACE | $TAB)
                             _EXPECT_VAR=0
                             case $_CH in
-                                [\&\;|])
+                                '&' | ';' | '|')
                                     _UNSET_MODE=
                                 ;;
                             esac
@@ -2029,7 +2029,7 @@ _import_module_shell ()
                 _PREV_CHAR=
                 case $_NEW_LINE in
                     ?*)
-                        _PREV_CHAR=${_NEW_LINE#${_NEW_LINE%?}}
+                        _PREV_CHAR=${_NEW_LINE#"${_NEW_LINE%?}"}
                     ;;
                 esac
                 case $_PREV_CHAR in
@@ -2091,13 +2091,13 @@ _import_module_shell ()
             ;;
         esac
 
-        _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}${_NEW_LINE}${_COMM_PART}
+        _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_NEW_LINE$_COMM_PART
     done
 }
 
 _get_bash_env_list ()
 {
-    _BASH_ENV_LIST=" ? ! * @ # $ - _ "
+    _BASH_ENV_LIST=' ? ! * @ # $ - _ '
     _BASH_ENV_LIST="$_BASH_ENV_LIST BASH BASHOPTS BASHPID BASH_ALIASES BASH_ARGC BASH_ARGV BASH_ARGV0 BASH_CMDS BASH_COMMAND BASH_COMPAT BASH_ENV BASH_EXECUTION_STRING BASH_LINENO BASH_LOADABLES_PATH BASH_REMATCH BASH_SOURCE BASH_SUBSHELL BASH_VERSINFO BASH_VERSION BASH_XTRACEFD "
     _BASH_ENV_LIST="$_BASH_ENV_LIST CDPATH CHILD_MAX COLUMNS COMP_CWORD COMP_LINE COMP_POINT COMP_TYPE COMP_KEY COMP_WORDBREAKS COMP_WORDS COMPREPLY COPROC "
     _BASH_ENV_LIST="$_BASH_ENV_LIST DIRSTACK "
@@ -2164,7 +2164,7 @@ _import_package ()
     else
         for _MODULE in "$1"/*.sh
         do
-            _MODULE_NAME="${_MODULE##*/}"
+            _MODULE_NAME=${_MODULE##*/}
             _push_prefix_name "${_MODULE_NAME%.sh}"
             _import_module
             _pop_prefix_name "${_MODULE_NAME%.sh}"
@@ -2196,10 +2196,10 @@ _import ()
         if is_file "$_MODULE_PATH"
         then
             case $_IDENTIFIER in
-                "$_IDENTIFIER_PART")
+                $_IDENTIFIER_PART)
                     # from subtest import foo as super
                     # import subtest.foo as super
-                    _MODULE="$_MODULE_PATH"
+                    _MODULE=$_MODULE_PATH
                     _import_module
                 ;;
                 *)
@@ -2257,7 +2257,7 @@ from ()
 
     case $_PATH_FROM in
         '')
-            _MODULE_NAME=' '
+            _MODULE_NAME=$SPACE
             false
         ;;
         .)
@@ -2354,14 +2354,14 @@ full_path ()
 ########################################################################
     # resolve path ~/../alisa/.//.ssh/ to /home/bob/../alisa/.//.ssh/
     TARGET=${1:-}
-    case "$TARGET" in
+    case $TARGET in
         \~)     TARGET=${HOME%/} ;;
         \~/*)   TARGET=${HOME%/}/${TARGET#?} ;;
-         ./*)   case "$PWD" in
+         ./*)   case $PWD in
                     / ) TARGET=${TARGET#?} ;;
                     * ) TARGET=$PWD${TARGET#?} ;;
                 esac ;;
-        [!/]*)  case "$PWD" in
+        [!/]*)  case $PWD in
                     / ) TARGET=/$TARGET ;;
                     * ) TARGET=$PWD/$TARGET ;;
                 esac ;;
@@ -2369,16 +2369,16 @@ full_path ()
     # resolve path /home/bob/../alisa/.//.ssh/ to /home/alisa/.ssh
     ARG=${TARGET:-}
     TARGET=
-    while case "${ARG:-}" in "") false ;; esac
+    while case ${ARG:-} in '') false ;; esac
     do
         DIR=${ARG%%/*}
-        case "${DIR:-}" in
+        case ${DIR:-} in
              .) : ;;
             '') DIR=${ARG%%[!/]*} ;;
             ..) TARGET=${TARGET%/*} ;;
              *) TARGET=${TARGET%/}/$DIR ;;
         esac
-        ARG=${ARG#$DIR}
+        ARG=${ARG#"$DIR"}
         TARGET=${TARGET:=/}
     done
 }
