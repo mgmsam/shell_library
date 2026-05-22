@@ -1186,6 +1186,8 @@ _import_module_awk ()
                 split(bash_env_list, bash_env, " ")
                 for (x in bash_env) env_vars[bash_env[x]] = 1
 
+                filter_targets = "'"${_FILTER_TARGETS:-}"'"
+
                 # РАЗБОР КАРТЫ АЛИАСОВ: из "FUNC_MAP: func1:func1 func2:boo"
                 f_map = "'"${_FUNCTION_MAP:-}"'"
                 if (f_map ~ /^FUNC_MAP:/) {
@@ -1225,6 +1227,17 @@ _import_module_awk ()
                 prefix = "'"${_IMPORT_PREFIX_NAME:-}${_IMPORT_PREFIX_SEP:-}"'"
                 v_prefix = "'"${_IMPORT_PREFIX_NAME:-}"'_"
                 gsub(/\./, "_", v_prefix)
+
+                # Инициализация шлюза фильтрации
+                use_filter = 0
+                print_zone = 1
+                if (filter_targets != "") {
+                    use_filter = 1
+                    print_zone = 0
+                    split(filter_targets, ft, " ")
+                    for (f in ft) targets_arr[ft[f]] = 1
+                }
+                o_br = 0; c_br = 0; close_func_now = 0
 
                 # --- PASS 1: ПОСИМВОЛЬНЫЙ СБОР ФУНКЦИЙ MODULE ---
                 t_len = length(clean_total)
@@ -1377,6 +1390,23 @@ _import_module_awk ()
                                 # СИНХРОНИЗАЦИЯ С SH: Замена идет ИСКЛЮЧИТЕЛЬНО по динамическому контексту строки!
                                 new_code = new_code v_prefix word
                             } else if (is_func_decl == 1 || names[word] == 1) {
+                                # ВРЕЗКА: если встретили объявление запрашиваемой функции
+                                if (use_filter && targets_arr[word]) {
+                                    print_zone = 1
+                                    o_br = 0; c_br = 0; close_func_now = 0
+                                    # Запоминаем остаток строки строго ПОСЛЕ имени функции
+                                    body_tail = substr(code_part, c_pos + 1)
+
+                                    # ХИРУРГИЧЕСКАЯ ОЧИСТКА ГРЯЗИ В AWK:
+                                    # Проверяем стиль объявления по накопленному new_code
+                                    if (new_code ~ /function/) {
+                                        # Стиль Ksh: оставляем только ключевое слово
+                                        new_code = "function "
+                                    } else {
+                                        # Стиль POSIX: полностью стираем чужую предысторию
+                                        new_code = ""
+                                    }
+                                }
                                 # ИСПРАВЛЕНО ДЛЯ КАРТЫ: Перехват объявления и вызова функций из карты соответствий
                                 target_word = (alias_map[word] != "") ? alias_map[word] : word
                                 if (d_quotes == 1) new_code = new_code target_word
@@ -1391,7 +1421,38 @@ _import_module_awk ()
                             new_code = new_code curr_ch
                         }
                     }
-                    print new_code comment_part
+                    # Подсчёт фигурных скобок для текущей строки в зоне печати
+                    if (print_zone == 1) {
+                        # Берем чистую оригинальную строку из файла
+                        br_line = (body_tail != "") ? body_tail : lines[i]
+                        body_tail = "" # очищаем для следующих строк
+
+                        # ХИРУРГИЧЕСКАЯ ОЧИСТКА СТРОКИ:
+                        gsub(/(^|[ \t;])#.*/, "", br_line)  # вырезаем комментарии
+                        gsub(/\$\{[^\}]+\}/, "", br_line)   # начисто удаляем ВСЕ подстановки переменных ${...}
+                        gsub(/^[ \t]*esac[ \t;{]*$/, "", br_line) # игнорируем закрытие конструкции esac
+
+                        # Считаем чистые открывающие скобки
+                        o_line = br_line
+                        o_br += gsub(/\{/, "{", o_line)
+
+                        # Считаем чистые закрывающие скобки
+                        c_line = br_line
+                        c_br += gsub(/\}/, "}", c_line)
+
+                        if (o_br > 0 && o_br <= c_br) {
+                            close_func_now = 1
+                        }
+                    }
+
+                    # ШЛЮЗ ВЫВОДА
+                    if (print_zone == 1 || use_filter == 0) {
+                        print new_code comment_part
+                    }
+
+                    if (close_func_now == 1) {
+                        print_zone = 0; o_br = 0; c_br = 0; close_func_now = 0
+                    }
                 }
             }
         ' <<_MODULE_BODY
@@ -1436,13 +1497,20 @@ _import_module_shell ()
             ;;
         esac
     do
+        # --- ФИЛЬТР ФУНКЦИЙ НА ЭТАПЕ PASS 1 ---
+        _MARKER=""
+        case ${_FILTER_TARGETS:-} in
+            ?*)
+                # Если мы внутри целевой функции, помечаем строку маркером
+                if [ -n "${_CURRENT_TARGET:-}" ]; then
+                    _MARKER="_KEEP_:"
+                fi
+            ;;
+        esac
+
         case $_ALL_LINES in
-            '')
-                _ALL_LINES=$_RAW_LINE
-            ;;
-            *)
-                _ALL_LINES=$_ALL_LINES$SOH$_RAW_LINE
-            ;;
+            '') _ALL_LINES="${_MARKER}${_RAW_LINE}" ;;
+            *)  _ALL_LINES="$_ALL_LINES$SOH${_MARKER}${_RAW_LINE}" ;;
         esac
 
         _CLEAN_LINE=${_RAW_LINE%%#*}
@@ -1572,15 +1640,40 @@ _import_module_shell ()
                     case $_IS_A_FUNC in
                         1)
                             case $_LIST_FUNCS in
-                                *" $_WORD "*)
-                                ;;
-                                *)
-                                    _LIST_FUNCS="$_LIST_FUNCS$_WORD "
+                                *" $_WORD "*) ;;
+                                *) _LIST_FUNCS="$_LIST_FUNCS$_WORD " ;;
+                            esac
+                            
+                            # ВРЕЗКА: Если посимвольный парсер нашёл целевую функцию
+                            case ${_FILTER_TARGETS:-} in
+                                ?*)
+                                    case $_FILTER_TARGETS in
+                                        *" $_WORD "*)
+                                            _CURRENT_TARGET=$_WORD
+                                            # Так как заголовок функции находится на ТЕКУЩЕЙ строке,
+                                            # мы обязаны задним числом пометить её маркером сохранения,
+                                            # если она ещё не была помечена
+                                            case $_ALL_LINES in
+                                                _KEEP_*) ;;
+                                                *)
+                                                    case $_ALL_LINES in
+                                                        *$SOH*)
+                                                            _ALL_PREV=${_ALL_LINES%$SOH*}
+                                                            _ALL_CURR=${_ALL_LINES##*$SOH}
+                                                            _ALL_LINES="${_ALL_PREV}${SOH}_KEEP_:${_ALL_CURR}"
+                                                        ;;
+                                                        *)
+                                                            _ALL_LINES="_KEEP_:${_ALL_LINES}"
+                                                        ;;
+                                                    esac
+                                                ;;
+                                            esac
+                                        ;;
+                                    esac
                                 ;;
                             esac
                         ;;
                     esac
-                    # Флаг сбрасывается ТОЛЬКО после проверки текущего слова, а не безусловно в цикле символов!
                     _EXPECT_FUNC=0
                 ;;
                 '&' | ';' | '|')
@@ -1682,6 +1775,12 @@ _import_module_shell ()
                 done
             ;;
         esac
+        # Если функция закрылась (символ } на строке без отступов)
+        if [ -n "${_CURRENT_TARGET:-}" ]; then
+            case "${_RAW_LINE##[$SPACE$TAB]*}" in
+                '}') _CURRENT_TARGET="" ;;
+            esac
+        fi
     done <<_MODULE_BODY
 $_MODULE_BODY
 _MODULE_BODY
@@ -1690,6 +1789,13 @@ _MODULE_BODY
     _IN_HEREDOC=0
     _HD_TOKEN=
     _REST_LINES=$_ALL_LINES
+
+    # --- ИНИЦИАЛИЗАЦИЯ ШЛЮЗА ПЕЧАТИ ---
+    case ${_FILTER_TARGETS:-} in
+        '') _PRINT_ZONE=1 ;;  # Массовый импорт: шлюз всегда открыт
+        *)  _PRINT_ZONE=0 ;;  # Одиночный импорт: шлюз заперт, ждем функцию
+    esac
+    _O_BR=0 _C_BR=0
 
     while
         case $_REST_LINES in
@@ -1706,6 +1812,15 @@ _MODULE_BODY
             *)
                 _LINE=$_REST_LINES
                 _REST_LINES=
+        esac
+
+        # ВРЕЗКА ТУТ: Перехватываем маркер строки сразу после её извлечения!
+        _SHOULD_PRINT=0
+        case $_LINE in
+            _KEEP_:*)
+                _SHOULD_PRINT=1
+                _LINE=${_LINE#_KEEP_:}
+            ;;
         esac
 
         case $_IN_HEREDOC in
@@ -2062,6 +2177,34 @@ _MODULE_BODY
                                     esac
                                 }
                             }
+
+                            # ВОТ СЮДА СТАВИМ ПУНКТ 2:
+                            case ${_FILTER_TARGETS:-} in
+                                ?*)
+                                    case $_FILTER_TARGETS in
+                                        *" $_WORD "*)
+                                            _PRINT_ZONE=1
+                                            _O_BR=0 _C_BR=0
+                                            # Запоминаем хвост строки строго после имени функции
+                                            _BODY_TAIL=$_REST
+
+                                            # ХИРУРГИЧЕСКАЯ ОЧИСТКА ГРЯЗИ В НАЧАЛЕ СТРОКИ:
+                                            # Проверяем, было ли перед именем функции слово 'function'
+                                            case $_NEW_LINE in
+                                                *function*)
+                                                    # Оставляем только стиль Ksh и новое имя
+                                                    _NEW_LINE="function $_F_PREFIX$_TARGET_WORD"
+                                                ;;
+                                                *)
+                                                    # Чистый POSIX: стираем всё чужое, оставляем только имя функции
+                                                    _NEW_LINE="$_F_PREFIX$_TARGET_WORD"
+                                                ;;
+                                            esac
+                                        ;;
+                                    esac
+                                ;;
+                            esac
+
                             _WORD=
                         ;;
                     esac
@@ -2179,122 +2322,51 @@ _MODULE_BODY
                 esac
             ;;
         esac
-
-        _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_NEW_LINE$_COMM_PART
-    done
-}
-
-_get_function_body_awk ()
-{
-    _MODULE_BODY=$(awk '
-        BEGIN {
-            targets = "'"$*"'"
-            # Расщепляем строку целей в ассоциативный массив для быстрого поиска O(1)
-            split(targets, t, " ")
-            for (i in t) { names[t[i]] = 1; needed++ }
-        }
-
-        # Проверяем заголовок функции, если мы еще не внутри другой функции
-        !in_func {
-            # Очищаем строку от комментариев и пробелов по краям для точного разбора
-            clean = $0
-            sub(/^[ \t]+/, "", clean)
-            sub(/[ \t]+$/, "", clean)
-
-            for (name in names) {
-                # Вариант 1: name () или name()
-                # Вариант 2: function name
-                if (clean ~ "^" name "[ \t]*\\(" || clean ~ "^function[ \t]+" name "([ \t;{]|$)") {
-                    in_func = 1
-                    print
-                    
-                    # Считаем скобки на этой же строке через не-деструктивный split
-                    open_br += split($0, dummy1, "{") - 1
-                    close_br += split($0, dummy2, "}") - 1
-                    
-                    if (open_br > 0 && open_br <= close_br) {
-                        in_func = 0; open_br = 0; close_br = 0; found++
-                        if (found == needed) { exit }
-                    }
-                    next
-                }
-            }
-        }
-
-        # Если мы внутри целевой функции, печатаем строки и считаем баланс скобок
-        in_func {
-            print
-            # Безопасный подсчет вхождений { и } без предупреждений регулярок
-            open_br += split($0, dummy1, "{") - 1
-            close_br += split($0, dummy2, "}") - 1
+        # Подсчёт скобок для текущей строки в зоне печати
+        if [ $_PRINT_ZONE -eq 1 ]; then
+            # Если это первая строка (заголовок), анализируем только хвост ПОСЛЕ имени функции
+            if [ -n "${_BODY_TAIL+set}" ]; then
+                _br_line=${_BODY_TAIL%%#*}
+                unset _BODY_TAIL # Очищаем, чтобы на следующих строках анализировалась вся строка
+            else
+                _br_line=${_NEW_LINE%%#*}
+            fi
             
-            if (open_br > 0 && open_br <= close_br) {
-                in_func = 0; open_br = 0; close_br = 0; found++
-                # Если нашли все запрошенные функции, досрочно останавливаемся
-                if (found == needed) { exit }
-            }
-        }
-    ' "$_MODULE_PATH")
-}
-
-_get_function_body_shell ()
-{
-    _MODULE_BODY=
-    _in_func=0 _open_br=0 _close_br=0
-    
-    while IFS= read -r _line; do
-        if [ $_in_func -eq 0 ]; then
-            # Проверяем текущую строку на совпадение с каждым из переданных имен
-            for _name in "$@"; do
-                case "$_line" in
-                    *"$_name"[' ']*'('* | *"$_name"*)
-                        # Точная валидация заголовка (POSIX)
-                        case "$_line" in
-                            *[#' ']"$_name"[\ \(\{]* | *"$_name"[\ \(\{]*)
-                                _in_func=1
-                                ;;
-                        esac
-                        ;;
-                    *'function '["$ _name"]* | *'function '$_name*)
-                        # Точная валидация заголовка (Ksh/Mksh)
-                        case "$_line" in
-                            *"function $_name" | *"function $_name '{"* | *"function $_name"[' ']* | *"function $_name"['(']*)
-                                _in_func=1
-                                ;;
-                        esac
-                        ;;
-                esac
-
-                # Если заголовок совпал, начинаем запись
-                if [ $_in_func -eq 1 ]; then
-                    if [ -z "$_MODULE_BODY" ]; then
-                        _MODULE_BODY="$_line"
-                    else
-                        _MODULE_BODY="$_MODULE_BODY"$'\n'"$_line"
-                    fi
-                    
-                    case "$_line" in *'{'*) _open_br=$((_open_br + 1)) ;; esac
-                    case "$_line" in *'}'*) _close_br=$((_close_br + 1)) ;; esac
-                    
-                    if [ $_open_br -gt 0 ] && [ $_open_br -le $_close_br ]; then
-                        _in_func=0; _open_br=0; _close_br=0
-                    fi
-                    break # Выходим из цикла по именам, переходим к следующей строке файла
+            _tmp_br=$_br_line
+            while case "$_tmp_br" in *'{'*) true ;; *) false ;; esac; do
+                _before_br=${_tmp_br%%'{'*}
+                if [ "${_before_br#${_before_br%?}}" != "$" ]; then
+                    _O_BR=$((_O_BR + 1))
                 fi
+                _tmp_br=${_tmp_br#*'{'}
             done
-        else
-            # Накапливаем тело текущей активной функции
-            _MODULE_BODY="$_MODULE_BODY$LF$_line"
-            
-            case "$_line" in *'{'*) _open_br=$((_open_br + 1)) ;; esac
-            case "$_line" in *'}'*) _close_br=$((_close_br + 1)) ;; esac
-            
-            # Если функция закрылась, сбрасываем флаги и продолжаем искать остальные
-            if [ $_open_br -gt 0 ] && [ $_open_br -le $_close_br ]; then
-                _in_func=0; _open_br=0; _close_br=0
+
+            _tmp_br=$_br_line
+            while case "$_tmp_br" in *'}'*) true ;; *) false ;; esac; do
+                _before_br=${_tmp_br%%'}'*}
+                case "$_before_br" in
+                    *esac* | *"\$"*) ;;
+                    *) _C_BR=$((_C_BR + 1)) ;;
+                esac
+                _tmp_br=${_tmp_br#*'}'}
+            done
+
+            if [ $_O_BR -gt 0 ] && [ $_O_BR -le $_C_BR ]; then
+                _CLOSE_FUNC_NOW=1
+            else
+                _CLOSE_FUNC_NOW=0
             fi
         fi
-    done < "$_MODULE_PATH"
+
+        # Твой финальный фильтр и запись строки
+        if [ $_PRINT_ZONE -eq 1 ] || { case ${_FILTER_TARGETS:-} in '') true ;; *) false ;; esac; }; then
+            _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_NEW_LINE$_COMM_PART
+        fi
+
+        if [ "${_CLOSE_FUNC_NOW:-0}" -eq 1 ]; then
+            _PRINT_ZONE=0 _O_BR=0 _C_BR=0 _CLOSE_FUNC_NOW=0
+        fi
+    done
 }
 
 _get_bash_env_list ()
@@ -2319,6 +2391,18 @@ _get_bash_env_list ()
     _BASH_ENV_LIST="$_BASH_ENV_LIST UID USER "
 }
 
+_import_module ()
+{
+    _MODULE_FUNCS=
+    case ${_BASH_ENV_LIST:-} in
+        '')
+            _get_bash_env_list
+        ;;
+    esac
+    _import_module_$_IMPORT_TYPE
+    eval "${_MODULE_FUNCS:-}"
+}
+
 _load_module ()
 {
     IFS=
@@ -2335,18 +2419,6 @@ _load_module ()
     IFS=$POSIX_IFS
 }
 
-_import_module ()
-{
-    _MODULE_FUNCS=
-    case ${_BASH_ENV_LIST:-} in
-        '')
-            _get_bash_env_list
-        ;;
-    esac
-    _import_module_$_IMPORT_TYPE
-    eval "${_MODULE_FUNCS:-}"
-}
-
 _import_function ()
 {
     $_IMPORT_AS || {
@@ -2356,10 +2428,19 @@ ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh
         return 1
     }
 
-    _get_function_body_$_IMPORT_TYPE "$@" &&
-    _import_module &&
+    _MODULE_FUNCS=
+
+    # 1. Запоминаем, какие функции нам нужны
+    _FILTER_TARGETS=${1:+" $* "}
+    _load_module
+    
+    # 2. Запускаем токенизатор (он сам отфильтрует и переименует всё за один проход)
+    _import_module_$_IMPORT_TYPE
+    # Очищаем временный фильтр после работы
+    _FILTER_TARGETS=
     eval "${_MODULE_FUNCS:-}" || _modulenotfounderror 3 "$_FUNCTION_NAME"
 }
+
 
 _exec_module ()
 {
