@@ -2468,34 +2468,48 @@ _import_package ()
 
 _import ()
 {
-    # $1     - _IMPORT_SPEC (module/function_name)
+    # $1     - _IMPORT_SPEC (package/module/function_name)
     # ${2:-} - as
     # ${3:-} - _ALIAS
 
     _resolve_module_path "$1" || return
-    set -- "$_SUFIX_MODULE_PATH" "$@"
+    
     if is_file "$_MODULE_PATH"
     then
         case $_IDENTIFIER in
             $_IDENTIFIER_PART)
                 # from subpackage import module as alias
                 # import subpackage.module as alias
+                set -- "$_SUFIX_MODULE_PATH" "$@"
                 _push_prefix_name "${4:-$2}"
-                _MODULE=$_MODULE_PATH
                 _load_module
                 _import_module
             ;;
             *)
                 # from subpackage import module.func as alias
                 # import subpackage.module.func as alias
-                _push_prefix_name "${4:-$_IDENTIFIER_PART}"
+                case $# in
+                    1)
+                        _set_names "${_IDENTIFIER#"$_IDENTIFIER_PART."}"
+                        _push_prefix_name "$_IDENTIFIER_PART"
+                    ;;
+                    *)
+                        shift
+                        _set_names "${_IDENTIFIER#"$_IDENTIFIER_PART."} $*"
+                    ;;
+                esac
+                set -- "$_SUFIX_MODULE_PATH" "$_IDENTIFIER_PART"
                 _import_function "${_IDENTIFIER#"$_IDENTIFIER_PART."}"
+                _pop_module_path "$1"
+                _pop_prefix_name "$2"
+                return
             ;;
         esac || return
     elif is_dir "$_MODULE_PATH"
     then
         # from . import subpackage as alias
         #        import subpackage as alias
+        set -- "$_SUFIX_MODULE_PATH" "$@"
         _push_prefix_name "${4:-$2}"
         _import_package "$_MODULE_PATH"
     else
@@ -2518,6 +2532,16 @@ _get_function_map ()
     _FUNCTION_NAME="$_FUNCTION_NAME $1"
 }
 
+_set_names ()
+{
+    _FUNCTION_MAP=
+    _FUNCTION_NAME=
+    for i
+    do
+        _get_function_map $i
+    done
+}
+
 _import_buffer ()
 {
     eval set -- "$_IMPORT_BUFFER"
@@ -2529,12 +2553,7 @@ _import_buffer ()
         *)
             is_file "$_MODULE_PATH" && {
                 # from subpackage.module import func1, func2 as alias
-                _FUNCTION_MAP=
-                _FUNCTION_NAME=
-                for _IDENTIFIER
-                do
-                    _get_function_map $_IDENTIFIER
-                done
+                _set_names "$@"
                 _import_function $_FUNCTION_NAME || return
             }
     esac ||
