@@ -1372,7 +1372,9 @@ _import_module_awk ()
                     print new_code comment_part
                 }
             }
-        ' < "$_MODULE"
+        ' <<_MODULE_BODY
+$_MODULE_BODY
+_MODULE_BODY
     )
 }
 
@@ -1649,7 +1651,9 @@ _import_module_shell ()
                 done
             ;;
         esac
-    done < "$_MODULE"
+    done <<_MODULE_BODY
+$_MODULE_BODY
+_MODULE_BODY
 
     # --- PASS 2: ТОКЕНИЗАТОР ЗАМЕН С НАКОПЛЕНИЕМ В ПЕРЕМЕННУЮ ---
     _IN_HEREDOC=0
@@ -2124,6 +2128,119 @@ _import_module_shell ()
     done
 }
 
+_get_function_body_awk ()
+{
+    _MODULE_BODY=$(awk '
+        BEGIN {
+            targets = "'"$*"'"
+            # Расщепляем строку целей в ассоциативный массив для быстрого поиска O(1)
+            split(targets, t, " ")
+            for (i in t) { names[t[i]] = 1; needed++ }
+        }
+
+        # Проверяем заголовок функции, если мы еще не внутри другой функции
+        !in_func {
+            # Очищаем строку от комментариев и пробелов по краям для точного разбора
+            clean = $0
+            sub(/^[ \t]+/, "", clean)
+            sub(/[ \t]+$/, "", clean)
+
+            for (name in names) {
+                # Вариант 1: name () или name()
+                # Вариант 2: function name
+                if (clean ~ "^" name "[ \t]*\\(" || clean ~ "^function[ \t]+" name "([ \t;{]|$)") {
+                    in_func = 1
+                    print
+                    
+                    # Считаем скобки на этой же строке через не-деструктивный split
+                    open_br += split($0, dummy1, "{") - 1
+                    close_br += split($0, dummy2, "}") - 1
+                    
+                    if (open_br > 0 && open_br <= close_br) {
+                        in_func = 0; open_br = 0; close_br = 0; found++
+                        if (found == needed) { exit }
+                    }
+                    next
+                }
+            }
+        }
+
+        # Если мы внутри целевой функции, печатаем строки и считаем баланс скобок
+        in_func {
+            print
+            # Безопасный подсчет вхождений { и } без предупреждений регулярок
+            open_br += split($0, dummy1, "{") - 1
+            close_br += split($0, dummy2, "}") - 1
+            
+            if (open_br > 0 && open_br <= close_br) {
+                in_func = 0; open_br = 0; close_br = 0; found++
+                # Если нашли все запрошенные функции, досрочно останавливаемся
+                if (found == needed) { exit }
+            }
+        }
+    ' "$_MODULE_PATH")
+}
+
+_get_function_body_shell ()
+{
+    _MODULE_BODY=
+    _in_func=0 _open_br=0 _close_br=0
+    
+    while IFS= read -r _line; do
+        if [ $_in_func -eq 0 ]; then
+            # Проверяем текущую строку на совпадение с каждым из переданных имен
+            for _name in "$@"; do
+                case "$_line" in
+                    *"$_name"[' ']*'('* | *"$_name"*)
+                        # Точная валидация заголовка (POSIX)
+                        case "$_line" in
+                            *[#' ']"$_name"[\ \(\{]* | *"$_name"[\ \(\{]*)
+                                _in_func=1
+                                ;;
+                        esac
+                        ;;
+                    *'function '["$ _name"]* | *'function '$_name*)
+                        # Точная валидация заголовка (Ksh/Mksh)
+                        case "$_line" in
+                            *"function $_name" | *"function $_name '{"* | *"function $_name"[' ']* | *"function $_name"['(']*)
+                                _in_func=1
+                                ;;
+                        esac
+                        ;;
+                esac
+
+                # Если заголовок совпал, начинаем запись
+                if [ $_in_func -eq 1 ]; then
+                    if [ -z "$_MODULE_BODY" ]; then
+                        _MODULE_BODY="$_line"
+                    else
+                        _MODULE_BODY="$_MODULE_BODY"$'\n'"$_line"
+                    fi
+                    
+                    case "$_line" in *'{'*) _open_br=$((_open_br + 1)) ;; esac
+                    case "$_line" in *'}'*) _close_br=$((_close_br + 1)) ;; esac
+                    
+                    if [ $_open_br -gt 0 ] && [ $_open_br -le $_close_br ]; then
+                        _in_func=0; _open_br=0; _close_br=0
+                    fi
+                    break # Выходим из цикла по именам, переходим к следующей строке файла
+                fi
+            done
+        else
+            # Накапливаем тело текущей активной функции
+            _MODULE_BODY="$_MODULE_BODY$LF$_line"
+            
+            case "$_line" in *'{'*) _open_br=$((_open_br + 1)) ;; esac
+            case "$_line" in *'}'*) _close_br=$((_close_br + 1)) ;; esac
+            
+            # Если функция закрылась, сбрасываем флаги и продолжаем искать остальные
+            if [ $_open_br -gt 0 ] && [ $_open_br -le $_close_br ]; then
+                _in_func=0; _open_br=0; _close_br=0
+            fi
+        fi
+    done < "$_MODULE_PATH"
+}
+
 _get_bash_env_list ()
 {
     _BASH_ENV_LIST=' ? ! * @ # $ - _ '
@@ -2146,6 +2263,22 @@ _get_bash_env_list ()
     _BASH_ENV_LIST="$_BASH_ENV_LIST UID USER "
 }
 
+_load_module ()
+{
+    IFS=
+    _MODULE_BODY=
+    while read -r _LINE ||
+        case $_LINE in
+            '')
+                false
+            ;;
+        esac
+    do
+        _MODULE_BODY=$_MODULE_BODY$_LINE$LF
+    done < "$_MODULE_PATH"
+    IFS=$POSIX_IFS
+}
+
 _import_module ()
 {
     _MODULE_FUNCS=
@@ -2154,6 +2287,7 @@ _import_module ()
             _get_bash_env_list
         ;;
     esac
+    _load_module
     _import_module_$_IMPORT_TYPE
     eval "${_MODULE_FUNCS:-}"
 }
