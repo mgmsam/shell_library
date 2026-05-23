@@ -2490,8 +2490,8 @@ _import ()
                 # import subpackage.module.func as alias
                 case $# in
                     1)
-                        _set_names "${_IDENTIFIER#"$_IDENTIFIER_PART."}"
                         _push_prefix_name "$_IDENTIFIER_PART"
+                        _set_names "${_IDENTIFIER#"$_IDENTIFIER_PART."}"
                     ;;
                     *)
                         shift
