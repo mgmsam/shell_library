@@ -2499,20 +2499,14 @@ ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh
     eval "${_MODULE_FUNCS:-}" || _modulenotfounderror 3 "$_FUNCTION_NAME"
 }
 
-
-_exec_module ()
-{
-    set -- "$1" "${_ERROR_FILE:-}"
-    _ERROR_FILE=$1
-    . "$1"
-    _ERROR_FILE=$2
-}
-
 _import_package ()
 {
     if is_file "$1/__init__.sh"
     then
-        _exec_module "$1/__init__.sh"
+        set -- "$1/__init__.sh" "${_ERROR_FILE:-}"
+        _ERROR_FILE=$1
+        . "$1"
+        _ERROR_FILE=$2
     else
         for _MODULE in "$1"/*.sh
         do
