@@ -105,6 +105,7 @@ init_color ()
     } || reset_color
 }
 
+SAY_BATCH=true
 case ${KSH_VERSION:-} in
     ?*)
         PUTS_TYPE=print PUTS_ESCAPE=true
@@ -211,16 +212,6 @@ else
     exit 1
 fi >/dev/null 2>&1
 
-PUTS_LENGHT_PREFIX=
-SAY_DIVIDER=
-SAY_ESCAPE=
-SAY_INDENT=
-SAY_NEWLINE=
-SAY_BATCH=true
-SAY_ESCAPE=$PUTS_ESCAPE
-LF='
-'
-
 if type sleep
 then
     CAN_SLEEP=true
@@ -250,6 +241,14 @@ puts_stream ()
         esac
     done
 }
+
+PUTS_LENGHT_PREFIX=
+SAY_DIVIDER=
+SAY_INDENT=
+SAY_NEWLINE=
+SAY_ESCAPE=$PUTS_ESCAPE
+LF='
+'
 
 puts_indented ()
 {
@@ -436,7 +435,11 @@ die ()
     exit $EXIT_CODE
 }
 
+ CR=$(puts '\015')
+ FF=$(puts '\014')
 SOH=$(puts '\001')
+TAB=$(puts '\011')
+ VT=$(puts '\013')
 
 # --- БАЗОВЫЕ СИМВОЛЬНЫЕ КЛАССЫ (ASCII) ---
 C_LOWER=abcdefghijklmnopqrstuvwxyz
@@ -448,22 +451,17 @@ C_PUNCT="!\"#\$%&'()*+,-./:;<=>?@[\\]^_\`{|}~"
 
 C_ALPHA=$C_LOWER$C_UPPER
 C_ALNUM=$C_ALPHA$C_DIGIT
-C_WORD=_$C_ALNUM   # или C_IDENT
+C_WORD=_$C_ALNUM
 
 # --- ПРОБЕЛЬНЫЕ КЛАССЫ ---
- CR=$(puts '\015')
-TAB=$(puts '\011')
- VT=$(puts '\013')
- FF=$(puts '\014')
-LF='
-'
 SPACE=' '
 C_BLANK=$SPACE$TAB
 C_SPACE=$SPACE$TAB$LF$CR$VT$FF
-POSIX_IFS=$C_BLANK$LF
+POSIX_IFS=$SPACE$TAB$LF
 IFS=$POSIX_IFS
-PWD=$(pwd)
 
+# --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ПУТЕЙ ОКРУЖЕНИЯ
+PWD=$(pwd)
 SCRIPT_DIR=$(
     _PATH=${0%/*}
     case $0 in
@@ -474,7 +472,6 @@ SCRIPT_DIR=$(
     2>&1 cd -- "${_PATH:-/}" && 2>&1 pwd -P
 )
 SCRIPT_FILE=${SCRIPT_DIR%/}/${0##*/}
-
 SYS_LIBDIR=/usr/lib/shell
 SYS_PATH="'' '$SYS_LIBDIR'"
 
@@ -733,6 +730,7 @@ get_indent ()
     done
 }
 
+# IMPORT
 _get_error ()
 {
     case $1 in
@@ -2790,6 +2788,7 @@ resolve_path ()
     (cd_print "$1")
 }
 
+# Утилиты манипуляции файлами
 copy ()
 {
     STATUS=$(2>&1 cp -frv -- "$@") || say "$STATUS"
