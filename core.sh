@@ -735,41 +735,41 @@ _get_error ()
 {
     case $1 in
         '')
-            _ERROR_INDENT=
+            _CTX_INDENT=
         ;;
         *)
             get_indent ${#1}
-            _ERROR_INDENT=$CORE_INDENT
+            _CTX_INDENT=$CORE_INDENT
         ;;
     esac
     get_indent ${#2} ^
-    _ERROR_POINTER=$_ERROR_INDENT$CORE_INDENT
+    _CTX_POINTER=$_CTX_INDENT$CORE_INDENT
 }
 
 _syntax_error ()
 {
-    $_ERROR_TIGHT_LIST &&
-        _get_error "    $_ERROR_IMPORT_COMMAND $_ERROR_IMPORT_SPECS${_MODULE_NAME%%[$C_BLANK]*}" "${2:-.}" ||
-        _get_error "    $_ERROR_IMPORT_COMMAND${_ERROR_IMPORT_SPECS:+ $_ERROR_IMPORT_SPECS}${_MODULE_NAME:+ ${_MODULE_NAME%%[$C_BLANK]*}}" "${2:-.}"
+    $_CTX_TIGHT &&
+        _get_error "    $_CTX_COMMAND $_CTX_SPECS${_MODULE_NAME%%[$C_BLANK]*}" "${2:-.}" ||
+        _get_error "    $_CTX_COMMAND${_CTX_SPECS:+ $_CTX_SPECS}${_MODULE_NAME:+ ${_MODULE_NAME%%[$C_BLANK]*}}" "${2:-.}"
 
-    echo "  File \"${_ERROR_FILE:-$SCRIPT_FILE}\"
-    $_ERROR_IMPORT_STATEMENT"
-    _ERROR_IMPORT_COMMAND=
+    echo "  File \"${_CTX_FILE:-$SCRIPT_FILE}\"
+    $_CTX_STATEMENT"
+    _CTX_COMMAND=
     case $1 in
         1)
-            echo "$_ERROR_POINTER
+            echo "$_CTX_POINTER
 SyntaxError: invalid syntax"
         ;;
         2)
-            echo "$_ERROR_POINTER
+            echo "$_CTX_POINTER
 SyntaxError: leading zeros in decimal integer literals are not permitted"
         ;;
         3)
-            echo "$_ERROR_POINTER
+            echo "$_CTX_POINTER
 SyntaxError: invalid decimal literal"
         ;;
         4)
-            echo "$_ERROR_POINTER
+            echo "$_CTX_POINTER
 SyntaxError: trailing comma not allowed without surrounding parentheses"
         ;;
     esac
@@ -788,11 +788,11 @@ is_valid_identifier ()
     _ONE_MODULE_PART_NAME=true
     for _MODULE_PART_NAME
     do
-        case $_ERROR_IMPORT_COMMAND in
+        case $_CTX_COMMAND in
             from)
             ;;
             import)
-                case $_IMPORT_TOKEN in
+                case $_IMPORT_TOKEN_COUNT in
                     3)
                         $_ONE_MODULE_PART_NAME &&
                          _ONE_MODULE_PART_NAME=false || _syntax_error 1
@@ -886,8 +886,8 @@ is_valid_identifier ()
 
 _check_import_syntax ()
 {
-    _IMPORT_BUFFER=
-    _IMPORT_SPEC=
+    _CTX_BUFFER=
+    _CTX_SPEC=
 
     case $# in
         0)
@@ -896,7 +896,7 @@ _check_import_syntax ()
         ;;
     esac
 
-    _IMPORT_TOKEN=0
+    _IMPORT_TOKEN_COUNT=0
     while
         case $# in
             0)
@@ -907,8 +907,8 @@ _check_import_syntax ()
         _MODULE=$1
         shift
 
-        _IMPORT_TOKEN=$((_IMPORT_TOKEN + 1))
-        case $_IMPORT_TOKEN in
+        _IMPORT_TOKEN_COUNT=$((_IMPORT_TOKEN_COUNT + 1))
+        case $_IMPORT_TOKEN_COUNT in
             1)
                 case $_MODULE in
                     ,*)
@@ -919,30 +919,30 @@ _check_import_syntax ()
                         set -- "${_MODULE#*,}" "$@"
                         _MODULE=${_MODULE%%,*}
                         is_valid_identifier "$_MODULE" || return
-                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }'$_MODULE'"
-                        _IMPORT_TOKEN=0
-                        $_ERROR_TIGHT_LIST &&
-                            _ERROR_IMPORT_SPECS=$_ERROR_IMPORT_SPECS$_MODULE, ||
-                            _ERROR_IMPORT_SPECS=${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS }$_MODULE,
-                        _ERROR_TIGHT_LIST=true
+                        _CTX_BUFFER="${_CTX_BUFFER:+$_CTX_BUFFER }'$_MODULE'"
+                        _IMPORT_TOKEN_COUNT=0
+                        $_CTX_TIGHT &&
+                            _CTX_SPECS=$_CTX_SPECS$_MODULE, ||
+                            _CTX_SPECS=${_CTX_SPECS:+$_CTX_SPECS }$_MODULE,
+                        _CTX_TIGHT=true
                     ;;
                     *,)
                         _MODULE=${_MODULE%,}
                         is_valid_identifier "$_MODULE" || return
-                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }'$_MODULE'"
-                        _IMPORT_TOKEN=0
-                        $_ERROR_TIGHT_LIST &&
-                            _ERROR_IMPORT_SPECS=$_ERROR_IMPORT_SPECS$_MODULE, ||
-                            _ERROR_IMPORT_SPECS=${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS }$_MODULE,
-                        _ERROR_TIGHT_LIST=false
+                        _CTX_BUFFER="${_CTX_BUFFER:+$_CTX_BUFFER }'$_MODULE'"
+                        _IMPORT_TOKEN_COUNT=0
+                        $_CTX_TIGHT &&
+                            _CTX_SPECS=$_CTX_SPECS$_MODULE, ||
+                            _CTX_SPECS=${_CTX_SPECS:+$_CTX_SPECS }$_MODULE,
+                        _CTX_TIGHT=false
                     ;;
                     *)
                         is_valid_identifier "$_MODULE" || return
-                        _IMPORT_SPEC=${_IMPORT_SPEC:+$_IMPORT_SPEC }$_MODULE
-                        $_ERROR_TIGHT_LIST &&
-                            _ERROR_IMPORT_SPECS=$_ERROR_IMPORT_SPECS$_MODULE ||
-                            _ERROR_IMPORT_SPECS=${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS }$_MODULE
-                        _ERROR_TIGHT_LIST=false
+                        _CTX_SPEC=${_CTX_SPEC:+$_CTX_SPEC }$_MODULE
+                        $_CTX_TIGHT &&
+                            _CTX_SPECS=$_CTX_SPECS$_MODULE ||
+                            _CTX_SPECS=${_CTX_SPECS:+$_CTX_SPECS }$_MODULE
+                        _CTX_TIGHT=false
                     ;;
                 esac
             ;;
@@ -955,35 +955,35 @@ _check_import_syntax ()
                                 set -- "${_MODULE#*,}" "$@"
                                 _MODULE=${_MODULE%%,*}
                                 is_valid_identifier "$_MODULE" || return
-                                _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }${_IMPORT_SPEC:+"'$_IMPORT_SPEC' "}'$_MODULE'"
-                                _IMPORT_SPEC=
-                                _ERROR_IMPORT_SPECS=${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS },$_MODULE,
-                                _IMPORT_TOKEN=0
-                                _ERROR_TIGHT_LIST=true
+                                _CTX_BUFFER="${_CTX_BUFFER:+$_CTX_BUFFER }${_CTX_SPEC:+"'$_CTX_SPEC' "}'$_MODULE'"
+                                _CTX_SPEC=
+                                _CTX_SPECS=${_CTX_SPECS:+$_CTX_SPECS },$_MODULE,
+                                _IMPORT_TOKEN_COUNT=0
+                                _CTX_TIGHT=true
                             ;;
                             *,)
                                 _MODULE=${_MODULE#,}
                                 _MODULE=${_MODULE%,}
                                 is_valid_identifier "$_MODULE" || return
-                                _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }${_IMPORT_SPEC:+"'$_IMPORT_SPEC' "}'$_MODULE'"
-                                _IMPORT_SPEC=
-                                _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS ,$_MODULE,"
-                                _IMPORT_TOKEN=0
+                                _CTX_BUFFER="${_CTX_BUFFER:+$_CTX_BUFFER }${_CTX_SPEC:+"'$_CTX_SPEC' "}'$_MODULE'"
+                                _CTX_SPEC=
+                                _CTX_SPECS="$_CTX_SPECS ,$_MODULE,"
+                                _IMPORT_TOKEN_COUNT=0
                             ;;
                             *)
                                 _MODULE_NAME=,
                                 is_valid_identifier "${_MODULE#,}" || return
-                                _IMPORT_SPEC=${_IMPORT_SPEC:+$_IMPORT_SPEC }$_MODULE
-                                _ERROR_IMPORT_SPECS=${_ERROR_IMPORT_SPECS:+$_ERROR_IMPORT_SPECS }$_MODULE
-                                _IMPORT_TOKEN=1
+                                _CTX_SPEC=${_CTX_SPEC:+$_CTX_SPEC }$_MODULE
+                                _CTX_SPECS=${_CTX_SPECS:+$_CTX_SPECS }$_MODULE
+                                _IMPORT_TOKEN_COUNT=1
                             ;;
                         esac
                     ;;
                     ,)
-                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }'$_IMPORT_SPEC'"
-                        _IMPORT_SPEC=
-                        _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS ,"
-                        _IMPORT_TOKEN=0
+                        _CTX_BUFFER="${_CTX_BUFFER:+$_CTX_BUFFER }'$_CTX_SPEC'"
+                        _CTX_SPEC=
+                        _CTX_SPECS="$_CTX_SPECS ,"
+                        _IMPORT_TOKEN_COUNT=0
                     ;;
                     as)
                         case $# in
@@ -992,8 +992,8 @@ _check_import_syntax ()
                                 _syntax_error 1 || return
                             ;;
                             *)
-                                _IMPORT_SPEC="$_IMPORT_SPEC as"
-                                _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS as"
+                                _CTX_SPEC="$_CTX_SPEC as"
+                                _CTX_SPECS="$_CTX_SPECS as"
                             ;;
                         esac
                     ;;
@@ -1012,19 +1012,19 @@ _check_import_syntax ()
                         set -- "${_MODULE#*,}" "$@"
                         _MODULE=${_MODULE%%,*}
                         is_valid_identifier "$_MODULE" || return
-                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }'$_IMPORT_SPEC' '$_MODULE'"
-                        _IMPORT_SPEC=
-                        _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS $_MODULE,"
-                        _ERROR_TIGHT_LIST=true
-                        _IMPORT_TOKEN=0
+                        _CTX_BUFFER="${_CTX_BUFFER:+$_CTX_BUFFER }'$_CTX_SPEC' '$_MODULE'"
+                        _CTX_SPEC=
+                        _CTX_SPECS="$_CTX_SPECS $_MODULE,"
+                        _CTX_TIGHT=true
+                        _IMPORT_TOKEN_COUNT=0
                     ;;
                     *,)
                         _MODULE=${_MODULE%,}
                         is_valid_identifier "$_MODULE" || return
-                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }'$_IMPORT_SPEC' '$_MODULE'"
-                        _IMPORT_SPEC=
-                        _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS $_MODULE,"
-                        _IMPORT_TOKEN=0
+                        _CTX_BUFFER="${_CTX_BUFFER:+$_CTX_BUFFER }'$_CTX_SPEC' '$_MODULE'"
+                        _CTX_SPEC=
+                        _CTX_SPECS="$_CTX_SPECS $_MODULE,"
+                        _IMPORT_TOKEN_COUNT=0
                         case $# in
                             0)
                                 _MODULE_NAME=$SPACE
@@ -1034,8 +1034,8 @@ _check_import_syntax ()
                     ;;
                     *)
                         is_valid_identifier "$_MODULE" || return
-                        _IMPORT_SPEC=${_IMPORT_SPEC:+$_IMPORT_SPEC }$_MODULE
-                        _ERROR_IMPORT_SPECS="$_ERROR_IMPORT_SPECS $_MODULE"
+                        _CTX_SPEC=${_CTX_SPEC:+$_CTX_SPEC }$_MODULE
+                        _CTX_SPECS="$_CTX_SPECS $_MODULE"
                     ;;
                 esac
             ;;
@@ -1048,15 +1048,15 @@ _check_import_syntax ()
                                 _syntax_error 4 || return
                             ;;
                         esac
-                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }'$_IMPORT_SPEC'"
-                        _IMPORT_SPEC=
-                        _IMPORT_TOKEN=0
+                        _CTX_BUFFER="${_CTX_BUFFER:+$_CTX_BUFFER }'$_CTX_SPEC'"
+                        _CTX_SPEC=
+                        _IMPORT_TOKEN_COUNT=0
                     ;;
                     ,*)
                         set -- "${_MODULE#,}" "$@"
-                        _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }'$_IMPORT_SPEC'"
-                        _IMPORT_SPEC=
-                        _IMPORT_TOKEN=0
+                        _CTX_BUFFER="${_CTX_BUFFER:+$_CTX_BUFFER }'$_CTX_SPEC'"
+                        _CTX_SPEC=
+                        _IMPORT_TOKEN_COUNT=0
                     ;;
                     *)
                         false
@@ -1078,9 +1078,9 @@ _check_import_syntax ()
             esac || return
         }
     done
-    case $_IMPORT_SPEC in
+    case $_CTX_SPEC in
         ?*)
-            _IMPORT_BUFFER="${_IMPORT_BUFFER:+$_IMPORT_BUFFER }'$_IMPORT_SPEC'"
+            _CTX_BUFFER="${_CTX_BUFFER:+$_CTX_BUFFER }'$_CTX_SPEC'"
         ;;
     esac
 }
@@ -1088,7 +1088,7 @@ _check_import_syntax ()
 _push_module_path ()
 {
     _MODULE_PATH=$_MODULE_PATH/$1
-    _SUFIX_MODULE_PATH=$_SUFIX_MODULE_PATH/$1
+    _SUFFIX_MODULE_PATH=$_SUFFIX_MODULE_PATH/$1
 }
 
 _pop_module_path ()
@@ -1116,8 +1116,8 @@ _pop_prefix_name ()
 
 _modulenotfounderror ()
 {
-    echo "  File \"${_ERROR_FILE:-$SCRIPT_FILE}\"
-    $_ERROR_IMPORT_STATEMENT"
+    echo "  File \"${_CTX_FILE:-$SCRIPT_FILE}\"
+    $_CTX_STATEMENT"
     case $1 in
         1)
             echo "ImportError: attempted relative import with no known parent package"
@@ -1159,7 +1159,7 @@ _resolve_module_path ()
     IFS=.
     set -- $1
     IFS=$POSIX_IFS
-    _SUFIX_MODULE_PATH=
+    _SUFFIX_MODULE_PATH=
 
     case ${1:-} in
         '')
@@ -1207,7 +1207,7 @@ _import_module_awk ()
                 split(bash_env_list, bash_env, " ")
                 for (x in bash_env) env_vars[bash_env[x]] = 1
 
-                filter_targets = "'"${_FILTER_TARGETS:-}"'"
+                filter_targets = "'"${_CTX_FILTER_TARGETS:-}"'"
 
                 # РАЗБОР КАРТЫ АЛИАСОВ: из "FUNC_MAP: func1:func1 func2:boo"
                 f_map = "'"${_FUNCTION_MAP:-}"'"
@@ -1510,6 +1510,7 @@ _import_module_shell ()
     _LIST_FUNCS=$SPACE
     _IN_HEREDOC=0
     _HD_TOKEN=
+    _MODULE_FUNCS=
 
     # --- PASS 1: ПОСИМВОЛЬНЫЙ СБОР ЯВНО ОБЪЯВЛЕННЫХ ФУНКЦИЙ ---
     IFS=
@@ -1522,7 +1523,7 @@ _import_module_shell ()
     do
         # --- ФИЛЬТР ФУНКЦИЙ НА ЭТАПЕ PASS 1 ---
         _MARKER=
-        case ${_FILTER_TARGETS:+$_CURRENT_TARGET} in
+        case ${_CTX_FILTER_TARGETS:+$_CURRENT_TARGET} in
             ?*)
                 # Если мы внутри целевой функции, помечаем строку маркером
                 _MARKER=_KEEP_:
@@ -1673,7 +1674,7 @@ _import_module_shell ()
                             esac
                             
                             # ВРЕЗКА: Если посимвольный парсер нашёл целевую функцию
-                            case ${_FILTER_TARGETS:-} in
+                            case ${_CTX_FILTER_TARGETS:-} in
                                 *" $_WORD "*)
                                     _CURRENT_TARGET=$_WORD
                                     # Так как заголовок функции находится на ТЕКУЩЕЙ строке,
@@ -1813,7 +1814,7 @@ _MODULE_BODY
     _REST_LINES=$_ALL_LINES
 
     # --- ИНИЦИАЛИЗАЦИЯ ШЛЮЗА ПЕЧАТИ ---
-    case ${_FILTER_TARGETS:-} in
+    case ${_CTX_FILTER_TARGETS:-} in
         '')
             # Массовый импорт: шлюз всегда открыт
             _PRINT_ZONE=1
@@ -2203,7 +2204,7 @@ _MODULE_BODY
                             }
 
                             # ВОТ СЮДА СТАВИМ ПУНКТ 2:
-                            case ${_FILTER_TARGETS:-} in
+                            case ${_CTX_FILTER_TARGETS:-} in
                                 *" $_WORD "*)
                                     _PRINT_ZONE=1
                                     _O_BR=0 _C_BR=0
@@ -2408,7 +2409,7 @@ _MODULE_BODY
                 _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_NEW_LINE$_COMM_PART
             ;;
             *)
-                case ${_FILTER_TARGETS:-} in
+                case ${_CTX_FILTER_TARGETS:-} in
                     '')
                         _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_NEW_LINE$_COMM_PART
                     ;;
@@ -2458,7 +2459,10 @@ _import_module ()
         ;;
     esac
     _import_module_$_IMPORT_TYPE
-    eval "${_MODULE_FUNCS:-}"
+    case $_MODULE_FUNCS in
+        ?*)
+            eval "$_MODULE_FUNCS"
+    esac || _modulenotfounderror 3 "$_IMPORT_PREFIX_NAME"
 }
 
 _load_module ()
@@ -2480,33 +2484,35 @@ _load_module ()
 _import_function ()
 {
     $_IMPORT_AS || {
-        echo "  File \"${_ERROR_FILE:-$SCRIPT_FILE}\"
-    $_ERROR_IMPORT_STATEMENT
+        echo "  File \"${_CTX_FILE:-$SCRIPT_FILE}\"
+    $_CTX_STATEMENT
 ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh|zsh)"
         return 1
     }
 
-    _MODULE_FUNCS=
-
-    # 1. Запоминаем, какие функции нам нужны
-    _FILTER_TARGETS=${1:+" $* "}
+    # 1. Загружаем содержимое модуля в память
     _load_module
     
     # 2. Запускаем токенизатор (он сам отфильтрует и переименует всё за один проход)
+    _CTX_FILTER_TARGETS=${1:+" $* "}
     _import_module_$_IMPORT_TYPE
     # Очищаем временный фильтр после работы
-    _FILTER_TARGETS=
-    eval "${_MODULE_FUNCS:-}" || _modulenotfounderror 3 "$_FUNCTION_NAME"
+    _CTX_FILTER_TARGETS=
+
+    case $_MODULE_FUNCS in
+        ?*)
+            eval "$_MODULE_FUNCS"
+    esac || _modulenotfounderror 3 "$_FUNCTION_NAME"
 }
 
 _import_package ()
 {
     if is_file "$1/__init__.sh"
     then
-        set -- "$1/__init__.sh" "${_ERROR_FILE:-}"
-        _ERROR_FILE=$1
+        set -- "$1/__init__.sh" "${_CTX_FILE:-}"
+        _CTX_FILE=$1
         . "$1"
-        _ERROR_FILE=$2
+        _CTX_FILE=$2
     else
         for _MODULE in "$1"/*.sh
         do
@@ -2520,7 +2526,7 @@ _import_package ()
 
 _import ()
 {
-    # $1     - _IMPORT_SPEC (package/module/function_name)
+    # $1     - _CTX_SPEC (package/module/function_name)
     # ${2:-} - as
     # ${3:-} - _ALIAS
 
@@ -2532,7 +2538,7 @@ _import ()
             $_IDENTIFIER_PART)
                 # from subpackage import module as alias
                 # import subpackage.module as alias
-                set -- "$_SUFIX_MODULE_PATH" "$@"
+                set -- "$_SUFFIX_MODULE_PATH" "$@"
                 _push_prefix_name "${4:-$2}"
                 _load_module
                 _import_module
@@ -2550,7 +2556,7 @@ _import ()
                         _set_names "${_IDENTIFIER#"$_IDENTIFIER_PART."} $*"
                     ;;
                 esac
-                set -- "$_SUFIX_MODULE_PATH" "$_IDENTIFIER_PART"
+                set -- "$_SUFFIX_MODULE_PATH" "$_IDENTIFIER_PART"
                 _import_function "${_IDENTIFIER#"$_IDENTIFIER_PART."}"
                 _pop_module_path "$1"
                 _pop_prefix_name "$2"
@@ -2561,7 +2567,7 @@ _import ()
     then
         # from . import subpackage as alias
         #        import subpackage as alias
-        set -- "$_SUFIX_MODULE_PATH" "$@"
+        set -- "$_SUFFIX_MODULE_PATH" "$@"
         _push_prefix_name "${4:-$2}"
         _import_package "$_MODULE_PATH"
     else
@@ -2571,7 +2577,7 @@ _import ()
     _pop_prefix_name "${4:-$2}"
 }
 
-_get_function_map ()
+_gen_function_map ()
 {
     case $# in
         1)
@@ -2581,7 +2587,7 @@ _get_function_map ()
             _FUNCTION_MAP="${_FUNCTION_MAP:-FUNC_MAP:} $1:$3"
         ;;
     esac
-    _FUNCTION_NAME="$_FUNCTION_NAME $1"
+    _FUNCTION_NAME="${_FUNCTION_NAME:+$_FUNCTION_NAME }$1"
 }
 
 _set_names ()
@@ -2590,14 +2596,14 @@ _set_names ()
     _FUNCTION_NAME=
     for i
     do
-        _get_function_map $i
+        _gen_function_map $i
     done
 }
 
-_import_buffer ()
+_parse_import_buffer ()
 {
-    eval set -- "$_IMPORT_BUFFER"
-    _IMPORT_BUFFER=
+    eval set -- "$_CTX_BUFFER"
+    _CTX_BUFFER=
     case ${_MODULE_PATH:-} in
         '')
             false
@@ -2617,21 +2623,21 @@ _import_buffer ()
 
 import ()
 {
-    _ERROR_IMPORT_STATEMENT=import${*:+ $*}
-    _ERROR_IMPORT_COMMAND=import
-    _ERROR_IMPORT_SPECS=
-    _ERROR_TIGHT_LIST=false
+    _CTX_STATEMENT=import${*:+ $*}
+    _CTX_COMMAND=import
+    _CTX_SPECS=
+    _CTX_TIGHT=false
     _check_import_syntax "$@"
-    _import_buffer
+    _parse_import_buffer
 }
 
 from ()
 {
-    _ERROR_IMPORT_STATEMENT=from${*:+ $*}
-    _ERROR_IMPORT_COMMAND=from
-    _ERROR_IMPORT_SPECS=
-    _ERROR_TIGHT_LIST=false
-    _PATH_FROM=${1:-}
+    _CTX_STATEMENT=from${*:+ $*}
+    _CTX_COMMAND=from
+    _CTX_SPECS=
+    _CTX_TIGHT=false
+    _CTX_PATH_FROM=${1:-}
 
     case $# in
         [!0]*)
@@ -2639,7 +2645,7 @@ from ()
         ;;
     esac
 
-    case $_PATH_FROM in
+    case $_CTX_PATH_FROM in
         '')
             _MODULE_NAME=$SPACE
             false
@@ -2648,10 +2654,10 @@ from ()
             case ${1:-} in
                 import)
                     shift
-                    _ERROR_IMPORT_COMMAND='from . import'
+                    _CTX_COMMAND='from . import'
                     _MODULE_NAME=
                     _check_import_syntax "$@" &&
-                    _import_buffer || return
+                    _parse_import_buffer || return
                 ;;
                 *)
                     _MODULE_NAME='. '
@@ -2661,14 +2667,14 @@ from ()
         ;;
         *)
             _MODULE_NAME=
-            case $_PATH_FROM in
+            case $_CTX_PATH_FROM in
                 *[!.]*)
-                    case $_PATH_FROM in
+                    case $_CTX_PATH_FROM in
                         .*)
-                            is_valid_identifier "${_PATH_FROM#?}"
+                            is_valid_identifier "${_CTX_PATH_FROM#?}"
                         ;;
                         *)
-                            is_valid_identifier "$_PATH_FROM"
+                            is_valid_identifier "$_CTX_PATH_FROM"
                         ;;
                     esac || return
                 ;;
@@ -2676,11 +2682,11 @@ from ()
             case ${1:-} in
                 import)
                     shift
-                    _ERROR_IMPORT_COMMAND="from $_PATH_FROM import"
+                    _CTX_COMMAND="from $_CTX_PATH_FROM import"
                     _check_import_syntax "$@" &&
-                    _resolve_module_path "$_PATH_FROM" && {
-                        set -- "$_SUFIX_MODULE_PATH"
-                        _import_buffer && _pop_module_path "$1"
+                    _resolve_module_path "$_CTX_PATH_FROM" && {
+                        set -- "$_SUFFIX_MODULE_PATH"
+                        _parse_import_buffer && _pop_module_path "$1"
                     } || return
                 ;;
                 *)
