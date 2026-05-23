@@ -231,7 +231,7 @@ puts_stream ()
         PUTS_LINE=${PUTS_LINE#?}
         $PUTS "$PUTS_CHAR"
         case $PUTS_CHAR in
-            [[:alnum:]])
+            [$C_ALNUM])
                 sleep "${SAY_TIMEOUT:-0.05}"
             ;;
         esac
@@ -340,7 +340,7 @@ say ()
         case ${1:-} in
             -c*)
                 case $1 in
-                    -c[!0-9\.]* | -c[0-9]*[!0-9\.]* | -c\.*[!0-9]* | *\.*\.*)
+                    -c[!\.$C_DIGIT]* | -c[$C_DIGIT]*[!\.$C_DIGIT]* | -c\.*[!$C_DIGIT]* | *\.*\.*)
                         false
                     ;;
                     *)
@@ -371,7 +371,7 @@ say ()
         case ${1:-} in
             -i*)
                 case $1 in
-                    -i[!0-9]* | -i[0-9]*[!0-9]*)
+                    -i[!$C_DIGIT]* | -i[$C_DIGIT]*[!$C_DIGIT]*)
                         false
                     ;;
                     *)
@@ -398,7 +398,7 @@ say ()
             -r)
                 SAY_ESCAPE=false
             ;;
-            "" | *[!0-9]*)
+            "" | *[!$C_DIGIT]*)
                 break
             ;;
             *)
@@ -433,14 +433,34 @@ die ()
     exit $EXIT_CODE
 }
 
-PWD=$(pwd)
+SOH=$(puts '\001')
+
+# --- БАЗОВЫЕ СИМВОЛЬНЫЕ КЛАССЫ (ASCII) ---
+C_LOWER=abcdefghijklmnopqrstuvwxyz
+C_UPPER=ABCDEFGHIJKLMNOPQRSTUVWXYZ
+C_DIGIT=0123456789
+C_ODIGIT=01234567
+C_XDIGIT=${C_DIGIT}abcdefABCDEF
+C_PUNCT="!\"#\$%&'()*+,-./:;<=>?@[\\]^_\`{|}~"
+
+C_ALPHA=$C_LOWER$C_UPPER
+C_ALNUM=$C_ALPHA$C_DIGIT
+C_WORD=_$C_ALNUM   # или C_IDENT
+
+# --- ПРОБЕЛЬНЫЕ КЛАССЫ ---
  CR=$(puts '\015')
 TAB=$(puts '\011')
-SOH=$(puts '\001')
+ VT=$(puts '\013')
+ FF=$(puts '\014')
+LF='
+'
 SPACE=' '
-BLANK=$SPACE$TAB
-POSIX_IFS=$SPACE$TAB$LF
+C_BLANK=$SPACE$TAB
+C_SPACE=$SPACE$TAB$LF$CR$VT$FF
+POSIX_IFS=$C_BLANK$LF
 IFS=$POSIX_IFS
+PWD=$(pwd)
+
 SCRIPT_DIR=$(
     _PATH=${0%/*}
     case $0 in
@@ -580,7 +600,7 @@ is_less ()
 is_digit ()
 {
     case ${1:-} in
-        *[!0-9]*)
+        *[!$C_DIGIT]*)
             return 1
         ;;
     esac
@@ -728,8 +748,8 @@ _get_error ()
 _syntax_error ()
 {
     $_ERROR_TIGHT_LIST &&
-        _get_error "    $_ERROR_IMPORT_COMMAND $_ERROR_IMPORT_SPECS${_MODULE_NAME%%[[:blank:]]*}" "${2:-.}" ||
-        _get_error "    $_ERROR_IMPORT_COMMAND${_ERROR_IMPORT_SPECS:+ $_ERROR_IMPORT_SPECS}${_MODULE_NAME:+ ${_MODULE_NAME%%[[:blank:]]*}}" "${2:-.}"
+        _get_error "    $_ERROR_IMPORT_COMMAND $_ERROR_IMPORT_SPECS${_MODULE_NAME%%[$C_BLANK]*}" "${2:-.}" ||
+        _get_error "    $_ERROR_IMPORT_COMMAND${_ERROR_IMPORT_SPECS:+ $_ERROR_IMPORT_SPECS}${_MODULE_NAME:+ ${_MODULE_NAME%%[$C_BLANK]*}}" "${2:-.}"
 
     echo "  File \"${_ERROR_FILE:-$SCRIPT_FILE}\"
     $_ERROR_IMPORT_STATEMENT"
@@ -803,7 +823,7 @@ is_valid_identifier ()
             0*)
                 case $_MODULE_NAME in
                     '')
-                        _MODULE_PART_NAME=${_MODULE_PART_NAME%%[![:digit:]]*}
+                        _MODULE_PART_NAME=${_MODULE_PART_NAME%%[!$C_DIGIT]*}
                         case $_MODULE_PART_NAME in
                             *[!0]*)
                                 _MODULE_PART_NAME=${_MODULE_PART_NAME%%[!0]*}
@@ -817,20 +837,20 @@ is_valid_identifier ()
                         esac
                     ;;
                     *)
-                        _MODULE_PART_NAME=${_MODULE_PART_NAME%%[![:digit:]]*}
+                        _MODULE_PART_NAME=${_MODULE_PART_NAME%%[!$C_DIGIT]*}
                         _MODULE_NAME=${_MODULE_NAME:+$_MODULE_NAME.}${_MODULE_PART_NAME%?}
                         _syntax_error 3
                     ;;
                 esac
             ;;
             [123456789]*)
-                _MODULE_PART_NAME=${_MODULE_PART_NAME%%[![:digit:]]*}
+                _MODULE_PART_NAME=${_MODULE_PART_NAME%%[!$C_DIGIT]*}
                 _MODULE_NAME=${_MODULE_NAME:+$_MODULE_NAME.}${_MODULE_PART_NAME%?}
                 _MODULE_NAME=${_MODULE_NAME:- }
                 _syntax_error 3
             ;;
-            [!_[:alpha:]]*)
-                _MODULE_PART_NAME=${_MODULE_PART_NAME%%[!_[:alpha:]]*}
+            [!_$C_ALPHA]*)
+                _MODULE_PART_NAME=${_MODULE_PART_NAME%%[!_$C_ALPHA]*}
                 _MODULE_NAME=${_MODULE_NAME:+$_MODULE_NAME.}
                 _syntax_error 1 "$_MODULE_PART_NAME"
             ;;
@@ -845,8 +865,8 @@ is_valid_identifier ()
                 esac
                 _syntax_error 1 "$_MODULE_PART_NAME"
             ;;
-            *[!_[:alnum:]]*)
-                _MODULE_PART_NAME=${_MODULE_PART_NAME%%[!_[:alnum:]]*}
+            *[!$C_WORD]*)
+                _MODULE_PART_NAME=${_MODULE_PART_NAME%%[!$C_WORD]*}
                 _MODULE_NAME=${_MODULE_NAME:+$_MODULE_NAME.}$_MODULE_PART_NAME
                 _syntax_error 1
             ;;
@@ -1478,9 +1498,9 @@ _import_module_shell ()
     # --- РАЗБОР КАРТЫ АЛИАСОВ ДЛЯ ИМПОРТА ФУНКЦИЙ ---
     _USE_MAP=0
     case ${_FUNCTION_MAP:-} in
-        'FUNC_MAP:'*)
+        FUNC_MAP:*)
             _USE_MAP=1
-            _MAP_DATA=${_FUNCTION_MAP#FUNC_MAP:"$SPACE"}
+            _MAP_DATA=${_FUNCTION_MAP#FUNC_MAP:$SPACE}
         ;;
     esac
 
@@ -1530,7 +1550,7 @@ _import_module_shell ()
         do
             _CURR_CH=${_REST_PARSE%"${_REST_PARSE#?}"}
             case $_CURR_CH in
-                [a-zA-Z_])
+                [_$C_ALPHA])
                     _WORD=
                     while
                         case $_REST_PARSE in
@@ -1541,7 +1561,7 @@ _import_module_shell ()
                     do
                         _W_CH=${_REST_PARSE%"${_REST_PARSE#?}"}
                         case $_W_CH in
-                            [a-zA-Z0-9_.])
+                            [\.$C_WORD])
                                 _WORD=$_WORD$_W_CH
                                 _REST_PARSE=${_REST_PARSE#?}
                             ;;
@@ -1692,7 +1712,7 @@ _import_module_shell ()
         done
 
         case $_CLEAN_LINE in
-            *unset*[0-9a-zA-Z_-]*)
+            *unset*[-$C_WORD]*)
                 _U_TAIL=${_CLEAN_LINE#*unset}
                 _U_REST=$_U_TAIL
                 _U_MODE=
@@ -1705,7 +1725,7 @@ _import_module_shell ()
                 do
                     _U_CH=${_U_REST%"${_U_REST#?}"}
                     case $_U_CH in
-                        [a-zA-Z_])
+                        [_$C_ALPHA])
                             _U_WORD=
                             while
                                 case $_U_REST in
@@ -1717,7 +1737,7 @@ _import_module_shell ()
                                 _UW_CH=${_U_REST%"${_U_REST#?}"}
                                 case $_UW_CH in
                                     # ИСПРАВЛЕНО: уменьшаем правильную переменную _U_REST
-                                    [a-zA-Z0-9_.])
+                                    [\.$C_WORD])
                                         _U_WORD=$_U_WORD$_UW_CH
                                         _U_REST=${_U_REST#?}
                                     ;;
@@ -1936,7 +1956,7 @@ _MODULE_BODY
                             _S_QUOTES=0
                             _NEW_LINE=$_NEW_LINE$_CH
                         ;;
-                        [a-zA-Z0-9_.])
+                        [\.$C_WORD])
                             case $_UNSET_MODE in
                                 '')
                                     _NEW_LINE=$_NEW_LINE$_CH
@@ -1953,7 +1973,7 @@ _MODULE_BODY
                                     do
                                         _Q_CH=${_REST_QUOTES%"${_REST_QUOTES#?}"}
                                         case $_Q_CH in
-                                            [a-zA-Z0-9_.])
+                                            [\.$C_WORD])
                                                 _WORD=$_WORD$_Q_CH
                                                 _REST_QUOTES=${_REST_QUOTES#?}
                                             ;;
@@ -1983,11 +2003,11 @@ _MODULE_BODY
                 ;;
             esac
             case $_CH in
-                [a-zA-Z0-9_.])
+                [\.$C_WORD])
                     case $_WORD in
                         '')
                             case $_CH in
-                                [a-zA-Z_])
+                                [_$C_ALPHA])
                                     _WORD=$_CH
                                 ;;
                                 *)
@@ -2132,8 +2152,8 @@ _MODULE_BODY
                                                 1)
                                                     case $_MAP_DATA in
                                                         *"$_WORD:"*)
-                                                            _M_TAIL=${_MAP_DATA#*"$_WORD:"}
-                                                            _TARGET_WORD=${_M_TAIL%%"$SPACE"*}
+                                                            _M_TAIL=${_MAP_DATA#*$_WORD:}
+                                                            _TARGET_WORD=${_M_TAIL%%$SPACE*}
                                                         ;;
                                                     esac
                                                 ;;
@@ -2279,8 +2299,8 @@ _MODULE_BODY
                                                     1)
                                                         case $_MAP_DATA in
                                                             *$_WORD:*)
-                                                                _M_TAIL=${_MAP_DATA#*"$_WORD":}
-                                                                _TARGET_WORD=${_M_TAIL%%"$SPACE"*}
+                                                                _M_TAIL=${_MAP_DATA#*$_WORD:}
+                                                                _TARGET_WORD=${_M_TAIL%%$SPACE*}
                                                             ;;
                                                         esac
                                                     ;;
