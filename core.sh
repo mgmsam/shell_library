@@ -140,51 +140,64 @@ then
         X-n)
             case "X$(echo '\033[0m')" in
                 'X\033[0m')
-                    PUTS_ESCAPE=false || PUTS_ESCAPE=true
-                    PUTS_TYPE=echo
-                    puts ()
-                    {
-                        $SAY_BATCH && echo "$*${SAY_SUFFIX:-}\c" || {
-                            case ${SAY_SUFFIX:-} in
-                                '')
-                                    SAY_SUFFIX='\c'
-                                ;;
-                                *)
-                                    SAY_SUFFIX=
-                                ;;
-                            esac
-                            PUTS=echo
-                            puts_stream "$*"
-                        }
-                    }
+                    PUTS_ESCAPE=false
                 ;;
                 *)
-                    false
+                    PUTS_ESCAPE=true
                 ;;
             esac
+            PUTS_TYPE=echo
+
+            echo_c_helper ()
+            {
+                echo "$*\c"
+            }
+
+            puts ()
+            {
+                $SAY_BATCH && echo "$*${SAY_SUFFIX:-}\c" || {
+                    case ${SAY_SUFFIX:-} in
+                        '')
+                            SAY_SUFFIX='\c'
+                        ;;
+                        *)
+                            SAY_SUFFIX=
+                        ;;
+                    esac
+                    PUTS=echo_c_helper
+                    puts_stream "$*"
+                }
+            }
+        ;;
+        *)
+            false
         ;;
     esac ||
     case "X$(echo -e)" in
         X-e)
             case "X$(echo '\033[0m')" in
                 'X\033[0m')
-                    PUTS_ESCAPE=false || PUTS_ESCAPE=true
-                    PUTS_TYPE=echo_n
-                    puts ()
-                    {
-                        $SAY_BATCH && echo -n "$*${SAY_SUFFIX:-}" || {
-                            PUTS='echo -n'
-                            puts_stream "$*"
-                        }
-                    }
+                    PUTS_ESCAPE=false
                 ;;
                 *)
-                    false
+                    PUTS_ESCAPE=true
                 ;;
             esac
+            PUTS_TYPE=echo_n
+            puts ()
+            {
+                $SAY_BATCH && echo -n "$*${SAY_SUFFIX:-}" || {
+                    PUTS='echo -n'
+                    puts_stream "$*"
+                }
+            }
+        ;;
+        *)
+            false
         ;;
     esac || {
-        PUTS_TYPE=echo_ne PUTS_ESCAPE=true
+        PUTS_ESCAPE=true
+        PUTS_TYPE=echo_ne
         puts ()
         {
             $SAY_ESCAPE && PUTS_FORMAT=-ne || PUTS_FORMAT=-n
@@ -240,63 +253,61 @@ puts_stream ()
 
 puts_indented ()
 {
-    if $SAY_PREFIX_INDENT
-    then
-        case ${PUTS_LENGHT_PREFIX:-} in
-            ${SAY_LENGHT_INDENT:-0})
-            ;;
-            *)
-                PUTS_LENGHT_PREFIX=${SAY_LENGHT_INDENT:-${#SAY_PREFIX}}
-                SAY_COUNT=$PUTS_LENGHT_PREFIX
-                SAY_INDENT=
-                while
-                    case $SAY_COUNT in
-                        0)
-                            false
-                        ;;
-                    esac
-                do
-                    SAY_COUNT=$((SAY_COUNT - 1))
-                    SAY_INDENT="${SAY_INDENT:-} "
-                done
-            ;;
-        esac
-        case ${SAY_PREFIX:-} in
-            ?*)
-                case $((${#SAY_PREFIX} + ${#SAY_DIVIDER})) in
-                    ${PUTS_LENGHT_PREFIX:-})
-                    ;;
-                    *)
-                        SAY_COUNT=$((PUTS_LENGHT_PREFIX - ${#SAY_PREFIX}))
-                        SAY_DIVIDER=
-                        while
-                            case $((SAY_COUNT > 0)) in
-                                0)
-                                    false
-                                ;;
-                            esac
-                        do
-                            SAY_COUNT=$((SAY_COUNT - 1))
-                            SAY_DIVIDER="${SAY_DIVIDER:-} "
-                        done
+    $SAY_PREFIX_INDENT &&
+    case ${PUTS_LENGHT_PREFIX:-} in
+        ${SAY_LENGHT_INDENT:-0})
+        ;;
+        *)
+            PUTS_LENGHT_PREFIX=${SAY_LENGHT_INDENT:-${#SAY_PREFIX}}
+            SAY_COUNT=$PUTS_LENGHT_PREFIX
+            SAY_INDENT=
+            while
+                case $SAY_COUNT in
+                    0)
+                        false
                     ;;
                 esac
-                SAY_PREFIX=$SAY_PREFIX${SAY_DIVIDER:-}
-            ;;
-        esac
-        case $# in
-            [!01])
-                SAY_SUFFIX=$LF
-                puts "${SAY_PREFIX:-${SAY_INDENT:-}}${1:-}"
-                shift
-                SAY_PREFIX=${SAY_INDENT:-}
-                $SAY_NEWLINE || SAY_SUFFIX=
-            ;;
-            *)
-                SAY_PREFIX=${SAY_PREFIX:-${SAY_INDENT:-}}
-            ;;
-        esac
-    fi
+            do
+                SAY_COUNT=$((SAY_COUNT - 1))
+                SAY_INDENT="${SAY_INDENT:-} "
+            done
+        ;;
+    esac &&
+    case ${SAY_PREFIX:-} in
+        ?*)
+            case $((${#SAY_PREFIX} + ${#SAY_DIVIDER})) in
+                ${PUTS_LENGHT_PREFIX:-})
+                ;;
+                *)
+                    SAY_COUNT=$((PUTS_LENGHT_PREFIX - ${#SAY_PREFIX}))
+                    SAY_DIVIDER=
+                    while
+                        case $((SAY_COUNT > 0)) in
+                            0)
+                                false
+                            ;;
+                        esac
+                    do
+                        SAY_COUNT=$((SAY_COUNT - 1))
+                        SAY_DIVIDER="${SAY_DIVIDER:-} "
+                    done
+                ;;
+            esac
+            SAY_PREFIX=$SAY_PREFIX${SAY_DIVIDER:-}
+        ;;
+    esac &&
+    case $# in
+        [!01])
+            SAY_SUFFIX=$LF
+            puts "${SAY_PREFIX:-${SAY_INDENT:-}}${1:-}"
+            shift
+            SAY_PREFIX=${SAY_INDENT:-}
+            $SAY_NEWLINE || SAY_SUFFIX=
+        ;;
+        *)
+            SAY_PREFIX=${SAY_PREFIX:-${SAY_INDENT:-}}
+        ;;
+    esac || :
     case $# in
         [!01])
             SAY_SUFFIX=$LF
@@ -344,23 +355,12 @@ say ()
                         false
                     ;;
                     *)
-                        if $CAN_SLEEP
-                        then
-                            case ${1#??} in
-                                *\.*)
-                                    if $CAN_SLEEP_FLOAT
-                                    then
-                                        false
-                                    fi
-                                ;;
-                                *)
-                                    false
-                                ;;
-                            esac || {
+                        case $CAN_SLEEP:$CAN_SLEEP_FLOAT:${1#??} in
+                            true:true:* | true:false:*[!.]*)
                                 SAY_BATCH=false
                                 SAY_TIMEOUT=${1#??}
-                            }
-                        fi
+                            ;;
+                        esac
                     ;;
                 esac
             ;;
@@ -417,12 +417,15 @@ say ()
     esac
     case $* in
         ?*)
-            if $SAY_LIST
-            then
-                puts_indented ${1:+"$@"}
-            else
-                puts_indented ${1:+"$*"}
-            fi
+            case $SAY_LIST in
+                true)
+                    puts_indented ${1:+"$@"}
+                ;;
+                *)
+                    puts_indented ${1:+"$*"}
+                ;;
+            esac
+
         ;;
     esac
 }
