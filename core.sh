@@ -1485,12 +1485,14 @@ _import_module_shell ()
     esac
 
     _ALL_LINES=
+    _CURRENT_TARGET=
     _LIST_FUNCS=$SPACE
     _IN_HEREDOC=0
     _HD_TOKEN=
 
     # --- PASS 1: ПОСИМВОЛЬНЫЙ СБОР ЯВНО ОБЪЯВЛЕННЫХ ФУНКЦИЙ ---
-    while IFS= read -r _RAW_LINE ||
+    IFS=
+    while read -r _RAW_LINE ||
         case $_RAW_LINE in
             '')
                 false
@@ -1498,19 +1500,21 @@ _import_module_shell ()
         esac
     do
         # --- ФИЛЬТР ФУНКЦИЙ НА ЭТАПЕ PASS 1 ---
-        _MARKER=""
-        case ${_FILTER_TARGETS:-} in
+        _MARKER=
+        case ${_FILTER_TARGETS:+$_CURRENT_TARGET} in
             ?*)
                 # Если мы внутри целевой функции, помечаем строку маркером
-                if [ -n "${_CURRENT_TARGET:-}" ]; then
-                    _MARKER="_KEEP_:"
-                fi
+                _MARKER=_KEEP_:
             ;;
         esac
 
         case $_ALL_LINES in
-            '') _ALL_LINES="${_MARKER}${_RAW_LINE}" ;;
-            *)  _ALL_LINES="$_ALL_LINES$SOH${_MARKER}${_RAW_LINE}" ;;
+            '')
+                _ALL_LINES=$_MARKER$_RAW_LINE
+            ;;
+            *)
+                _ALL_LINES=$_ALL_LINES$SOH$_MARKER$_RAW_LINE
+            ;;
         esac
 
         _CLEAN_LINE=${_RAW_LINE%%#*}
@@ -1640,32 +1644,32 @@ _import_module_shell ()
                     case $_IS_A_FUNC in
                         1)
                             case $_LIST_FUNCS in
-                                *" $_WORD "*) ;;
-                                *) _LIST_FUNCS="$_LIST_FUNCS$_WORD " ;;
+                                *" $_WORD "*)
+                                ;;
+                                *)
+                                    _LIST_FUNCS="$_LIST_FUNCS$_WORD "
+                                ;;
                             esac
                             
                             # ВРЕЗКА: Если посимвольный парсер нашёл целевую функцию
                             case ${_FILTER_TARGETS:-} in
-                                ?*)
-                                    case $_FILTER_TARGETS in
-                                        *" $_WORD "*)
-                                            _CURRENT_TARGET=$_WORD
-                                            # Так как заголовок функции находится на ТЕКУЩЕЙ строке,
-                                            # мы обязаны задним числом пометить её маркером сохранения,
-                                            # если она ещё не была помечена
+                                *" $_WORD "*)
+                                    _CURRENT_TARGET=$_WORD
+                                    # Так как заголовок функции находится на ТЕКУЩЕЙ строке,
+                                    # мы обязаны задним числом пометить её маркером сохранения,
+                                    # если она ещё не была помечена
+                                    case $_ALL_LINES in
+                                        _KEEP_*)
+                                        ;;
+                                        *)
                                             case $_ALL_LINES in
-                                                _KEEP_*) ;;
+                                                *$SOH*)
+                                                    _ALL_PREV=${_ALL_LINES%"$SOH"*}
+                                                    _ALL_CURR=${_ALL_LINES##*"$SOH"}
+                                                    _ALL_LINES=$_ALL_PREV${SOH}_KEEP_:$_ALL_CURR
+                                                ;;
                                                 *)
-                                                    case $_ALL_LINES in
-                                                        *$SOH*)
-                                                            _ALL_PREV=${_ALL_LINES%$SOH*}
-                                                            _ALL_CURR=${_ALL_LINES##*$SOH}
-                                                            _ALL_LINES="${_ALL_PREV}${SOH}_KEEP_:${_ALL_CURR}"
-                                                        ;;
-                                                        *)
-                                                            _ALL_LINES="_KEEP_:${_ALL_LINES}"
-                                                        ;;
-                                                    esac
+                                                    _ALL_LINES=_KEEP_:$_ALL_LINES
                                                 ;;
                                             esac
                                         ;;
@@ -1743,18 +1747,14 @@ _import_module_shell ()
                                     case $_U_MODE in
                                         f)
                                             case $_U_WORD in
-                                                ?*)
-                                                    case $_U_WORD in
-                                                        unset)
+                                                '' | unset)
+                                                ;;
+                                                *)
+                                                    case $_LIST_FUNCS in
+                                                        *" $_U_WORD "*)
                                                         ;;
                                                         *)
-                                                            case $_LIST_FUNCS in
-                                                                *" $_U_WORD "*)
-                                                                ;;
-                                                                *)
-                                                                    _LIST_FUNCS="$_LIST_FUNCS$_U_WORD "
-                                                                ;;
-                                                            esac
+                                                            _LIST_FUNCS="$_LIST_FUNCS$_U_WORD "
                                                         ;;
                                                     esac
                                                 ;;
@@ -1776,14 +1776,15 @@ _import_module_shell ()
             ;;
         esac
         # Если функция закрылась (символ } на строке без отступов)
-        if [ -n "${_CURRENT_TARGET:-}" ]; then
-            case "${_RAW_LINE##[$SPACE$TAB]*}" in
-                '}') _CURRENT_TARGET="" ;;
-            esac
-        fi
+        case ${_CURRENT_TARGET:+${_RAW_LINE##[$SPACE$TAB]*}} in
+            '}')
+                _CURRENT_TARGET=
+            ;;
+        esac
     done <<_MODULE_BODY
 $_MODULE_BODY
 _MODULE_BODY
+    IFS=$POSIX_IFS
 
     # --- PASS 2: ТОКЕНИЗАТОР ЗАМЕН С НАКОПЛЕНИЕМ В ПЕРЕМЕННУЮ ---
     _IN_HEREDOC=0
@@ -1792,8 +1793,14 @@ _MODULE_BODY
 
     # --- ИНИЦИАЛИЗАЦИЯ ШЛЮЗА ПЕЧАТИ ---
     case ${_FILTER_TARGETS:-} in
-        '') _PRINT_ZONE=1 ;;  # Массовый импорт: шлюз всегда открыт
-        *)  _PRINT_ZONE=0 ;;  # Одиночный импорт: шлюз заперт, ждем функцию
+        '')
+            # Массовый импорт: шлюз всегда открыт
+            _PRINT_ZONE=1
+        ;;
+        *)
+            # Одиночный импорт: шлюз заперт, ждем функцию
+            _PRINT_ZONE=0
+        ;;
     esac
     _O_BR=0 _C_BR=0
 
@@ -2118,24 +2125,14 @@ _MODULE_BODY
                                             esac
                                     esac && _NEW_LINE=$_NEW_LINE$_V_PREFIX$_WORD ||
                                     case $_UNSET_MODE in
-                                        ?*)
-                                            case $_UNSET_MODE in
-                                                f)
-                                                    _NEW_LINE=$_NEW_LINE$_F_PREFIX$_WORD
-                                                ;;
-                                                *)
-                                                    _NEW_LINE=$_NEW_LINE$_V_PREFIX$_WORD
-                                                ;;
-                                            esac
-                                        ;;
-                                        *)
+                                        '')
                                             # Извлекаем алиас по оригинальному имени из карты
                                             _TARGET_WORD=$_WORD
                                             case $_USE_MAP in
                                                 1)
                                                     case $_MAP_DATA in
                                                         *"$_WORD:"*)
-                                                            _M_TAIL=${_MAP_DATA#*"$_WORD":}
+                                                            _M_TAIL=${_MAP_DATA#*"$_WORD:"}
                                                             _TARGET_WORD=${_M_TAIL%%"$SPACE"*}
                                                         ;;
                                                     esac
@@ -2174,32 +2171,33 @@ _MODULE_BODY
                                                 esac || _NEW_LINE=$_NEW_LINE$_F_PREFIX$_TARGET_WORD
                                             } || _NEW_LINE=$_NEW_LINE$_WORD
                                         ;;
+                                        f)
+                                            _NEW_LINE=$_NEW_LINE$_F_PREFIX$_WORD
+                                        ;;
+                                        *)
+                                            _NEW_LINE=$_NEW_LINE$_V_PREFIX$_WORD
+                                        ;;
                                     esac
                                 }
                             }
 
                             # ВОТ СЮДА СТАВИМ ПУНКТ 2:
                             case ${_FILTER_TARGETS:-} in
-                                ?*)
-                                    case $_FILTER_TARGETS in
-                                        *" $_WORD "*)
-                                            _PRINT_ZONE=1
-                                            _O_BR=0 _C_BR=0
-                                            # Запоминаем хвост строки строго после имени функции
-                                            _BODY_TAIL=$_REST
-
-                                            # ХИРУРГИЧЕСКАЯ ОЧИСТКА ГРЯЗИ В НАЧАЛЕ СТРОКИ:
-                                            # Проверяем, было ли перед именем функции слово 'function'
-                                            case $_NEW_LINE in
-                                                *function*)
-                                                    # Оставляем только стиль Ksh и новое имя
-                                                    _NEW_LINE="function $_F_PREFIX$_TARGET_WORD"
-                                                ;;
-                                                *)
-                                                    # Чистый POSIX: стираем всё чужое, оставляем только имя функции
-                                                    _NEW_LINE="$_F_PREFIX$_TARGET_WORD"
-                                                ;;
-                                            esac
+                                *" $_WORD "*)
+                                    _PRINT_ZONE=1
+                                    _O_BR=0 _C_BR=0
+                                    # Запоминаем хвост строки строго после имени функции
+                                    _BODY_TAIL=$_REST
+                                    # ХИРУРГИЧЕСКАЯ ОЧИСТКА ГРЯЗИ В НАЧАЛЕ СТРОКИ:
+                                    # Проверяем, было ли перед именем функции слово 'function'
+                                    case $_NEW_LINE in
+                                        *function*)
+                                            # Оставляем только стиль Ksh и новое имя
+                                            _NEW_LINE="function $_F_PREFIX$_TARGET_WORD"
+                                        ;;
+                                        *)
+                                            # Чистый POSIX: стираем всё чужое, оставляем только имя функции
+                                            _NEW_LINE=$_F_PREFIX$_TARGET_WORD
                                         ;;
                                     esac
                                 ;;
@@ -2275,17 +2273,7 @@ _MODULE_BODY
                                     ;;
                                     *)
                                         case $_UNSET_MODE in
-                                            ?*)
-                                                case $_UNSET_MODE in
-                                                    f)
-                                                        _NEW_LINE=$_NEW_LINE$_F_PREFIX$_WORD
-                                                    ;;
-                                                    *)
-                                                        _NEW_LINE=$_NEW_LINE$_V_PREFIX$_WORD
-                                                    ;;
-                                                esac
-                                            ;;
-                                            *)
+                                            '')
                                                 _TARGET_WORD=$_WORD
                                                 case $_USE_MAP in
                                                     1)
@@ -2313,6 +2301,12 @@ _MODULE_BODY
                                                     ;;
                                                 esac
                                             ;;
+                                            f)
+                                                _NEW_LINE=$_NEW_LINE$_F_PREFIX$_WORD
+                                            ;;
+                                            *)
+                                                _NEW_LINE=$_NEW_LINE$_V_PREFIX$_WORD
+                                            ;;
                                         esac
                                     ;;
                                 esac
@@ -2323,49 +2317,92 @@ _MODULE_BODY
             ;;
         esac
         # Подсчёт скобок для текущей строки в зоне печати
-        if [ $_PRINT_ZONE -eq 1 ]; then
-            # Если это первая строка (заголовок), анализируем только хвост ПОСЛЕ имени функции
-            if [ -n "${_BODY_TAIL+set}" ]; then
-                _br_line=${_BODY_TAIL%%#*}
-                unset _BODY_TAIL # Очищаем, чтобы на следующих строках анализировалась вся строка
-            else
-                _br_line=${_NEW_LINE%%#*}
-            fi
-            
-            _tmp_br=$_br_line
-            while case "$_tmp_br" in *'{'*) true ;; *) false ;; esac; do
-                _before_br=${_tmp_br%%'{'*}
-                if [ "${_before_br#${_before_br%?}}" != "$" ]; then
-                    _O_BR=$((_O_BR + 1))
-                fi
-                _tmp_br=${_tmp_br#*'{'}
-            done
-
-            _tmp_br=$_br_line
-            while case "$_tmp_br" in *'}'*) true ;; *) false ;; esac; do
-                _before_br=${_tmp_br%%'}'*}
-                case "$_before_br" in
-                    *esac* | *"\$"*) ;;
-                    *) _C_BR=$((_C_BR + 1)) ;;
+        case $_PRINT_ZONE in
+            1)
+                # Если это первая строка (заголовок), анализируем только хвост ПОСЛЕ имени функции
+                case ${_BODY_TAIL+set} in
+                    '')
+                        _br_line=${_NEW_LINE%%#*}
+                    ;;
+                    *)
+                        _br_line=${_BODY_TAIL%%#*}
+                        # Очищаем, чтобы на следующих строках анализировалась вся строка
+                        unset _BODY_TAIL
+                    ;;
                 esac
-                _tmp_br=${_tmp_br#*'}'}
-            done
+            
+                _tmp_br=$_br_line
+                while
+                    case $_tmp_br in
+                        *'{'*)
+                            true
+                        ;;
+                        *)
+                            false
+                        ;;
+                    esac
+                do
+                    _before_br=${_tmp_br%%{*}
+                    case ${_before_br#"${_before_br%?}"} in
+                        '$')
+                        ;;
+                        *)
+                            _O_BR=$((_O_BR + 1))
+                        ;;    
+                    esac
+                    _tmp_br=${_tmp_br#*{}
+                done
 
-            if [ $_O_BR -gt 0 ] && [ $_O_BR -le $_C_BR ]; then
-                _CLOSE_FUNC_NOW=1
-            else
+                _tmp_br=$_br_line
+                while
+                    case $_tmp_br in
+                        *'}'*)
+                            true
+                        ;;
+                        *)
+                            false
+                        ;;
+                    esac
+                do
+                    _before_br=${_tmp_br%%'}'*}
+                    case $_before_br in
+                        *esac* | *'$'*)
+                        ;;
+                        *)
+                            _C_BR=$((_C_BR + 1))
+                        ;;
+                    esac
+                    _tmp_br=${_tmp_br#*'}'}
+                done
+
+                case $(( _O_BR > 0 && _O_BR <= _C_BR )) in
+                    1)
+                        _CLOSE_FUNC_NOW=1
+                    ;;
+                    0)
+                        _CLOSE_FUNC_NOW=0
+                    ;;
+                esac
+
+                _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_NEW_LINE$_COMM_PART
+            ;;
+            *)
+                case ${_FILTER_TARGETS:-} in
+                    '')
+                        _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_NEW_LINE$_COMM_PART
+                    ;;
+                esac
+            ;;
+        esac
+
+        case ${_CLOSE_FUNC_NOW:-0} in
+            1)
                 _CLOSE_FUNC_NOW=0
-            fi
-        fi
-
-        # Твой финальный фильтр и запись строки
-        if [ $_PRINT_ZONE -eq 1 ] || { case ${_FILTER_TARGETS:-} in '') true ;; *) false ;; esac; }; then
-            _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_NEW_LINE$_COMM_PART
-        fi
-
-        if [ "${_CLOSE_FUNC_NOW:-0}" -eq 1 ]; then
-            _PRINT_ZONE=0 _O_BR=0 _C_BR=0 _CLOSE_FUNC_NOW=0
-        fi
+                _PRINT_ZONE=0
+                _O_BR=0
+                _C_BR=0
+            ;;
+        esac
     done
 }
 
