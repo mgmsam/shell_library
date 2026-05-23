@@ -332,7 +332,7 @@ say ()
     SAY_RESULT=$?
 
     SAY_BATCH=true
-    SAY_ESCAPE=$PUTS_ESCAPE
+    SAY_ESCAPE=false
     SAY_LIST=false
     SAY_NEWLINE=true
     SAY_PREFIX="${LOG_PREFIX:-$0}: "
@@ -385,6 +385,9 @@ say ()
             ;;
         esac ||
         case ${1:-} in
+            -e)
+                $PUTS_ESCAPE && SAY_ESCAPE=true || :
+            ;;
             -l)
                 SAY_LIST=true
             ;;
@@ -394,9 +397,6 @@ say ()
             ;;
             -p)
                 SAY_PREFIX=
-            ;;
-            -r)
-                SAY_ESCAPE=false
             ;;
             "" | *[!$C_DIGIT]*)
                 break
