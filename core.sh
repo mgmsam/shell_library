@@ -441,7 +441,7 @@ SOH=$(puts '\001')
 TAB=$(puts '\011')
  VT=$(puts '\013')
 
-# --- БАЗОВЫЕ СИМВОЛЬНЫЕ КЛАССЫ (ASCII) ---
+# --- BASIC CHARACTER CLASSES (ASCII) ---
 C_LOWER=abcdefghijklmnopqrstuvwxyz
 C_UPPER=ABCDEFGHIJKLMNOPQRSTUVWXYZ
 C_DIGIT=0123456789
@@ -453,14 +453,14 @@ C_ALPHA=$C_LOWER$C_UPPER
 C_ALNUM=$C_ALPHA$C_DIGIT
 C_WORD=_$C_ALNUM
 
-# --- ПРОБЕЛЬНЫЕ КЛАССЫ ---
+# --- WHITESPACE CLASSES ---
 SPACE=' '
 C_BLANK=$SPACE$TAB
 C_SPACE=$SPACE$TAB$LF$CR$VT$FF
 POSIX_IFS=$SPACE$TAB$LF
 IFS=$POSIX_IFS
 
-# --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ПУТЕЙ ОКРУЖЕНИЯ
+# --- GLOBAL ENVIRONMENT PATH VARIABLES ---
 PWD=$(pwd)
 SCRIPT_DIR=$(
     _PATH=${0%/*}
@@ -1212,7 +1212,7 @@ _import_module_awk ()
 
                 filter_targets = "'"${_CTX_FILTER_TARGETS:-}"'"
 
-                # РАЗБОР КАРТЫ АЛИАСОВ: из "FUNC_MAP: func1:func1 func2:boo"
+                # PARSE ALIAS MAP: from "FUNC_MAP: func1:func1 func2:boo"
                 f_map = "'"${_FUNCTION_MAP:-}"'"
                 if (f_map ~ /^FUNC_MAP:/) {
                     sub(/^FUNC_MAP:[ \t]*/, "", f_map)
@@ -1233,11 +1233,11 @@ _import_module_awk ()
                     if ($0 == hd_token || trimmed == hd_token) { in_heredoc = 0; hd_token = "" }
                     next
                 } else if (match($0, /<<-?[ \t]*[\047"\042\\]?[a-zA-Z0-9_]+[\047"\042]?/)) {
-                    # Добавлен \\ в регулярку выше для детекции <<\FILE
+                    # Added \\ to regex above for detecting <<\FILE
                     _SKIP_PARSING = 1; in_heredoc = 1
                     chunk = substr($0, RSTART, RLENGTH)
                     sub(/^<<-?/, "", chunk)
-                    # Очищаем токен от кавычек и бэкслеша
+                    # Clean token from quotes and backslash
                     gsub(/[ \t\047"\042\\]/, "", chunk)
                     hd_token = chunk
                 }
@@ -1252,7 +1252,7 @@ _import_module_awk ()
                 v_prefix = "'"${_IMPORT_PREFIX_NAME:-}"'_"
                 gsub(/\./, "_", v_prefix)
 
-                # Инициализация шлюза фильтрации
+                # Initialize filter gateway
                 use_filter = 0
                 print_zone = 1
                 if (filter_targets != "") {
@@ -1263,7 +1263,7 @@ _import_module_awk ()
                 }
                 o_br = 0; c_br = 0; close_func_now = 0
 
-                # --- PASS 1: ПОСИМВОЛЬНЫЙ СБОР ФУНКЦИЙ MODULE ---
+                # --- PASS 1: CHARACTER-BY-CHARACTER MODULE FUNCTION COLLECTION ---
                 t_len = length(clean_total)
                 expect_func = 0
                 for (pos = 1; pos <= t_len; pos++) {
@@ -1283,7 +1283,7 @@ _import_module_awk ()
                         prev_ch = (w_start > 1) ? substr(clean_total, w_start - 1, 1) : ""
                         if (prev_ch == "/") { expect_func = 0; continue }
 
-                        # Строгий Lookahead пустых скобок на Pass 1
+                        # Strict lookahead for empty parentheses on Pass 1
                         t_ptr = pos + 1
                         while (t_ptr <= t_len) {
                             next_ch = substr(clean_total, t_ptr, 1)
@@ -1304,7 +1304,7 @@ _import_module_awk ()
                         } else if (next_ch == "{" && expect_func == 1) {
                             is_a_func = 1
                         } else if (expect_func == 1) {
-                            # Посимвольный Lookahead тела функции (Защита от cat, grep, ls)
+                            # Character-by-character function body lookahead (protection against cat, grep, ls)
                             tail_ptr = pos + 1
                             while (tail_ptr <= t_len) {
                                 nt_ch = substr(clean_total, tail_ptr, 1)
@@ -1322,7 +1322,7 @@ _import_module_awk ()
                 if (use_filter) {
                     for (t in targets_arr) {
                         if (!(t in names)) {
-                            # Стираем всё, выводим только имя потеряшки и падаем с системным кодом 1
+                            # Erase everything, output only lost function name and exit with system code 1
                             print t
                             exit 1
                         }
@@ -1369,7 +1369,7 @@ _import_module_awk ()
                                 }
                                 c_pos--
                                 
-                                # ИСПРАВЛЕНО ДЛЯ КАРТЫ: замена имени функции в одиночных кавычках (например, unset 'func2')
+                                # MAP: function name replacement in single quotes (e.g., unset 'func2')
                                 if (unset_mode == "f" && alias_map[full_word] != "") {
                                     new_code = new_code prefix alias_map[full_word]
                                 } else if (unset_mode == "f") {
@@ -1398,7 +1398,7 @@ _import_module_awk ()
                             is_func_decl = (remain_tail ~ /^[ \t]*\([ \t]*\)/) ? 1 : 0
                             is_assignment = (remain_tail ~ /^=/) ? 1 : 0
 
-                            # Для массивов проверяем наличие [индекса]= сразу за словом
+                            # For arrays, check for [index]= immediately after the word
                             if (!is_assignment) is_assignment = (remain_tail ~ /^\[[^\]]+\]=/) ? 1 : 0
 
                             next_char = substr(code_part, w_start + length(word), 1)
@@ -1416,32 +1416,32 @@ _import_module_awk ()
                             } else if (prev_ch_code == "/") {
                                 new_code = new_code word
                             } else if (unset_mode != "") {
-                                # ИСПРАВЛЕНО ДЛЯ КАРТЫ: если функция удаляется через unset -f func2
+                                # MAP: when function is removed via unset -f func2
                                 if (unset_mode == "f" && alias_map[word] != "") new_code = new_code prefix alias_map[word]
                                 else if (unset_mode == "f") new_code = new_code prefix word
                                 else new_code = new_code v_prefix word
                             } else if (expect_var == 1 || is_assignment == 1) {
-                                # СИНХРОНИЗАЦИЯ С SH: Замена идет ИСКЛЮЧИТЕЛЬНО по динамическому контексту строки!
+                                # Replacement happens EXCLUSIVELY based on dynamic string context!
                                 new_code = new_code v_prefix word
                             } else if (is_func_decl == 1 || names[word] == 1) {
-                                # ВРЕЗКА: если встретили объявление запрашиваемой функции
+                                # INSERT: encountered declaration of requested function
                                 if (use_filter && targets_arr[word]) {
                                     print_zone = 1
                                     o_br = 0; c_br = 0; close_func_now = 0
-                                    # Запоминаем остаток строки строго ПОСЛЕ имени функции
+                                    # Remember the remainder of the line strictly AFTER the function name
                                     body_tail = substr(code_part, c_pos + 1)
 
-                                    # ХИРУРГИЧЕСКАЯ ОЧИСТКА ГРЯЗИ В AWK:
-                                    # Проверяем стиль объявления по накопленному new_code
+                                    # SURGICAL CLEANING OF DIRT IN AWK:
+                                    # Check declaration style based on accumulated new_code
                                     if (new_code ~ /function/) {
-                                        # Стиль Ksh: оставляем только ключевое слово
+                                        # Ksh style: keep only the keyword
                                         new_code = "function "
                                     } else {
-                                        # Стиль POSIX: полностью стираем чужую предысторию
+                                        # POSIX style: completely erase other history
                                         new_code = ""
                                     }
                                 }
-                                # ИСПРАВЛЕНО ДЛЯ КАРТЫ: Перехват объявления и вызова функций из карты соответствий
+                                # MAP: Intercept function declaration and call from alias map
                                 target_word = (alias_map[word] != "") ? alias_map[word] : word
                                 if (d_quotes == 1) new_code = new_code target_word
                                 else new_code = new_code prefix target_word
@@ -1455,22 +1455,26 @@ _import_module_awk ()
                             new_code = new_code curr_ch
                         }
                     }
-                    # Подсчёт фигурных скобок для текущей строки в зоне печати
+                    # Count curly braces for current line in print zone
                     if (print_zone == 1) {
-                        # Берем чистую оригинальную строку из файла
+                        # Take clean original line from file
                         br_line = (body_tail != "") ? body_tail : lines[i]
-                        body_tail = "" # очищаем для следующих строк
+                        # clear for subsequent lines
+                        body_tail = ""
 
-                        # ХИРУРГИЧЕСКАЯ ОЧИСТКА СТРОКИ:
-                        gsub(/(^|[ \t;])#.*/, "", br_line)  # вырезаем комментарии
-                        gsub(/\$\{[^\}]+\}/, "", br_line)   # начисто удаляем ВСЕ подстановки переменных ${...}
-                        gsub(/^[ \t]*esac[ \t;{]*$/, "", br_line) # игнорируем закрытие конструкции esac
+                        # SURGICAL LINE CLEANING:
+                        # strip comments
+                        gsub(/(^|[ \t;])#.*/, "", br_line)
+                        # completely remove ALL variable substitutions ${...}
+                        gsub(/\$\{[^\}]+\}/, "", br_line)
+                        # ignore closing of esac construct
+                        gsub(/^[ \t]*esac[ \t;{]*$/, "", br_line)
 
-                        # Считаем чистые открывающие скобки
+                        # Count clean opening braces
                         o_line = br_line
                         o_br += gsub(/\{/, "{", o_line)
 
-                        # Считаем чистые закрывающие скобки
+                        # Count clean closing braces
                         c_line = br_line
                         c_br += gsub(/\}/, "}", c_line)
 
@@ -1479,7 +1483,7 @@ _import_module_awk ()
                         }
                     }
 
-                    # ШЛЮЗ ВЫВОДА
+                    # OUTPUT GATE
                     if (print_zone == 1 || use_filter == 0) {
                         print new_code comment_part
                     }
@@ -1509,7 +1513,7 @@ _import_module_shell ()
         ;;
     esac
 
-    # --- РАЗБОР КАРТЫ АЛИАСОВ ДЛЯ ИМПОРТА ФУНКЦИЙ ---
+    # --- PARSE ALIAS MAP FOR FUNCTION IMPORT ---
     _USE_MAP=0
     case ${_FUNCTION_MAP:-} in
         FUNC_MAP:*)
@@ -1525,7 +1529,7 @@ _import_module_shell ()
     _HD_TOKEN=
     _MODULE_FUNCS=
 
-    # --- PASS 1: ПОСИМВОЛЬНЫЙ СБОР ЯВНО ОБЪЯВЛЕННЫХ ФУНКЦИЙ ---
+    # --- PASS 1: CHARACTER-BY-CHARACTER COLLECTION OF EXPLICITLY DECLARED FUNCTIONS ---
     IFS=
     while read -r _RAW_LINE ||
         case $_RAW_LINE in
@@ -1534,11 +1538,11 @@ _import_module_shell ()
             ;;
         esac
     do
-        # --- ФИЛЬТР ФУНКЦИЙ НА ЭТАПЕ PASS 1 ---
+        # --- FUNCTION FILTERING AT PASS 1 STAGE ---
         _MARKER=
         case ${_CTX_FILTER_TARGETS:+$_CURRENT_TARGET} in
             ?*)
-                # Если мы внутри целевой функции, помечаем строку маркером
+                # If inside target function, mark line with marker
                 _MARKER=_KEEP_:
             ;;
         esac
@@ -1646,7 +1650,7 @@ _import_module_shell ()
                         *)
                             case $_EXPECT_FUNC in
                                 1)
-                                    # СИНХРОНИЗАЦИЯ С AWK: Проверяем чистоту хвоста команды для function name
+                                    # Check command tail cleanliness for function name
                                     _F_TAIL=$_TAIL
                                     _IS_CLEAN_LINE=1
                                     while
@@ -1686,13 +1690,13 @@ _import_module_shell ()
                                 ;;
                             esac
                             
-                            # ВРЕЗКА: Если посимвольный парсер нашёл целевую функцию
+                            # INSERT: Character parser found target function
                             case ${_CTX_FILTER_TARGETS:-} in
                                 *" $_WORD "*)
                                     _CURRENT_TARGET=$_WORD
-                                    # Так как заголовок функции находится на ТЕКУЩЕЙ строке,
-                                    # мы обязаны задним числом пометить её маркером сохранения,
-                                    # если она ещё не была помечена
+                                    # Since the function header is on the CURRENT line,
+                                    # we must retroactively mark it with a preservation marker,
+                                    # if not already marked
                                     case $_ALL_LINES in
                                         _KEEP_*)
                                         ;;
@@ -1716,7 +1720,7 @@ _import_module_shell ()
                     _EXPECT_FUNC=0
                 ;;
                 '&' | ';' | '|')
-                    # Сброс флага ожидания функции на жестких разделителях команд, пробелы и табы внутри одной команды его удерживают
+                    # Reset function expectation flag on hard command separators, spaces and tabs within same command preserve it
                     _EXPECT_FUNC=0
                     _REST_PARSE=${_REST_PARSE#?}
                 ;;
@@ -1751,7 +1755,7 @@ _import_module_shell ()
                             do
                                 _UW_CH=${_U_REST%"${_U_REST#?}"}
                                 case $_UW_CH in
-                                    # ИСПРАВЛЕНО: уменьшаем правильную переменную _U_REST
+                                    # decreasing the correct _U_REST variable
                                     [\.$C_WORD])
                                         _U_WORD=$_U_WORD$_UW_CH
                                         _U_REST=${_U_REST#?}
@@ -1810,7 +1814,7 @@ _import_module_shell ()
                 done
             ;;
         esac
-        # Если функция закрылась (символ } на строке без отступов)
+        # If function closed (} character on line without indentation)
         case ${_CURRENT_TARGET:+${_RAW_LINE##[$SPACE$TAB]*}} in
             '}')
                 _CURRENT_TARGET=
@@ -1823,13 +1827,15 @@ _MODULE_BODY
 
     case ${_CTX_FILTER_TARGETS:-} in
         ?*)
-            # Перебираем запрашиваемые цели, которые лежат в $_CTX_FILTER_TARGETS через пробел
+            # Iterate over requested targets stored in $_CTX_FILTER_TARGETS with space separation
             for _target in $_CTX_FILTER_TARGETS
             do
                 case $_LIST_FUNCS in
-                    *" $_target "*) ;; # Найдена, отлично
+                    *" $_target "*)
+                        # Found, great
+                    ;;
                     *)
-                        # Не нашлась — пишем её имя в буфер и аварийно выходим
+                        # Not found - write its name to buffer and exit with error
                         _MODULE_FUNCS=$_target
                         return 1
                     ;;
@@ -1838,19 +1844,19 @@ _MODULE_BODY
         ;;
     esac
 
-    # --- PASS 2: ТОКЕНИЗАТОР ЗАМЕН С НАКОПЛЕНИЕМ В ПЕРЕМЕННУЮ ---
+    # --- PASS 2: REPLACEMENT TOKENIZER WITH ACCUMULATION INTO VARIABLE ---
     _IN_HEREDOC=0
     _HD_TOKEN=
     _REST_LINES=$_ALL_LINES
 
-    # --- ИНИЦИАЛИЗАЦИЯ ШЛЮЗА ПЕЧАТИ ---
+    # --- INITIALIZE PRINT GATE ---
     case ${_CTX_FILTER_TARGETS:-} in
         '')
-            # Массовый импорт: шлюз всегда открыт
+            # Bulk import: gate always open
             _PRINT_ZONE=1
         ;;
         *)
-            # Одиночный импорт: шлюз заперт, ждем функцию
+            # Single import: gate locked, waiting for function
             _PRINT_ZONE=0
         ;;
     esac
@@ -1873,7 +1879,7 @@ _MODULE_BODY
                 _REST_LINES=
         esac
 
-        # ВРЕЗКА ТУТ: Перехватываем маркер строки сразу после её извлечения!
+        # Intercept line marker immediately after extraction!
         _SHOULD_PRINT=0
         case $_LINE in
             _KEEP_:*)
@@ -1923,7 +1929,7 @@ _MODULE_BODY
                     _T_CH=${_T_REST%"${_T_REST#?}"}
                     case $_T_CH in
                         "'" | '"' | '\' )
-                            # ТЕПЕРЬ СБРАСЫВАЕМ И БЭКСЛЕШ \
+                            # NOW RESET BACKSLASH \
                         ;;
                         *)
                             _CLEAN_TOKEN=$_CLEAN_TOKEN$_T_CH
@@ -2178,7 +2184,7 @@ _MODULE_BODY
                                     esac && _NEW_LINE=$_NEW_LINE$_V_PREFIX$_WORD ||
                                     case $_UNSET_MODE in
                                         '')
-                                            # Извлекаем алиас по оригинальному имени из карты
+                                            # Extract alias by original name from map
                                             _TARGET_WORD=$_WORD
                                             case $_USE_MAP in
                                                 1)
@@ -2233,22 +2239,21 @@ _MODULE_BODY
                                 }
                             }
 
-                            # ВОТ СЮДА СТАВИМ ПУНКТ 2:
                             case ${_CTX_FILTER_TARGETS:-} in
                                 *" $_WORD "*)
                                     _PRINT_ZONE=1
                                     _O_BR=0 _C_BR=0
-                                    # Запоминаем хвост строки строго после имени функции
+                                    # Remember the tail of the line strictly after function name
                                     _BODY_TAIL=$_REST
-                                    # ХИРУРГИЧЕСКАЯ ОЧИСТКА ГРЯЗИ В НАЧАЛЕ СТРОКИ:
-                                    # Проверяем, было ли перед именем функции слово 'function'
+                                    # SURGICAL CLEANING OF DIRT AT LINE START:
+                                    # Check if the word 'function' was before the function name
                                     case $_NEW_LINE in
                                         *function*)
-                                            # Оставляем только стиль Ksh и новое имя
+                                            # Keep only Ksh style and new name
                                             _NEW_LINE="function $_F_PREFIX$_TARGET_WORD"
                                         ;;
                                         *)
-                                            # Чистый POSIX: стираем всё чужое, оставляем только имя функции
+                                            # Clean POSIX: erase everything foreign, keep only function name
                                             _NEW_LINE=$_F_PREFIX$_TARGET_WORD
                                         ;;
                                     esac
@@ -2368,17 +2373,17 @@ _MODULE_BODY
                 esac
             ;;
         esac
-        # Подсчёт скобок для текущей строки в зоне печати
+        # Brace counting for current line in print zone
         case $_PRINT_ZONE in
             1)
-                # Если это первая строка (заголовок), анализируем только хвост ПОСЛЕ имени функции
+                # If this is the first line (header), analyze only the tail AFTER the function name
                 case ${_BODY_TAIL+set} in
                     '')
                         _br_line=${_NEW_LINE%%#*}
                     ;;
                     *)
                         _br_line=${_BODY_TAIL%%#*}
-                        # Очищаем, чтобы на следующих строках анализировалась вся строка
+                        # Clear so that subsequent lines are analyzed as full lines
                         unset _BODY_TAIL
                     ;;
                 esac
@@ -2511,7 +2516,7 @@ _load_module ()
     IFS=$POSIX_IFS
 }
 
-_import_function ()
+_import_function ()j
 {
     $_IMPORT_AS || {
         echo "  File \"${_CTX_FILE:-$SCRIPT_FILE}\"
@@ -2520,13 +2525,13 @@ ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh
         return 1
     }
 
-    # 1. Загружаем содержимое модуля в память
+    # 1. Load module content into memory
     _load_module
     
-    # 2. Запускаем токенизатор (он сам отфильтрует и переименует всё за один проход)
+    # 2. Run tokenizer (it will filter and rename everything in one pass)
     _CTX_FILTER_TARGETS=${1:+" $* "}
     _import_module_$_IMPORT_TYPE || _modulenotfounderror 4 "$_MODULE_FUNCS" || return
-    # Очищаем временный фильтр после работы
+    # Clear temporary filter after execution
     _CTX_FILTER_TARGETS=
 
     case $_MODULE_FUNCS in
@@ -2818,7 +2823,7 @@ resolve_path ()
     (cd_print "$1")
 }
 
-# Утилиты манипуляции файлами
+# File manipulation utilities
 copy ()
 {
     STATUS=$(2>&1 cp -frv -- "$@") || say "$STATUS"
