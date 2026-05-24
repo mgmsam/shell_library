@@ -2640,23 +2640,24 @@ _gen_function_map ()
 {
     case $# in
         1)
-            _FUNCTION_MAP="${_FUNCTION_MAP:-FUNC_MAP:} $1:$1"
+            _FUNCTION_MAP="$_FUNCTION_MAP $1:$1"
         ;;
         3)
-            _FUNCTION_MAP="${_FUNCTION_MAP:-FUNC_MAP:} $1:$3"
+            _FUNCTION_MAP="$_FUNCTION_MAP $1:$3"
         ;;
     esac
-    _FUNCTION_LIST="${_FUNCTION_LIST:+$_FUNCTION_LIST }$1"
+    _FUNCTION_LIST="$_FUNCTION_LIST $1"
 }
 
 _parse_import_list ()
 {
-    _FUNCTION_MAP=
+    _FUNCTION_MAP=FUNC_MAP:
     _FUNCTION_LIST=
     for i
     do
         _gen_function_map $i
     done
+    _FUNCTION_LIST=${_FUNCTION_LIST#?}
 }
 
 _parse_import_buffer ()
