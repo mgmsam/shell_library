@@ -1215,7 +1215,7 @@ _import_module_awk ()
                 split(bash_env_list, bash_env, " ")
                 for (x in bash_env) env_vars[bash_env[x]] = 1
 
-                filter_targets = "'" ${_FUNCTION_LIST:-} "'"
+                _function_list = "'" ${_FUNCTION_LIST:-} "'"
 
                 # PARSE ALIAS MAP: from "FUNC_MAP: func1:func1 func2:boo"
                 f_map = "'"${_FUNCTION_MAP:-}"'"
@@ -1260,10 +1260,10 @@ _import_module_awk ()
                 # Initialize filter gateway
                 use_filter = 0
                 print_zone = 1
-                if (filter_targets != "") {
+                if (_function_list != "") {
                     use_filter = 1
                     print_zone = 0
-                    split(filter_targets, ft, " ")
+                    split(_function_list, ft, " ")
                     for (f in ft) targets_arr[ft[f]] = 1
                 }
                 o_br = 0; c_br = 0; close_func_now = 0
