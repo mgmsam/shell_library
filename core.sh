@@ -1368,7 +1368,7 @@ _import_module_awk ()
                                     c_pos += (RLENGTH + 1)
                                 }
                                 c_pos--
-                                
+
                                 # MAP: function name replacement in single quotes (e.g., unset 'func2')
                                 if (unset_mode == "f" && alias_map[full_word] != "") {
                                     new_code = new_code prefix alias_map[full_word]
@@ -1689,7 +1689,7 @@ _import_module_shell ()
                                     _LIST_FUNCS="$_LIST_FUNCS$_WORD "
                                 ;;
                             esac
-                            
+
                             # INSERT: Character parser found target function
                             case ${_CTX_FILTER_TARGETS:-} in
                                 *" $_WORD "*)
@@ -1828,15 +1828,15 @@ _MODULE_BODY
     case ${_CTX_FILTER_TARGETS:-} in
         ?*)
             # Iterate over requested targets stored in $_CTX_FILTER_TARGETS with space separation
-            for _target in $_CTX_FILTER_TARGETS
+            for _TARGET in $_CTX_FILTER_TARGETS
             do
                 case $_LIST_FUNCS in
-                    *" $_target "*)
+                    *" $_TARGET "*)
                         # Found, great
                     ;;
                     *)
                         # Not found - write its name to buffer and exit with error
-                        _MODULE_FUNCS=$_target
+                        _MODULE_FUNCS=$_TARGET
                         return 1
                     ;;
                 esac
@@ -2379,18 +2379,18 @@ _MODULE_BODY
                 # If this is the first line (header), analyze only the tail AFTER the function name
                 case ${_BODY_TAIL+set} in
                     '')
-                        _br_line=${_NEW_LINE%%#*}
+                        _BR_LINE=${_NEW_LINE%%#*}
                     ;;
                     *)
-                        _br_line=${_BODY_TAIL%%#*}
+                        _BR_LINE=${_BODY_TAIL%%#*}
                         # Clear so that subsequent lines are analyzed as full lines
                         unset _BODY_TAIL
                     ;;
                 esac
-            
-                _tmp_br=$_br_line
+
+                _TMP_BR=$_BR_LINE
                 while
-                    case $_tmp_br in
+                    case $_TMP_BR in
                         *'{'*)
                             true
                         ;;
@@ -2399,20 +2399,20 @@ _MODULE_BODY
                         ;;
                     esac
                 do
-                    _before_br=${_tmp_br%%{*}
-                    case ${_before_br#"${_before_br%?}"} in
+                    _BEFORE_BR=${_TMP_BR%%{*}
+                    case ${_BEFORE_BR#"${_BEFORE_BR%?}"} in
                         '$')
                         ;;
                         *)
                             _O_BR=$((_O_BR + 1))
-                        ;;    
+                        ;;
                     esac
-                    _tmp_br=${_tmp_br#*{}
+                    _TMP_BR=${_TMP_BR#*{}
                 done
 
-                _tmp_br=$_br_line
+                _TMP_BR=$_BR_LINE
                 while
-                    case $_tmp_br in
+                    case $_TMP_BR in
                         *'}'*)
                             true
                         ;;
@@ -2421,15 +2421,15 @@ _MODULE_BODY
                         ;;
                     esac
                 do
-                    _before_br=${_tmp_br%%'}'*}
-                    case $_before_br in
+                    _BEFORE_BR=${_TMP_BR%%'}'*}
+                    case $_BEFORE_BR in
                         *esac* | *'$'*)
                         ;;
                         *)
                             _C_BR=$((_C_BR + 1))
                         ;;
                     esac
-                    _tmp_br=${_tmp_br#*'}'}
+                    _TMP_BR=${_TMP_BR#*'}'}
                 done
 
                 case $(( _O_BR > 0 && _O_BR <= _C_BR )) in
@@ -2516,7 +2516,7 @@ _load_module ()
     IFS=$POSIX_IFS
 }
 
-_import_function ()j
+_import_function ()
 {
     $_IMPORT_AS || {
         echo "  File \"${_CTX_FILE:-$SCRIPT_FILE}\"
@@ -2527,7 +2527,7 @@ ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh
 
     # 1. Load module content into memory
     _load_module
-    
+
     # 2. Run tokenizer (it will filter and rename everything in one pass)
     _CTX_FILTER_TARGETS=${1:+" $* "}
     _import_module_$_IMPORT_TYPE || _modulenotfounderror 4 "$_MODULE_FUNCS" || return
@@ -2566,7 +2566,7 @@ _import ()
     # ${3:-} - _ALIAS
 
     _resolve_module_path "$1" || return
-    
+
     if is_file "$_MODULE_PATH"
     then
         case $_IDENTIFIER in
