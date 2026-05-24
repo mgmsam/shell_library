@@ -137,9 +137,9 @@ then
     }
 elif type echo
 then
-    case "X$(echo -n)" in
+    case "X`echo -n`" in
         X-n)
-            case "X$(echo '\033[0m')" in
+            case "X`echo '\033[0m'`" in
                 'X\033[0m')
                     PUTS_ESCAPE=false
                 ;;
@@ -147,8 +147,8 @@ then
                     PUTS_ESCAPE=true
                 ;;
             esac
-            PUTS_TYPE=echo
 
+            PUTS_TYPE=echo
             echo_c_helper ()
             {
                 echo "$*\c"
@@ -174,9 +174,9 @@ then
             false
         ;;
     esac ||
-    case "X$(echo -e)" in
+    case "X`echo -e`" in
         X-e)
-            case "X$(echo '\033[0m')" in
+            case "X`echo '\033[0m'`" in
                 'X\033[0m')
                     PUTS_ESCAPE=false
                 ;;
@@ -184,6 +184,7 @@ then
                     PUTS_ESCAPE=true
                 ;;
             esac
+
             PUTS_TYPE=echo_n
             puts ()
             {
@@ -223,7 +224,7 @@ fi >/dev/null 2>&1
 
 puts_stream ()
 {
-    PUTS_LINE=$($PUTS "$*")${SAY_SUFFIX:-}
+    PUTS_LINE=`$PUTS "$*"`${SAY_SUFFIX:-}
     while
         case ${PUTS_LINE:-} in
             '')
