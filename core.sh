@@ -1210,7 +1210,7 @@ _import_module_awk ()
                 split(bash_env_list, bash_env, " ")
                 for (x in bash_env) env_vars[bash_env[x]] = 1
 
-                filter_targets = "'"${_CTX_FILTER_TARGETS:-}"'"
+                filter_targets = "'" ${_FUNCTION_LIST:-} "'"
 
                 # PARSE ALIAS MAP: from "FUNC_MAP: func1:func1 func2:boo"
                 f_map = "'"${_FUNCTION_MAP:-}"'"
@@ -1540,7 +1540,7 @@ _import_module_shell ()
     do
         # --- FUNCTION FILTERING AT PASS 1 STAGE ---
         _MARKER=
-        case ${_CTX_FILTER_TARGETS:+$_CURRENT_TARGET} in
+        case ${_FUNCTION_LIST:+$_CURRENT_TARGET} in
             ?*)
                 # If inside target function, mark line with marker
                 _MARKER=_KEEP_:
@@ -1686,12 +1686,12 @@ _import_module_shell ()
                                 *" $_WORD "*)
                                 ;;
                                 *)
-                                    _LIST_FUNCS="$_LIST_FUNCS$_WORD "
+                                    _LIST_FUNCS=$_LIST_FUNCS$_WORD$SPACE
                                 ;;
                             esac
 
                             # INSERT: Character parser found target function
-                            case ${_CTX_FILTER_TARGETS:-} in
+                            case " ${_FUNCTION_LIST:-} " in
                                 *" $_WORD "*)
                                     _CURRENT_TARGET=$_WORD
                                     # Since the function header is on the CURRENT line,
@@ -1793,7 +1793,7 @@ _import_module_shell ()
                                                         *" $_U_WORD "*)
                                                         ;;
                                                         *)
-                                                            _LIST_FUNCS="$_LIST_FUNCS$_U_WORD "
+                                                            _LIST_FUNCS=$_LIST_FUNCS$_U_WORD$SPACE
                                                         ;;
                                                     esac
                                                 ;;
@@ -1825,10 +1825,15 @@ $_MODULE_BODY
 _MODULE_BODY
     IFS=$POSIX_IFS
 
-    case ${_CTX_FILTER_TARGETS:-} in
-        ?*)
-            # Iterate over requested targets stored in $_CTX_FILTER_TARGETS with space separation
-            for _TARGET in $_CTX_FILTER_TARGETS
+    # --- INITIALIZE PRINT GATE ---
+    case ${_FUNCTION_LIST:-} in
+        '')
+            # Bulk import: gate always open
+            _PRINT_ZONE=1
+        ;;
+        *)
+            # Iterate over requested targets stored in $_FUNCTION_LIST with space separation
+            for _TARGET in $_FUNCTION_LIST
             do
                 case $_LIST_FUNCS in
                     *" $_TARGET "*)
@@ -1841,6 +1846,8 @@ _MODULE_BODY
                     ;;
                 esac
             done
+            # Single import: gate locked, waiting for function
+            _PRINT_ZONE=0
         ;;
     esac
 
@@ -1848,18 +1855,6 @@ _MODULE_BODY
     _IN_HEREDOC=0
     _HD_TOKEN=
     _REST_LINES=$_ALL_LINES
-
-    # --- INITIALIZE PRINT GATE ---
-    case ${_CTX_FILTER_TARGETS:-} in
-        '')
-            # Bulk import: gate always open
-            _PRINT_ZONE=1
-        ;;
-        *)
-            # Single import: gate locked, waiting for function
-            _PRINT_ZONE=0
-        ;;
-    esac
     _O_BR=0 _C_BR=0
 
     while
@@ -2239,7 +2234,7 @@ _MODULE_BODY
                                 }
                             }
 
-                            case ${_CTX_FILTER_TARGETS:-} in
+                            case " ${_FUNCTION_LIST:-} " in
                                 *" $_WORD "*)
                                     _PRINT_ZONE=1
                                     _O_BR=0 _C_BR=0
@@ -2444,7 +2439,7 @@ _MODULE_BODY
                 _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_NEW_LINE$_COMM_PART
             ;;
             *)
-                case ${_CTX_FILTER_TARGETS:-} in
+                case ${_FUNCTION_LIST:-} in
                     '')
                         _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_NEW_LINE$_COMM_PART
                     ;;
@@ -2529,15 +2524,14 @@ ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh
     _load_module
 
     # 2. Run tokenizer (it will filter and rename everything in one pass)
-    _CTX_FILTER_TARGETS=${1:+" $* "}
     _import_module_$_IMPORT_TYPE || _modulenotfounderror 4 "$_MODULE_FUNCS" || return
-    # Clear temporary filter after execution
-    _CTX_FILTER_TARGETS=
 
     case $_MODULE_FUNCS in
         ?*)
             eval "$_MODULE_FUNCS"
-    esac || _modulenotfounderror 3 "$_FUNCTION_NAME"
+    esac || _modulenotfounderror 3 "$_FUNCTION_LIST"
+    # Clear temporary filter after execution
+    _FUNCTION_LIST=
 }
 
 _import_package ()
@@ -2584,15 +2578,15 @@ _import ()
                 case $# in
                     1)
                         _push_prefix_name "$_IDENTIFIER_PART"
-                        _set_names "${_IDENTIFIER#"$_IDENTIFIER_PART."}"
+                        _parse_import_list "${_IDENTIFIER#"$_IDENTIFIER_PART."}"
                     ;;
                     *)
                         shift
-                        _set_names "${_IDENTIFIER#"$_IDENTIFIER_PART."} $*"
+                        _parse_import_list "${_IDENTIFIER#"$_IDENTIFIER_PART."} $*"
                     ;;
                 esac
                 set -- "$_SUFFIX_MODULE_PATH" "$_IDENTIFIER_PART"
-                _import_function "${_IDENTIFIER#"$_IDENTIFIER_PART."}"
+                _import_function
                 _pop_module_path "$1"
                 _pop_prefix_name "$2"
                 return
@@ -2622,13 +2616,13 @@ _gen_function_map ()
             _FUNCTION_MAP="${_FUNCTION_MAP:-FUNC_MAP:} $1:$3"
         ;;
     esac
-    _FUNCTION_NAME="${_FUNCTION_NAME:+$_FUNCTION_NAME }$1"
+    _FUNCTION_LIST="${_FUNCTION_LIST:+$_FUNCTION_LIST }$1"
 }
 
-_set_names ()
+_parse_import_list ()
 {
     _FUNCTION_MAP=
-    _FUNCTION_NAME=
+    _FUNCTION_LIST=
     for i
     do
         _gen_function_map $i
@@ -2646,8 +2640,8 @@ _parse_import_buffer ()
         *)
             is_file "$_MODULE_PATH" && {
                 # from subpackage.module import func1, func2 as alias
-                _set_names "$@"
-                _import_function $_FUNCTION_NAME || return
+                _parse_import_list "$@"
+                _import_function || return
             }
     esac ||
     for _MODULE
