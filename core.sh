@@ -668,6 +668,7 @@ str_replace ()
             ;;
         esac
     done
+
     CORE_RESULT=${1:-}
     while
         case $CORE_RESULT in
@@ -696,6 +697,7 @@ str_replace ()
             CORE_RESULT=${CORE_RESULT#*"$2"}
         done
         CORE_RESULT=$_CORE_ACCUMULATOR$CORE_RESULT _CORE_ACCUMULATOR=
+
         $_CORE_REPLACE_ALL || break
     done
 }
@@ -715,6 +717,7 @@ get_indent ()
             CORE_INDENT=${#CORE_INDENT}
         ;;
     esac
+
     CORE_INDENT_LEN=$CORE_INDENT
     CORE_INDENT=
     _CORE_COUNT=0
@@ -742,6 +745,7 @@ _get_error ()
             _CTX_INDENT=$CORE_INDENT
         ;;
     esac
+
     get_indent ${#2} ^
     _CTX_POINTER=$_CTX_INDENT$CORE_INDENT
 }
@@ -752,8 +756,7 @@ _syntax_error ()
         _get_error "    $_CTX_COMMAND $_CTX_SPECS${_MODULE_NAME%%[$C_BLANK]*}" "${2:-.}" ||
         _get_error "    $_CTX_COMMAND${_CTX_SPECS:+ $_CTX_SPECS}${_MODULE_NAME:+ ${_MODULE_NAME%%[$C_BLANK]*}}" "${2:-.}"
 
-    echo "  File \"${_CTX_FILE:-$SCRIPT_FILE}\"
-    $_CTX_STATEMENT"
+    echo "  File \"${_CTX_FILE:-$SCRIPT_FILE}\"$LF    $_CTX_STATEMENT"
     _CTX_COMMAND=
     case $1 in
         1)
@@ -1078,6 +1081,7 @@ _check_import_syntax ()
             esac || return
         }
     done
+
     case $_CTX_SPEC in
         ?*)
             _CTX_BUFFER="${_CTX_BUFFER:+$_CTX_BUFFER }'$_CTX_SPEC'"
@@ -1116,8 +1120,7 @@ _pop_prefix_name ()
 
 _modulenotfounderror ()
 {
-    echo "  File \"${_CTX_FILE:-$SCRIPT_FILE}\"
-    $_CTX_STATEMENT"
+    echo "  File \"${_CTX_FILE:-$SCRIPT_FILE}\"$LF    $_CTX_STATEMENT"
     case $1 in
         1)
             echo "ImportError: attempted relative import with no known parent package"
@@ -1140,6 +1143,7 @@ _locate_module ()
 {
     _IDENTIFIER_PART=$1
     eval set -- "$SYS_PATH"
+
     for SYS_PART_PATH
     do
         _MODULE_PATH=${SYS_PART_PATH:-${_MODULE_PATH:-$SCRIPT_DIR}}
@@ -1149,6 +1153,7 @@ _locate_module ()
             _push_module_path "$_IDENTIFIER_PART"
         } && break || _MODULE_PATH=
     done
+
     case $_MODULE_PATH in
         '')
             _modulenotfounderror 1
@@ -1559,7 +1564,6 @@ _import_module_shell ()
         _CLEAN_LINE=${_RAW_LINE%%#*}
         _REST_PARSE=$_CLEAN_LINE
         _EXPECT_FUNC=0
-
         while
             case $_REST_PARSE in
                 '')
@@ -1589,18 +1593,21 @@ _import_module_shell ()
                             ;;
                         esac
                     done
+
                     case $_WORD in
                         function)
                             _EXPECT_FUNC=1
                             continue
                         ;;
                     esac
+
                     case $_BASH_ENV_LIST in
                         *" $_WORD "*)
                             _EXPECT_FUNC=0
                             continue
                         ;;
                     esac
+
                     _TAIL=$_REST_PARSE
                     _IS_A_FUNC=0
                     while
@@ -1620,6 +1627,7 @@ _import_module_shell ()
                             ;;
                         esac
                     done
+
                     case ${_TAIL%"${_TAIL#?}"} in
                         '(')
                             _TAIL=${_TAIL#?}
@@ -1640,6 +1648,7 @@ _import_module_shell ()
                                     ;;
                                 esac
                             done
+
                             case ${_TAIL%"${_TAIL#?}"} in
                                 ')')
                                     _IS_A_FUNC=1
@@ -1671,6 +1680,7 @@ _import_module_shell ()
                                             ;;
                                         esac
                                     done
+
                                     case $_IS_CLEAN_LINE in
                                         1)
                                             _IS_A_FUNC=1
@@ -1680,6 +1690,7 @@ _import_module_shell ()
                             esac
                         ;;
                     esac
+
                     case $_IS_A_FUNC in
                         1)
                             case $_LIST_FUNCS in
@@ -1765,6 +1776,7 @@ _import_module_shell ()
                                     ;;
                                 esac
                             done
+
                             _U_PREV_CHAR=
                             _U_NEW_PART=${_U_TAIL%"$_U_REST"}
                             _U_NEW_PART=${_U_NEW_PART%"$_U_WORD"}
@@ -1773,6 +1785,7 @@ _import_module_shell ()
                                     _U_PREV_CHAR=${_U_NEW_PART#"${_U_NEW_PART%?}"}
                                 ;;
                             esac
+
                             case $_U_PREV_CHAR in
                                 -)
                                     _LAST_F=${_U_WORD#"${_U_WORD%?}"}
@@ -1814,6 +1827,7 @@ _import_module_shell ()
                 done
             ;;
         esac
+
         # If function closed (} character on line without indentation)
         case ${_CURRENT_TARGET:+${_RAW_LINE##[$SPACE$TAB]*}} in
             '}')
@@ -1856,7 +1870,6 @@ _MODULE_BODY
     _HD_TOKEN=
     _REST_LINES=$_ALL_LINES
     _O_BR=0 _C_BR=0
-
     while
         case $_REST_LINES in
             '')
@@ -1932,6 +1945,7 @@ _MODULE_BODY
                     esac
                     _T_REST=${_T_REST#?}
                 done
+
                 case $_CLEAN_TOKEN in
                     ?*)
                         _IN_HEREDOC=1
@@ -1941,6 +1955,7 @@ _MODULE_BODY
                 esac
             ;;
         esac
+
         case $_IS_HD_START in
             1)
                 _MODULE_FUNCS=${_MODULE_FUNCS:+$_MODULE_FUNCS$LF}$_LINE
@@ -2016,6 +2031,7 @@ _MODULE_BODY
                                         esac
                                     done
                                     _REST=$_REST_QUOTES
+
                                     case $_UNSET_MODE in
                                         f)
                                             _NEW_LINE=$_NEW_LINE$_F_PREFIX$_WORD
@@ -2035,6 +2051,7 @@ _MODULE_BODY
                     continue
                 ;;
             esac
+
             case $_CH in
                 [\.$C_WORD])
                     case $_WORD in
@@ -2062,6 +2079,7 @@ _MODULE_BODY
                                     _PREV_CHAR=${_NEW_LINE#"${_NEW_LINE%?}"}
                                 ;;
                             esac
+
                             case $_PREV_CHAR in
                                 -)
                                     _LAST_FLAG=${_WORD#"${_WORD%?}"}
@@ -2091,6 +2109,7 @@ _MODULE_BODY
                                         _IS_SYS_VAR=1
                                     ;;
                                 esac
+
                                 case $_IS_SYS_VAR in
                                     1)
                                         _NEW_LINE=$_NEW_LINE$_WORD
@@ -2134,6 +2153,7 @@ _MODULE_BODY
                                                     ;;
                                                 esac
                                             done
+
                                             case ${_F_REST%"${_F_REST#?}"} in
                                                 '(')
                                                     _F_REST=${_F_REST#?}
@@ -2154,6 +2174,7 @@ _MODULE_BODY
                                                             ;;
                                                         esac
                                                     done
+
                                                     case ${_F_REST%"${_F_REST#?}"} in
                                                         ')')
                                                             _IS_FUNC_DECL=1
@@ -2163,6 +2184,7 @@ _MODULE_BODY
                                             esac
                                         ;;
                                     esac
+
                                     case $_EXPECT_VAR in
                                         1)
                                             true
@@ -2254,7 +2276,6 @@ _MODULE_BODY
                                     esac
                                 ;;
                             esac
-
                             _WORD=
                         ;;
                     esac
@@ -2303,6 +2324,7 @@ _MODULE_BODY
                         _PREV_CHAR=${_NEW_LINE#"${_NEW_LINE%?}"}
                     ;;
                 esac
+
                 case $_PREV_CHAR in
                     -)
                         _NEW_LINE=$_NEW_LINE$_WORD
@@ -2314,6 +2336,7 @@ _MODULE_BODY
                                 _IS_SYS_VAR=1
                             ;;
                         esac
+
                         case $_IS_SYS_VAR in
                             1)
                                 _NEW_LINE=$_NEW_LINE$_WORD
@@ -2337,6 +2360,7 @@ _MODULE_BODY
                                                         esac
                                                     ;;
                                                 esac
+
                                                 case $_EXPECT_VAR in
                                                     1)
                                                         _NEW_LINE=$_NEW_LINE$_V_PREFIX$_WORD
@@ -2368,6 +2392,7 @@ _MODULE_BODY
                 esac
             ;;
         esac
+
         # Brace counting for current line in print zone
         case $_PRINT_ZONE in
             1)
@@ -2488,6 +2513,7 @@ _import_module ()
             _get_bash_env_list
         ;;
     esac
+
     _import_module_$_IMPORT_TYPE
     case $_MODULE_FUNCS in
         ?*)
@@ -2514,8 +2540,7 @@ _load_module ()
 _import_function ()
 {
     $_IMPORT_AS || {
-        echo "  File \"${_CTX_FILE:-$SCRIPT_FILE}\"
-    $_CTX_STATEMENT
+        echo "  File \"${_CTX_FILE:-$SCRIPT_FILE}\"$LF    $_CTX_STATEMENT
 ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh|zsh)"
         return 1
     }
@@ -2530,6 +2555,7 @@ ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh
         ?*)
             eval "$_MODULE_FUNCS"
     esac || _modulenotfounderror 3 "$_FUNCTION_LIST"
+
     # Clear temporary filter after execution
     _FUNCTION_LIST=
 }
@@ -2602,6 +2628,7 @@ _import ()
     else
         _modulenotfounderror 3 "$_MODULE_PATH" || return
     fi
+
     _pop_module_path "$1"
     _pop_prefix_name "${4:-$2}"
 }
@@ -2708,6 +2735,7 @@ from ()
                     esac || return
                 ;;
             esac
+
             case ${1:-} in
                 import)
                     shift
@@ -2785,6 +2813,7 @@ full_path ()
                     * ) TARGET=$PWD/$TARGET ;;
                 esac ;;
     esac
+
     # resolve path /home/bob/../alisa/.//.ssh/ to /home/alisa/.ssh
     ARG=${TARGET:-}
     TARGET=
