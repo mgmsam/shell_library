@@ -1253,7 +1253,7 @@ _import_module_awk ()
                 else clean_total = clean_total soh clean
             }
             END {
-                prefix = "'"${_IMPORT_PREFIX_NAME:-}${_IMPORT_PREFIX_SEP:-}"'"
+                f_prefix = "'"${_IMPORT_PREFIX_NAME:-}${_IMPORT_PREFIX_SEP:-}"'"
                 v_prefix = "'"${_IMPORT_PREFIX_NAME:-}"'_"
                 gsub(/\./, "_", v_prefix)
 
@@ -1376,9 +1376,9 @@ _import_module_awk ()
 
                                 # MAP: function name replacement in single quotes (e.g., unset 'func2')
                                 if (unset_mode == "f" && alias_map[full_word] != "") {
-                                    new_code = new_code prefix alias_map[full_word]
+                                    new_code = new_code f_prefix alias_map[full_word]
                                 } else if (unset_mode == "f") {
-                                    new_code = new_code prefix full_word
+                                    new_code = new_code f_prefix full_word
                                 } else {
                                     new_code = new_code v_prefix full_word
                                 }
@@ -1422,8 +1422,8 @@ _import_module_awk ()
                                 new_code = new_code word
                             } else if (unset_mode != "") {
                                 # MAP: when function is removed via unset -f func2
-                                if (unset_mode == "f" && alias_map[word] != "") new_code = new_code prefix alias_map[word]
-                                else if (unset_mode == "f") new_code = new_code prefix word
+                                if (unset_mode == "f" && alias_map[word] != "") new_code = new_code f_prefix alias_map[word]
+                                else if (unset_mode == "f") new_code = new_code f_prefix word
                                 else new_code = new_code v_prefix word
                             } else if (expect_var == 1 || is_assignment == 1) {
                                 # Replacement happens EXCLUSIVELY based on dynamic string context!
@@ -1449,7 +1449,7 @@ _import_module_awk ()
                                 # MAP: Intercept function declaration and call from alias map
                                 target_word = (alias_map[word] != "") ? alias_map[word] : word
                                 if (d_quotes == 1) new_code = new_code target_word
-                                else new_code = new_code prefix target_word
+                                else new_code = new_code f_prefix target_word
                             } else {
                                 new_code = new_code word
                             }
