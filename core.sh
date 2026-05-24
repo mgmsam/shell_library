@@ -1012,7 +1012,7 @@ _check_import_syntax ()
                         set -- "${_MODULE#*,}" "$@"
                         _MODULE=${_MODULE%%,*}
                         is_valid_identifier "$_MODULE" || return
-                        _CTX_BUFFER="${_CTX_BUFFER:+$_CTX_BUFFER }'$_CTX_SPEC' '$_MODULE'"
+                        _CTX_BUFFER="${_CTX_BUFFER:+$_CTX_BUFFER }'$_CTX_SPEC $_MODULE'"
                         _CTX_SPEC=
                         _CTX_SPECS="$_CTX_SPECS $_MODULE,"
                         _CTX_TIGHT=true
@@ -1021,7 +1021,7 @@ _check_import_syntax ()
                     *,)
                         _MODULE=${_MODULE%,}
                         is_valid_identifier "$_MODULE" || return
-                        _CTX_BUFFER="${_CTX_BUFFER:+$_CTX_BUFFER }'$_CTX_SPEC' '$_MODULE'"
+                        _CTX_BUFFER="${_CTX_BUFFER:+$_CTX_BUFFER }'$_CTX_SPEC $_MODULE'"
                         _CTX_SPEC=
                         _CTX_SPECS="$_CTX_SPECS $_MODULE,"
                         _IMPORT_TOKEN_COUNT=0
@@ -1128,6 +1128,9 @@ _modulenotfounderror ()
         3)
             str_replace "${2#"$PWD"}" / .
             echo "ModuleNotFoundError: No module named '$CORE_RESULT'"
+        ;;
+        4)
+            echo "ImportError: cannot import name '$2' from '${_CTX_PATH_FROM:-$_IDENTIFIER}' ($_MODULE_PATH)"
         ;;
     esac
     return 1
@@ -1313,6 +1316,16 @@ _import_module_awk ()
 
                         if (is_a_func) names[word] = 1
                         expect_func = 0
+                    }
+                }
+
+                if (use_filter) {
+                    for (t in targets_arr) {
+                        if (!(t in names)) {
+                            # Стираем всё, выводим только имя потеряшки и падаем с системным кодом 1
+                            print t
+                            exit 1
+                        }
                     }
                 }
 
@@ -1807,6 +1820,23 @@ _import_module_shell ()
 $_MODULE_BODY
 _MODULE_BODY
     IFS=$POSIX_IFS
+
+    case ${_CTX_FILTER_TARGETS:-} in
+        ?*)
+            # Перебираем запрашиваемые цели, которые лежат в $_CTX_FILTER_TARGETS через пробел
+            for _target in $_CTX_FILTER_TARGETS
+            do
+                case $_LIST_FUNCS in
+                    *" $_target "*) ;; # Найдена, отлично
+                    *)
+                        # Не нашлась — пишем её имя в буфер и аварийно выходим
+                        _MODULE_FUNCS=$_target
+                        return 1
+                    ;;
+                esac
+            done
+        ;;
+    esac
 
     # --- PASS 2: ТОКЕНИЗАТОР ЗАМЕН С НАКОПЛЕНИЕМ В ПЕРЕМЕННУЮ ---
     _IN_HEREDOC=0
@@ -2495,7 +2525,7 @@ ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh
     
     # 2. Запускаем токенизатор (он сам отфильтрует и переименует всё за один проход)
     _CTX_FILTER_TARGETS=${1:+" $* "}
-    _import_module_$_IMPORT_TYPE
+    _import_module_$_IMPORT_TYPE || _modulenotfounderror 4 "$_MODULE_FUNCS" || return
     # Очищаем временный фильтр после работы
     _CTX_FILTER_TARGETS=
 
