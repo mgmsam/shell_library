@@ -2664,17 +2664,12 @@ _parse_import_buffer ()
 {
     eval set -- "$_CTX_BUFFER"
     _CTX_BUFFER=
-    case ${_MODULE_PATH:-} in
-        '')
-            false
-        ;;
-        *)
-            is_file "$_MODULE_PATH" && {
-                # from subpackage.module import func1, func2 as alias
-                _parse_import_list "$@"
-                _import_function || return
-            }
-    esac ||
+
+    is_file "${_MODULE_PATH:-/}" && {
+        # from subpackage.module import func1, func2 as alias
+        _parse_import_list "$@"
+        _import_function || return
+    } ||
     for _MODULE
     do
         _import $_MODULE
