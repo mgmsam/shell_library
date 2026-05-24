@@ -114,7 +114,7 @@ case ${KSH_VERSION:-} in
             $SAY_ESCAPE && PUTS_FORMAT=-n || PUTS_FORMAT='-n -r'
             $SAY_BATCH && print $PUTS_FORMAT "$*${SAY_SUFFIX:-}" || {
                 PUTS="print $PUTS_FORMAT"
-                puts_stream "$*"
+                _puts_stream "$*"
             }
         }
     ;;
@@ -132,7 +132,7 @@ then
         $SAY_ESCAPE && PUTS_FORMAT=%b || PUTS_FORMAT=%s
         $SAY_BATCH && printf $PUTS_FORMAT "$*${SAY_SUFFIX:-}" || {
             PUTS="printf $PUTS_FORMAT"
-            puts_stream "$*"
+            _puts_stream "$*"
         }
     }
 elif type echo
@@ -166,7 +166,7 @@ then
                         ;;
                     esac
                     PUTS=echo_c_helper
-                    puts_stream "$*"
+                    _puts_stream "$*"
                 }
             }
         ;;
@@ -190,7 +190,7 @@ then
             {
                 $SAY_BATCH && echo -n "$*${SAY_SUFFIX:-}" || {
                     PUTS='echo -n'
-                    puts_stream "$*"
+                    _puts_stream "$*"
                 }
             }
         ;;
@@ -205,7 +205,7 @@ then
             $SAY_ESCAPE && PUTS_FORMAT=-ne || PUTS_FORMAT=-n
             $SAY_BATCH && echo $PUTS_FORMAT "$*${SAY_SUFFIX:-}" || {
                 PUTS="echo $PUTS_FORMAT"
-                puts_stream "$*"
+                _puts_stream "$*"
             }
         }
     }
@@ -222,7 +222,7 @@ else
     CAN_SLEEP_FLOAT=false
 fi >/dev/null 2>&1
 
-puts_stream ()
+_puts_stream ()
 {
     PUTS_LINE=`$PUTS "$*"`${SAY_SUFFIX:-}
     while
@@ -251,7 +251,7 @@ SAY_ESCAPE=$PUTS_ESCAPE
 LF='
 '
 
-puts_indented ()
+_puts_indented ()
 {
     $SAY_PREFIX_INDENT &&
     case ${PUTS_LENGHT_PREFIX:-} in
@@ -324,13 +324,13 @@ puts_indented ()
             $SAY_NEWLINE || SAY_SUFFIX=
         ;;
     esac
+
     puts "${SAY_PREFIX:-}${1:-}"
 }
 
 say ()
 {
     SAY_RESULT=$?
-
     SAY_BATCH=true
     SAY_ESCAPE=false
     SAY_LIST=false
@@ -407,6 +407,7 @@ say ()
         esac
         shift
     done
+
     case $SAY_RESULT in
         0)
             EXIT_CODE=${EXIT_CODE:-0}
@@ -415,14 +416,15 @@ say ()
             EXIT_CODE=$SAY_RESULT
         ;;
     esac
+
     case $* in
         ?*)
             case $SAY_LIST in
                 true)
-                    puts_indented ${1:+"$@"}
+                    _puts_indented ${1:+"$@"}
                 ;;
                 *)
-                    puts_indented ${1:+"$*"}
+                    _puts_indented ${1:+"$*"}
                 ;;
             esac
 
@@ -471,7 +473,7 @@ SCRIPT_DIR=$(
         ;;
     esac
     2>&1 cd -- "${_PATH:-/}" && 2>&1 pwd -P
-)
+) || 
 SCRIPT_FILE=${SCRIPT_DIR%/}/${0##*/}
 SYS_LIBDIR=/usr/lib/shell
 SYS_PATH="'' '$SYS_LIBDIR'"
