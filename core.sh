@@ -773,27 +773,22 @@ _syntax_error ()
         _get_error "    $_CTX_COMMAND $_CTX_SPECS${_MODULE_NAME%%[$C_BLANK]*}" "${2:-.}" ||
         _get_error "    $_CTX_COMMAND${_CTX_SPECS:+ $_CTX_SPECS}${_MODULE_NAME:+ ${_MODULE_NAME%%[$C_BLANK]*}}" "${2:-.}"
 
-    echo "  File \"${_CTX_FILE:-$SCRIPT_FILE}\"$LF    $_CTX_STATEMENT"
-    _CTX_COMMAND=
     case $1 in
         1)
-            echo "$_CTX_POINTER
-SyntaxError: invalid syntax"
+            set "$_CTX_POINTER" "SyntaxError: invalid syntax"
         ;;
         2)
-            echo "$_CTX_POINTER
-SyntaxError: leading zeros in decimal integer literals are not permitted"
+            set "$_CTX_POINTER" "SyntaxError: leading zeros in decimal integer literals are not permitted"
         ;;
         3)
-            echo "$_CTX_POINTER
-SyntaxError: invalid decimal literal"
+            set "$_CTX_POINTER" "SyntaxError: invalid decimal literal"
         ;;
         4)
-            echo "$_CTX_POINTER
-SyntaxError: trailing comma not allowed without surrounding parentheses"
+            set "$_CTX_POINTER" "SyntaxError: trailing comma not allowed without surrounding parentheses"
         ;;
     esac
-    return 1
+
+    die -p -l "  File \"${_CTX_FILE:-$SCRIPT_FILE}\"" "    $_CTX_STATEMENT" "$@"
 }
 
 is_valid_identifier ()
@@ -1137,23 +1132,26 @@ _pop_prefix_name ()
 
 _modulenotfounderror ()
 {
-    echo "  File \"${_CTX_FILE:-$SCRIPT_FILE}\"$LF    $_CTX_STATEMENT"
     case $1 in
+        0)
+            set "ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh|zsh)"
+        ;;
         1)
-            echo "ImportError: attempted relative import with no known parent package"
+            set "ImportError: attempted relative import with no known parent package"
         ;;
         2)
-            echo "ModuleNotFoundError: No module named '$_IDENTIFIER'; '$_IDENTIFIER_PART' is not a package"
+            set "ModuleNotFoundError: No module named '$_IDENTIFIER'; '$_IDENTIFIER_PART' is not a package"
         ;;
         3)
             str_replace "${2#"$PWD"}" / .
-            echo "ModuleNotFoundError: No module named '$CORE_RESULT'"
+            set "ModuleNotFoundError: No module named '$CORE_RESULT'"
         ;;
         4)
-            echo "ImportError: cannot import name '$2' from '${_CTX_PATH_FROM:-$_IDENTIFIER}' ($_MODULE_PATH)"
+            set "ImportError: cannot import name '$2' from '${_CTX_PATH_FROM:-$_IDENTIFIER}' ($_MODULE_PATH)"
         ;;
     esac
-    return 1
+
+    die -p -l "  File \"${_CTX_FILE:-$SCRIPT_FILE}\"" "    $_CTX_STATEMENT" "$@"
 }
 
 _locate_module ()
@@ -2556,11 +2554,7 @@ _load_module ()
 
 _import_function ()
 {
-    $_IMPORT_AS || {
-        echo "  File \"${_CTX_FILE:-$SCRIPT_FILE}\"$LF    $_CTX_STATEMENT
-ModuleError: 'import ... as ...' not supported in this shell (requires bash|mksh|zsh)"
-        return 1
-    }
+    $_IMPORT_AS || _modulenotfounderror 0 || return
 
     # 1. Load module content into memory
     _load_module
