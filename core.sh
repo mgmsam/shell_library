@@ -432,10 +432,24 @@ say ()
     esac
 }
 
+_is_interactive_shell ()
+{
+    case $- in
+        *i*)
+            return 0
+        ;;
+        *)
+            return 1
+        ;;
+    esac
+}
+
 die ()
 {
     say "$@" >&2
-    exit $EXIT_CODE
+    _is_interactive_shell || exit $EXIT_CODE
+    set -e
+    return $EXIT_CODE
 }
 
  CR=$(puts '\015')
